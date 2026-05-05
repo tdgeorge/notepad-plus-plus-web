@@ -214,14 +214,18 @@
   flex-shrink: 0;
 }
 
-.btn {
+.btnBase {
   padding: 4px 18px;
   font-size: 12px;
-  background: var(--btn-bg);
-  border: 1px solid var(--btn-border);
   border-radius: var(--ui-radius);
   cursor: pointer;
   min-width: 60px;
+}
+
+.btn {
+  composes: btnBase;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
   color: var(--btn-text);
 }
 
@@ -230,13 +234,9 @@
 }
 
 .btnPrimary {
-  padding: 4px 18px;
-  font-size: 12px;
+  composes: btnBase;
   background: var(--accent);
   border: 1px solid var(--accent);
-  border-radius: var(--ui-radius);
-  cursor: pointer;
-  min-width: 60px;
   color: var(--accent-text);
   font-weight: 600;
 }
