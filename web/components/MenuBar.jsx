@@ -397,7 +397,7 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
       case 'show-all-chars': return viewState.showAllChars
       case 'show-indent': return viewState.showIndent
       case 'lang-javascript': return viewState.language === 'javascript'
-      case 'lang-plain-text': return viewState.language === null || viewState.language === undefined
+      case 'lang-plain-text': return viewState.language == null
       default: return false
     }
   }
