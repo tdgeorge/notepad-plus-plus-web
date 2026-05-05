@@ -1,0 +1,54 @@
+.editorWrapper {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  background: #fff;
+}
+
+.editorContainer {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.lineNumbers {
+  background: #f0f0f0;
+  border-right: 1px solid #d0d0d0;
+  padding: 4px 6px;
+  text-align: right;
+  color: #888;
+  min-width: 44px;
+  overflow: hidden;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.lineNumber {
+  height: 19.5px; /* must match textarea line-height * font-size */
+  line-height: 19.5px;
+  font-size: 13px;
+}
+
+.textarea {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 4px 4px;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  resize: none;
+  background: #fff;
+  color: #000;
+  tab-size: 4;
+  white-space: pre;
+  overflow: auto;
+}
+
+.textarea::selection {
+  background: #0078d4;
+  color: #fff;
+}
