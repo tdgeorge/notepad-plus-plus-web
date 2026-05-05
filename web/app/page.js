@@ -12,6 +12,7 @@ import IncrementalSearch from '../components/IncrementalSearch'
 import AboutDialog from '../components/AboutDialog'
 import StyleConfiguratorDialog from '../components/StyleConfiguratorDialog'
 import { applyTheme, DEFAULT_THEME_ID } from '../lib/themes'
+import { detectLanguage } from '../lib/languages/index'
 import styles from './page.module.css'
 
 const DEFAULT_FONT_SIZE = 13
@@ -76,6 +77,7 @@ export default function Home() {
     () => (activeTab?.content ?? '').split('\n').length,
     [activeTab?.content]
   )
+  const language = useMemo(() => detectLanguage(activeTab?.name), [activeTab?.name])
 
   const handleNewTab = useCallback(() => {
     const id = nextTabId++
@@ -603,6 +605,7 @@ export default function Home() {
         showWhitespace={showWhitespace}
         showEol={showEol}
         showIndent={showIndent}
+        language={language}
       />
       <StatusBar cursorPos={cursorPos} eol="Windows (CR LF)" encoding="UTF-8" />
       <FindDialog

@@ -1,7 +1,9 @@
 'use client'
 
-import { useRef, useEffect, useCallback, useState, forwardRef, useImperativeHandle, Fragment } from 'react'
+import { useRef, useEffect, useCallback, useState, useMemo, forwardRef, useImperativeHandle, Fragment } from 'react'
 import styles from './Editor.module.css'
+import { TOKENIZERS } from '../lib/languages/index'
+import { TOKEN } from '../lib/languages/javascript'
 
 const TAB_SIZE = 4
 
@@ -18,6 +20,120 @@ function buildSearchRegex(term, { matchCase = false, wholeWord = false } = {}) {
 
 const BRACE_PAIRS = { '(': ')', '[': ']', '{': '}', ')': '(', ']': '[', '}': '{' }
 const OPEN_BRACES = new Set(['(', '[', '{'])
+
+/** Maps a TOKEN type to the corresponding CSS module class name */
+const TOKEN_CLASSES = {
+  [TOKEN.KEYWORD]: styles.hlKeyword,
+  [TOKEN.TYPE]: styles.hlType,
+  [TOKEN.BROWSER_API]: styles.hlBrowserApi,
+  [TOKEN.NUMBER]: styles.hlNumber,
+  [TOKEN.STRING]: styles.hlString,
+  [TOKEN.TEMPLATE]: styles.hlTemplate,
+  [TOKEN.COMMENT]: styles.hlComment,
+  [TOKEN.COMMENT_DOC]: styles.hlCommentDoc,
+  [TOKEN.REGEX]: styles.hlRegex,
+  [TOKEN.OPERATOR]: styles.hlOperator,
+}
+
+/**
+ * Render syntax-highlighted content for the mirror <pre>.
+ * When whitespace/EOL/indent symbols are also requested the two effects are
+ * merged in a single character-by-character pass so the mirror stays in sync
+ * with the textarea.
+ *
+ * @param {string} code  Full editor text.
+ * @param {function} tokenize  Language tokenizer (returns [{type,value}]).
+ * @param {{ showWhitespace: boolean, showEol: boolean, showIndent: boolean }} symbolOpts
+ * @returns {React.ReactNode[]}
+ */
+function renderHighlighted(code, tokenize, { showWhitespace, showEol, showIndent }) {
+  const tokens = tokenize(code)
+  const showAnySymbols = showWhitespace || showEol || showIndent
+
+  // ── Fast path: no whitespace symbols — wrap tokens in coloured spans ──────
+  if (!showAnySymbols) {
+    return tokens.map(({ type, value }, i) => {
+      const cls = TOKEN_CLASSES[type]
+      return cls ? <span key={i} className={cls}>{value}</span> : value
+    })
+  }
+
+  // ── Combined path: syntax colours + whitespace symbol rendering ───────────
+  // Pre-compute the indent end (last leading-whitespace column) per line so we
+  // can correctly place indent guide markers.
+  const lines = code.split('\n')
+  const lineIndentEnds = lines.map((line) => {
+    let k = 0
+    while (k < line.length && (line[k] === ' ' || line[k] === '\t')) k++
+    return k === line.length ? -1 : k // -1 signals a blank line
+  })
+
+  const result = []
+  let lineIdx = 0
+  let col = 0
+
+  for (let ti = 0; ti < tokens.length; ti++) {
+    const { type, value } = tokens[ti]
+    const cls = TOKEN_CLASSES[type]
+    const parts = []
+
+    for (let ci = 0; ci < value.length; ci++) {
+      const ch = value[ci]
+      const indentEnd = lineIndentEnds[lineIdx] ?? -1
+      const isBlank = indentEnd === -1
+      const inIndent = isBlank || col < indentEnd
+
+      if (ch === '\n') {
+        if (showEol) {
+          parts.push(<span key={`eol-${ti}-${ci}`} className={styles.symEol}>{'\u00B6'}</span>)
+        }
+        parts.push('\n')
+        lineIdx++
+        col = 0
+      } else if (ch === '\t') {
+        const fill = TAB_SIZE - (col % TAB_SIZE)
+        if (showWhitespace) {
+          parts.push(
+            <span key={`tab-${ti}-${ci}`} className={styles.symTab}>
+              {'\u2192' + ' '.repeat(fill - 1)}
+            </span>
+          )
+        } else if (showIndent && inIndent) {
+          parts.push(
+            <span key={`tab-${ti}-${ci}`} className={styles.symIndent}>
+              {'\u2502' + ' '.repeat(fill - 1)}
+            </span>
+          )
+        } else {
+          parts.push(' '.repeat(fill))
+        }
+        col += fill
+      } else if (ch === ' ') {
+        if (showWhitespace) {
+          parts.push(<span key={`sp-${ti}-${ci}`} className={styles.symSpace}>{'\u00B7'}</span>)
+        } else if (showIndent && inIndent && col % TAB_SIZE === 0) {
+          parts.push(<span key={`sp-${ti}-${ci}`} className={styles.symIndent}>{'\u2502'}</span>)
+        } else {
+          parts.push(ch)
+        }
+        col++
+      } else {
+        parts.push(ch)
+        col++
+      }
+    }
+
+    if (parts.length === 0) continue
+
+    if (cls) {
+      result.push(<span key={ti} className={cls}>{parts}</span>)
+    } else {
+      result.push(<Fragment key={ti}>{parts}</Fragment>)
+    }
+  }
+
+  return result
+}
 
 function renderSymbols(text, { showWhitespace, showEol, showIndent }) {
   const lines = text.split('\n')
@@ -84,7 +200,7 @@ function renderSymbols(text, { showWhitespace, showEol, showIndent }) {
 }
 
 const Editor = forwardRef(function Editor(
-  { content, onChange, onCursorChange, wordWrap, fontSize, showWhitespace, showEol, showIndent },
+  { content, onChange, onCursorChange, wordWrap, fontSize, showWhitespace, showEol, showIndent, language },
   ref
 ) {
   const textareaRef = useRef(null)
@@ -98,6 +214,17 @@ const Editor = forwardRef(function Editor(
   const lineHeightRatio = 1.5
   const lineHeightPx = effectiveFontSize * lineHeightRatio
   const showSymbols = showWhitespace || showEol || showIndent
+
+  // Syntax-highlighted mirror content (memoised to avoid re-tokenising on every render).
+  const tokenizeFn = language ? TOKENIZERS[language] : null
+  const highlightedContent = useMemo(() => {
+    if (!tokenizeFn) return null
+    return renderHighlighted(content, tokenizeFn, { showWhitespace, showEol, showIndent })
+  }, [content, tokenizeFn, showWhitespace, showEol, showIndent])
+
+  // The mirror <pre> is shown when syntax highlighting is active OR when any
+  // whitespace / EOL / indent guide symbol is enabled.
+  const showMirror = showSymbols || !!tokenizeFn
 
   const updateLineCount = useCallback((text) => {
     const lines = text.split('\n').length
@@ -464,14 +591,16 @@ const Editor = forwardRef(function Editor(
           ))}
         </div>
         <div className={styles.textareaWrapper}>
-          {showSymbols && (
+          {showMirror && (
             <pre
               ref={mirrorRef}
               className={styles.mirror}
               aria-hidden="true"
               style={{ whiteSpace: wordWrap ? 'pre-wrap' : 'pre' }}
             >
-              {renderSymbols(content, { showWhitespace, showEol, showIndent })}
+              {tokenizeFn
+                ? highlightedContent
+                : renderSymbols(content, { showWhitespace, showEol, showIndent })}
             </pre>
           )}
           <textarea
@@ -491,8 +620,8 @@ const Editor = forwardRef(function Editor(
             aria-multiline="true"
             style={{
               whiteSpace: wordWrap ? 'pre-wrap' : 'pre',
-              color: showSymbols ? 'transparent' : undefined,
-              caretColor: showSymbols ? '#000' : undefined,
+              color: showMirror ? 'transparent' : undefined,
+              caretColor: showMirror ? 'var(--editor-fg)' : undefined,
             }}
           />
         </div>
