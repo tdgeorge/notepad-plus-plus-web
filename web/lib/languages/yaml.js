@@ -13,7 +13,8 @@
 
 import { TOKEN } from './javascript'
 
-// YAML special literals (case-insensitive per YAML 1.1; YAML 1.2 only has true/false/null)
+// YAML special literals: includes both YAML 1.1 booleans (yes/no/on/off) and
+// YAML 1.2 booleans (true/false) plus null variants, for broad compatibility.
 const YAML_LITERALS = new Set(['true', 'false', 'yes', 'no', 'null', '~', 'on', 'off'])
 
 export function tokenize(code) {

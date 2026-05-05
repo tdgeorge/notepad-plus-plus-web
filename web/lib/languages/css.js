@@ -103,7 +103,7 @@ export function tokenize(code) {
     }
 
     // ── Identifier: property name (inside rule) or selector (outside)  ───────
-    if (/[a-zA-Z_-]/.test(code[i]) && code[i] !== '-' || (code[i] === '-' && /[a-zA-Z]/.test(code[i + 1]))) {
+    if (/[a-zA-Z_-]/.test(code[i]) && (code[i] !== '-' || /[a-zA-Z]/.test(code[i + 1]))) {
       const start = i
       while (i < len && /[a-zA-Z0-9_-]/.test(code[i])) i++
       const word = code.slice(start, i)
