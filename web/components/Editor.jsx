@@ -1,9 +1,9 @@
 'use client'
 
-import { useRef, useEffect, useCallback, useState } from 'react'
+import { useRef, useEffect, useCallback, useState, forwardRef, useImperativeHandle } from 'react'
 import styles from './Editor.module.css'
 
-export default function Editor({ content, onChange, onCursorChange }) {
+const Editor = forwardRef(function Editor({ content, onChange, onCursorChange }, ref) {
   const textareaRef = useRef(null)
   const lineNumbersRef = useRef(null)
   const [lineCount, setLineCount] = useState(1)
@@ -63,6 +63,74 @@ export default function Editor({ content, onChange, onCursorChange }) {
     }
   }, [content, updateLineCount])
 
+  const indent = useCallback(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.focus()
+    const start = el.selectionStart
+    const end = el.selectionEnd
+    const value = el.value
+    if (start === end) {
+      document.execCommand('insertText', false, '\t')
+    } else {
+      const lineStart = value.lastIndexOf('\n', start - 1) + 1
+      const chunk = value.substring(lineStart, end)
+      const indented = chunk.split('\n').map((line) => '\t' + line).join('\n')
+      el.setSelectionRange(lineStart, end)
+      document.execCommand('insertText', false, indented)
+      el.setSelectionRange(lineStart, lineStart + indented.length)
+    }
+  }, [])
+
+  const dedent = useCallback(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.focus()
+    const start = el.selectionStart
+    const end = el.selectionEnd
+    const value = el.value
+    const lineStart = value.lastIndexOf('\n', start - 1) + 1
+    const chunk = value.substring(lineStart, end)
+    const dedented = chunk
+      .split('\n')
+      .map((line) => {
+        if (line.startsWith('\t')) return line.slice(1)
+        const spaces = line.match(/^ {1,4}/)
+        if (spaces) return line.slice(spaces[0].length)
+        return line
+      })
+      .join('\n')
+    el.setSelectionRange(lineStart, end)
+    document.execCommand('insertText', false, dedented)
+    el.setSelectionRange(lineStart, lineStart + dedented.length)
+  }, [])
+
+  useImperativeHandle(ref, () => ({
+    undo: () => { textareaRef.current?.focus(); document.execCommand('undo') },
+    redo: () => { textareaRef.current?.focus(); document.execCommand('redo') },
+    cut: () => { textareaRef.current?.focus(); document.execCommand('cut') },
+    copy: () => { textareaRef.current?.focus(); document.execCommand('copy') },
+    paste: () => { textareaRef.current?.focus(); document.execCommand('paste') },
+    delete: () => { textareaRef.current?.focus(); document.execCommand('forwardDelete') },
+    selectAll: () => { textareaRef.current?.focus(); textareaRef.current?.select(); updateCursor() },
+    indent,
+    dedent,
+  }), [indent, dedent, updateCursor])
+
+  const handleKeyDown = useCallback(
+    (e) => {
+      if (e.key === 'Tab') {
+        e.preventDefault()
+        if (e.shiftKey) {
+          dedent()
+        } else {
+          indent()
+        }
+      }
+    },
+    [indent, dedent]
+  )
+
   return (
     <div className={styles.editorWrapper}>
       <div className={styles.editorContainer}>
@@ -82,6 +150,7 @@ export default function Editor({ content, onChange, onCursorChange }) {
           className={styles.textarea}
           defaultValue={content}
           onChange={handleChange}
+          onKeyDown={handleKeyDown}
           onKeyUp={handleKeyUp}
           onClick={handleClick}
           onScroll={syncScroll}
@@ -95,4 +164,6 @@ export default function Editor({ content, onChange, onCursorChange }) {
       </div>
     </div>
   )
-}
+})
+
+export default Editor
