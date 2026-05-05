@@ -119,17 +119,23 @@ function tokenizeLine(line) {
     }
 
     // Link [text](url) or ![alt](url) image
-    if (line[i] === '!' && line[i + 1] === '[') i++ // skip ! for images
-    if (line[i] === '[') {
-      const closeText = line.indexOf(']', i + 1)
-      if (closeText !== -1 && line[closeText + 1] === '(') {
-        const closeUrl = line.indexOf(')', closeText + 2)
-        if (closeUrl !== -1) {
-          // Highlight [text] as KEYWORD and (url) as STRING
-          tokens.push({ type: TOKEN.KEYWORD, value: line.slice(i, closeText + 1) })
-          tokens.push({ type: TOKEN.STRING, value: line.slice(closeText + 1, closeUrl + 1) })
-          i = closeUrl + 1
-          continue
+    {
+      let imgPrefix = ''
+      let j = i
+      if (line[j] === '!' && line[j + 1] === '[') {
+        imgPrefix = '!'
+        j++
+      }
+      if (line[j] === '[') {
+        const closeText = line.indexOf(']', j + 1)
+        if (closeText !== -1 && line[closeText + 1] === '(') {
+          const closeUrl = line.indexOf(')', closeText + 2)
+          if (closeUrl !== -1) {
+            tokens.push({ type: TOKEN.KEYWORD, value: imgPrefix + line.slice(j, closeText + 1) })
+            tokens.push({ type: TOKEN.STRING, value: line.slice(closeText + 1, closeUrl + 1) })
+            i = closeUrl + 1
+            continue
+          }
         }
       }
     }

@@ -132,6 +132,12 @@ export function tokenize(code) {
     while (i < len && code[i] !== '<') i++
     if (i > start) {
       tokens.push({ type: TOKEN.DEFAULT, value: code.slice(start, i) })
+    } else {
+      // A '<' that wasn't consumed by any tag branch (e.g. a bare '<' at EOF,
+      // or '< ' comparison operator in text content) — emit it and advance so
+      // we never get stuck in an infinite loop.
+      tokens.push({ type: TOKEN.DEFAULT, value: '<' })
+      i++
     }
   }
 
