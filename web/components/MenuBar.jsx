@@ -151,7 +151,7 @@ const MENUS = [
     items: [
       { label: 'User Defined Language...' },
       { separator: true },
-      { label: 'Plain Text' },
+      { label: 'Plain Text', action: 'lang-plain-text' },
       { label: 'Ada' },
       { label: 'ASP' },
       { label: 'Assembly' },
@@ -164,7 +164,7 @@ const MENUS = [
       { label: 'CSS' },
       { label: 'HTML' },
       { label: 'Java' },
-      { label: 'JavaScript' },
+      { label: 'JavaScript', action: 'lang-javascript' },
       { label: 'JSON' },
       { label: 'Lua' },
       { label: 'Makefile' },
@@ -261,7 +261,7 @@ const MENUS = [
   },
 ]
 
-export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSearchAction, viewState }) {
+export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSearchAction, onLanguageAction, viewState }) {
   const [openMenu, setOpenMenu] = useState(null)
   const [openSubmenu, setOpenSubmenu] = useState(null)
   const [dropdownPos, setDropdownPos] = useState(null)   // { top, left } for portal dropdown
@@ -372,6 +372,8 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
         onViewAction?.(item.action)
       } else if (menuLabel === 'Search') {
         onSearchAction?.(item.action)
+      } else if (menuLabel === 'Language') {
+        onLanguageAction?.(item.action)
       } else if (menuLabel === '?') {
         if (item.action === 'github') {
           window.open('https://github.com/tdgeorge/notepad-plus-plus-web', '_blank', 'noopener,noreferrer')
@@ -394,6 +396,8 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
       case 'show-eol': return viewState.showEol
       case 'show-all-chars': return viewState.showAllChars
       case 'show-indent': return viewState.showIndent
+      case 'lang-javascript': return viewState.language === 'javascript'
+      case 'lang-plain-text': return viewState.language === null || viewState.language === undefined
       default: return false
     }
   }
