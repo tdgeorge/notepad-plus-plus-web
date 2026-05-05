@@ -30,16 +30,18 @@ const xml = readFileSync(XML_PATH, 'utf-8')
 
 /**
  * Decode XML character entities we might encounter in langs.model.xml.
+ * Uses a single-pass replacement to avoid any risk of double-decoding.
  */
 function decodeEntities(str) {
-  return str
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
-    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)))
+  const NAMED = { lt: '<', gt: '>', amp: '&', quot: '"', apos: "'" }
+  return str.replace(
+    /&(?:#x([0-9a-fA-F]+)|#(\d+)|([a-zA-Z]+));/g,
+    (_, hex, dec, named) => {
+      if (hex) return String.fromCodePoint(parseInt(hex, 16))
+      if (dec) return String.fromCodePoint(parseInt(dec, 10))
+      return NAMED[named] ?? `&${named};`
+    }
+  )
 }
 
 /** Extract the value of an XML attribute by name (case-sensitive). */
