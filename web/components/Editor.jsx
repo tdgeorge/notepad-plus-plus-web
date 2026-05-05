@@ -3,10 +3,14 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
 import styles from './Editor.module.css'
 
-export default function Editor({ content, onChange, onCursorChange }) {
+export default function Editor({ content, onChange, onCursorChange, wordWrap, fontSize }) {
   const textareaRef = useRef(null)
   const lineNumbersRef = useRef(null)
   const [lineCount, setLineCount] = useState(1)
+
+  const effectiveFontSize = fontSize ?? 13
+  const lineHeightRatio = 1.5
+  const lineHeightPx = effectiveFontSize * lineHeightRatio
 
   const updateLineCount = useCallback((text) => {
     const lines = text.split('\n').length
@@ -65,14 +69,14 @@ export default function Editor({ content, onChange, onCursorChange }) {
 
   return (
     <div className={styles.editorWrapper}>
-      <div className={styles.editorContainer}>
+      <div className={styles.editorContainer} style={{ fontSize: `${effectiveFontSize}px`, lineHeight: lineHeightRatio }}>
         <div
           ref={lineNumbersRef}
           className={styles.lineNumbers}
           aria-hidden="true"
         >
           {Array.from({ length: lineCount }, (_, i) => (
-            <div key={i + 1} className={styles.lineNumber}>
+            <div key={i + 1} className={styles.lineNumber} style={{ height: `${lineHeightPx}px`, lineHeight: `${lineHeightPx}px` }}>
               {i + 1}
             </div>
           ))}
@@ -91,6 +95,7 @@ export default function Editor({ content, onChange, onCursorChange }) {
           autoCapitalize="off"
           aria-label="Text editor"
           aria-multiline="true"
+          style={{ whiteSpace: wordWrap ? 'pre-wrap' : 'pre' }}
         />
       </div>
     </div>

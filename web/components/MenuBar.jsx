@@ -79,25 +79,52 @@ const MENUS = [
   {
     label: 'View',
     items: [
-      { label: 'Always on Top' },
-      { label: 'Toggle Full Screen Mode', shortcut: 'F11' },
-      { label: 'Post-It', shortcut: 'F12' },
+      { label: 'Toggle Full Screen Mode', shortcut: 'F11', action: 'fullscreen' },
       { separator: true },
-      { label: 'Show Symbol' },
-      { label: 'Zoom' },
+      {
+        label: 'Show Symbol',
+        submenu: [
+          { label: 'Show White Space and Tab', action: 'show-whitespace' },
+          { label: 'Show End of Line', action: 'show-eol' },
+          { label: 'Show All Characters', action: 'show-all-chars' },
+          { separator: true },
+          { label: 'Show Indent Guide', action: 'show-indent' },
+        ],
+      },
+      {
+        label: 'Zoom',
+        submenu: [
+          { label: 'Zoom In', shortcut: 'Ctrl+Numpad+', action: 'zoom-in' },
+          { label: 'Zoom Out', shortcut: 'Ctrl+Numpad-', action: 'zoom-out' },
+          { label: 'Restore Default Zoom', shortcut: 'Ctrl+Numpad/', action: 'zoom-reset' },
+        ],
+      },
       { separator: true },
-      { label: 'Move/Clone Current Document' },
+      {
+        label: 'Move/Clone Current Document',
+        submenu: [
+          { label: 'Move to Other View', action: 'move-to-other-view' },
+          { label: 'Clone to Other View', action: 'clone-to-other-view' },
+        ],
+      },
       { separator: true },
-      { label: 'Tab/Space' },
-      { label: 'Word Wrap', shortcut: 'Alt+W' },
+      {
+        label: 'Tab/Space',
+        submenu: [
+          { label: 'Convert Tab to Space', action: 'tab-to-space' },
+          { label: 'Convert Space to Tab (All)', action: 'space-to-tab-all' },
+          { label: 'Convert Space to Tab (Leading)', action: 'space-to-tab-leading' },
+        ],
+      },
+      { label: 'Word Wrap', shortcut: 'Alt+W', action: 'word-wrap' },
       { separator: true },
-      { label: 'Focus on Another View' },
+      { label: 'Focus on Another View', action: 'focus-other-view' },
       { separator: true },
-      { label: 'Hide Lines', shortcut: 'Alt+H' },
-      { label: 'Fold All', shortcut: 'Alt+0' },
-      { label: 'Unfold All', shortcut: 'Alt+Shift+0' },
+      { label: 'Hide Lines', shortcut: 'Alt+H', action: 'hide-lines' },
+      { label: 'Fold All', shortcut: 'Alt+0', action: 'fold-all' },
+      { label: 'Unfold All', shortcut: 'Alt+Shift+0', action: 'unfold-all' },
       { separator: true },
-      { label: 'Summary...' },
+      { label: 'Summary...', action: 'summary' },
     ],
   },
   {
@@ -233,14 +260,16 @@ const MENUS = [
   },
 ]
 
-export default function MenuBar({ onNew }) {
+export default function MenuBar({ onNew, onAction, viewState }) {
   const [openMenu, setOpenMenu] = useState(null)
+  const [openSubmenu, setOpenSubmenu] = useState(null)
   const barRef = useRef(null)
 
   useEffect(() => {
     const handleClick = (e) => {
       if (barRef.current && !barRef.current.contains(e.target)) {
         setOpenMenu(null)
+        setOpenSubmenu(null)
       }
     }
     document.addEventListener('mousedown', handleClick)
@@ -248,10 +277,90 @@ export default function MenuBar({ onNew }) {
   }, [])
 
   const handleItemClick = (item) => {
-    if (item.separator) return
+    if (item.separator || item.submenu) return
     if (item.label === 'New') onNew?.()
+    if (item.action) onAction?.(item.action)
     setOpenMenu(null)
+    setOpenSubmenu(null)
   }
+
+  const isChecked = (action) => {
+    if (!viewState || !action) return false
+    switch (action) {
+      case 'word-wrap': return viewState.wordWrap
+      case 'show-whitespace': return viewState.showWhitespace
+      case 'show-eol': return viewState.showEol
+      case 'show-all-chars': return viewState.showAllChars
+      case 'show-indent': return viewState.showIndent
+      default: return false
+    }
+  }
+
+  const renderItems = (items, menuLabel) =>
+    items.map((item, idx) => {
+      if (item.separator) {
+        return <li key={idx} className={styles.separator} role="separator" />
+      }
+      const submenuKey = `${menuLabel}-${idx}`
+      const checked = isChecked(item.action)
+      if (item.submenu) {
+        return (
+          <li
+            key={idx}
+            className={`${styles.dropdownItem} ${styles.hasSubmenu}`}
+            onMouseEnter={() => setOpenSubmenu(submenuKey)}
+            role="menuitem"
+            aria-haspopup="true"
+            aria-expanded={openSubmenu === submenuKey}
+          >
+            <span className={styles.checkmark} aria-hidden="true" />
+            <span className={styles.itemLabel}>{item.label}</span>
+            <span className={styles.submenuArrow} aria-hidden="true">▶</span>
+            {openSubmenu === submenuKey && (
+              <ul className={styles.submenuDropdown} role="menu">
+                {item.submenu.map((subitem, subIdx) =>
+                  subitem.separator ? (
+                    <li key={subIdx} className={styles.separator} role="separator" />
+                  ) : (
+                    <li
+                      key={subIdx}
+                      className={styles.dropdownItem}
+                      onClick={() => handleItemClick(subitem)}
+                      role="menuitem"
+                    >
+                      <span className={styles.checkmark} aria-hidden="true">
+                        {isChecked(subitem.action) ? '✓' : ''}
+                      </span>
+                      <span className={styles.itemLabel}>{subitem.label}</span>
+                      {subitem.shortcut && (
+                        <span className={styles.shortcut}>{subitem.shortcut}</span>
+                      )}
+                    </li>
+                  )
+                )}
+              </ul>
+            )}
+          </li>
+        )
+      }
+      return (
+        <li
+          key={idx}
+          className={styles.dropdownItem}
+          onClick={() => handleItemClick(item)}
+          onMouseEnter={() => setOpenSubmenu(null)}
+          role="menuitem"
+        >
+          <span className={styles.checkmark} aria-hidden="true">
+            {checked ? '✓' : ''}
+          </span>
+          <span className={styles.itemLabel}>{item.label}</span>
+          {item.shortcut && (
+            <span className={styles.shortcut}>{item.shortcut}</span>
+          )}
+        </li>
+      )
+    })
 
   return (
     <nav className={styles.menuBar} ref={barRef} role="menubar">
@@ -269,23 +378,7 @@ export default function MenuBar({ onNew }) {
           </button>
           {openMenu === menu.label && (
             <ul className={styles.dropdown} role="menu">
-              {menu.items.map((item, idx) =>
-                item.separator ? (
-                  <li key={idx} className={styles.separator} role="separator" />
-                ) : (
-                  <li
-                    key={idx}
-                    className={styles.dropdownItem}
-                    onClick={() => handleItemClick(item)}
-                    role="menuitem"
-                  >
-                    <span className={styles.itemLabel}>{item.label}</span>
-                    {item.shortcut && (
-                      <span className={styles.shortcut}>{item.shortcut}</span>
-                    )}
-                  </li>
-                )
-              )}
+              {renderItems(menu.items, menu.label)}
             </ul>
           )}
         </div>

@@ -10,7 +10,7 @@
   flex: 1;
   overflow: hidden;
   font-family: 'Courier New', Courier, monospace;
-  font-size: 13px;
+  font-size: 13px; /* overridden by inline style when font size changes */
   line-height: 1.5;
 }
 
@@ -27,9 +27,8 @@
 }
 
 .lineNumber {
-  height: 19.5px; /* must match textarea line-height * font-size */
+  height: 19.5px; /* overridden by inline style when font size changes */
   line-height: 19.5px;
-  font-size: 13px;
 }
 
 .textarea {
