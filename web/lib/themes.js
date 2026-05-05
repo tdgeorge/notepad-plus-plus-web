@@ -1,15 +1,12 @@
 /**
  * Theme definitions for Notepad++ Web.
  *
- * The themes are derived directly from the GlobalStyles sections of the XML
- * theme files shipped with the Notepad++ desktop application
- * (PowerEditor/installer/themes/*.xml). CSS custom properties are computed
- * from each theme's editor colours so that the full application chrome
- * (menu bar, toolbars, dialogs, tabs) matches the chosen editor palette.
- *
- * One additional web-native theme ("Modern Web") is included that makes the
- * app look like a contemporary browser application rather than a Windows
- * desktop program.
+ * Included themes:
+ *  - Default (Notepad++)  — from PowerEditor/src/stylers.model.xml
+ *  - 22 built-in NP++ themes — derived from PowerEditor/installer/themes/*.xml
+ *  - Modern Web (light & dark) — contemporary web design
+ *  - macOS — Aqua/Sonoma look-and-feel
+ *  - Linux (Adwaita) — GNOME/libadwaita colour palette
  *
  * Themes are applied by writing CSS custom properties onto <html> via
  * document.documentElement.style.setProperty().
@@ -1003,6 +1000,141 @@ export const THEMES = [
       '--font-ui': '\'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif',
       '--font-editor': '\'Consolas\', \'Courier New\', Courier, monospace',
       '--ui-radius': '2px',
+    },
+  },
+  {
+    id: 'modern-dark',
+    name: 'Modern Web Dark',
+    description:
+      'A dark contemporary web design — deep surfaces, vibrant blue accent, and a system font stack.',
+    variables: {
+      '--chrome-bg': '#1c1c1e',
+      '--chrome-bg-raised': '#2c2c2e',
+      '--chrome-bg-title': '#2c2c2e',
+      '--chrome-border': '#3a3a3c',
+      '--chrome-border-light': '#2c2c2e',
+      '--chrome-text': '#f2f2f7',
+      '--chrome-text-muted': '#aeaeb2',
+      '--chrome-text-subtle': '#8e8e93',
+      '--chrome-hover': '#3a3a3c',
+      '--chrome-separator': '#48484a',
+      '--accent': '#0a84ff',
+      '--accent-text': '#ffffff',
+      '--tab-bar-bg': '#1c1c1e',
+      '--tab-inactive-bg': '#2c2c2e',
+      '--tab-inactive-text': '#8e8e93',
+      '--tab-active-bg': '#3a3a3c',
+      '--tab-active-text': '#f2f2f7',
+      '--tab-hover-bg': '#363638',
+      '--tab-radius': '8px 8px 0 0',
+      '--editor-bg': '#1c1c1e',
+      '--editor-fg': '#f2f2f7',
+      '--editor-gutter-bg': '#2c2c2e',
+      '--editor-gutter-fg': '#636366',
+      '--editor-gutter-border': '#3a3a3c',
+      '--btn-bg': '#2c2c2e',
+      '--btn-hover-bg': '#3a3a3c',
+      '--btn-border': '#48484a',
+      '--btn-text': '#f2f2f7',
+      '--input-bg': '#2c2c2e',
+      '--input-border': '#48484a',
+      '--dialog-bg': '#1c1c1e',
+      '--dialog-shadow': '0 20px 60px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.3)',
+      '--dialog-radius': '12px',
+      '--font-ui':
+        "'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      '--font-editor':
+        "'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Courier New', monospace",
+      '--ui-radius': '6px',
+    },
+  },
+  {
+    id: 'macos',
+    name: 'macOS',
+    description:
+      'Inspired by macOS Sonoma — clean, airy, with Aqua-blue accents, SF fonts, and generous rounding.',
+    variables: {
+      '--chrome-bg': '#f5f5f7',
+      '--chrome-bg-raised': '#ffffff',
+      '--chrome-bg-title': '#e8e8e8',
+      '--chrome-border': '#d1d1d6',
+      '--chrome-border-light': '#e5e5ea',
+      '--chrome-text': '#000000',
+      '--chrome-text-muted': '#3c3c43',
+      '--chrome-text-subtle': '#8a8a8e',
+      '--chrome-hover': '#e8e8ed',
+      '--chrome-separator': '#d1d1d6',
+      '--accent': '#007aff',
+      '--accent-text': '#ffffff',
+      '--tab-bar-bg': '#ececec',
+      '--tab-inactive-bg': '#d8d8d8',
+      '--tab-inactive-text': '#6e6e73',
+      '--tab-active-bg': '#ffffff',
+      '--tab-active-text': '#000000',
+      '--tab-hover-bg': '#e4e4e4',
+      '--tab-radius': '10px 10px 0 0',
+      '--editor-bg': '#ffffff',
+      '--editor-fg': '#000000',
+      '--editor-gutter-bg': '#f5f5f7',
+      '--editor-gutter-fg': '#aeaeb2',
+      '--editor-gutter-border': '#d1d1d6',
+      '--btn-bg': '#ffffff',
+      '--btn-hover-bg': '#f5f5f7',
+      '--btn-border': '#c7c7cc',
+      '--btn-text': '#000000',
+      '--input-bg': '#ffffff',
+      '--input-border': '#c7c7cc',
+      '--dialog-bg': '#f5f5f7',
+      '--dialog-shadow': '0 22px 70px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.06)',
+      '--dialog-radius': '14px',
+      '--font-ui':
+        "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif",
+      '--font-editor': "'SF Mono', Menlo, Monaco, Consolas, 'Courier New', monospace",
+      '--ui-radius': '6px',
+    },
+  },
+  {
+    id: 'linux-wayland',
+    name: 'Linux (Adwaita)',
+    description:
+      'Inspired by GNOME/Adwaita on Linux Wayland — libadwaita colour palette with Cantarell typography.',
+    variables: {
+      '--chrome-bg': '#f6f5f4',
+      '--chrome-bg-raised': '#ffffff',
+      '--chrome-bg-title': '#deddda',
+      '--chrome-border': '#c0bfbc',
+      '--chrome-border-light': '#deddda',
+      '--chrome-text': '#2e3436',
+      '--chrome-text-muted': '#5e6269',
+      '--chrome-text-subtle': '#9a9996',
+      '--chrome-hover': '#ebebeb',
+      '--chrome-separator': '#deddda',
+      '--accent': '#3584e4',
+      '--accent-text': '#ffffff',
+      '--tab-bar-bg': '#e0dedb',
+      '--tab-inactive-bg': '#d0cdc8',
+      '--tab-inactive-text': '#5e6269',
+      '--tab-active-bg': '#ffffff',
+      '--tab-active-text': '#2e3436',
+      '--tab-hover-bg': '#e8e6e3',
+      '--tab-radius': '6px 6px 0 0',
+      '--editor-bg': '#ffffff',
+      '--editor-fg': '#2e3436',
+      '--editor-gutter-bg': '#f6f5f4',
+      '--editor-gutter-fg': '#9a9996',
+      '--editor-gutter-border': '#deddda',
+      '--btn-bg': '#f5f5f5',
+      '--btn-hover-bg': '#e8e8e8',
+      '--btn-border': '#c0bfbc',
+      '--btn-text': '#2e3436',
+      '--input-bg': '#ffffff',
+      '--input-border': '#c0bfbc',
+      '--dialog-bg': '#fafafa',
+      '--dialog-shadow': '0 8px 32px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.08)',
+      '--dialog-radius': '12px',
+      '--font-ui': "'Cantarell', system-ui, -apple-system, sans-serif",
+      '--font-editor': "'Source Code Pro', 'Fira Code', 'Courier New', monospace",
+      '--ui-radius': '6px',
     },
   },
   {

@@ -81,8 +81,8 @@
   border: 1px solid var(--chrome-border);
   background: var(--input-bg);
   border-radius: var(--ui-radius);
-  overflow: hidden;
-  flex: 1;
+  height: 280px;
+  overflow-y: auto;
 }
 
 .themeItem {
