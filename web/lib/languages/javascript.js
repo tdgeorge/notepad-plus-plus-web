@@ -74,6 +74,13 @@ export const TOKEN = {
   COMMENT_DOC: 'commentDoc',
   REGEX: 'regex',
   OPERATOR: 'operator',
+  // HTML / XML specific
+  TAG: 'tag',
+  ATTRIBUTE: 'attribute',
+  // Markdown specific
+  HEADING: 'heading',
+  BOLD: 'bold',
+  ITALIC: 'italic',
 }
 
 // ── Operator tables ─────────────────────────────────────────────────────────

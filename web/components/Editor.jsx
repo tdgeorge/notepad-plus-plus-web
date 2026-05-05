@@ -33,6 +33,11 @@ const TOKEN_CLASSES = {
   [TOKEN.COMMENT_DOC]: styles.hlCommentDoc,
   [TOKEN.REGEX]: styles.hlRegex,
   [TOKEN.OPERATOR]: styles.hlOperator,
+  [TOKEN.TAG]: styles.hlTag,
+  [TOKEN.ATTRIBUTE]: styles.hlAttribute,
+  [TOKEN.HEADING]: styles.hlHeading,
+  [TOKEN.BOLD]: styles.hlBold,
+  [TOKEN.ITALIC]: styles.hlItalic,
 }
 
 /**
