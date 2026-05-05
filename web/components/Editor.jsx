@@ -71,16 +71,18 @@ const Editor = forwardRef(function Editor({ content, onChange, onCursorChange },
     const end = el.selectionEnd
     const value = el.value
     if (start === end) {
-      document.execCommand('insertText', false, '\t')
+      el.setRangeText('\t', start, start, 'end')
+      onChange(el.value)
+      updateLineCount(el.value)
     } else {
       const lineStart = value.lastIndexOf('\n', start - 1) + 1
       const chunk = value.substring(lineStart, end)
       const indented = chunk.split('\n').map((line) => '\t' + line).join('\n')
-      el.setSelectionRange(lineStart, end)
-      document.execCommand('insertText', false, indented)
-      el.setSelectionRange(lineStart, lineStart + indented.length)
+      el.setRangeText(indented, lineStart, end, 'select')
+      onChange(el.value)
+      updateLineCount(el.value)
     }
-  }, [])
+  }, [onChange, updateLineCount])
 
   const dedent = useCallback(() => {
     const el = textareaRef.current
@@ -100,10 +102,10 @@ const Editor = forwardRef(function Editor({ content, onChange, onCursorChange },
         return line
       })
       .join('\n')
-    el.setSelectionRange(lineStart, end)
-    document.execCommand('insertText', false, dedented)
-    el.setSelectionRange(lineStart, lineStart + dedented.length)
-  }, [])
+    el.setRangeText(dedented, lineStart, end, 'select')
+    onChange(el.value)
+    updateLineCount(el.value)
+  }, [onChange, updateLineCount])
 
   useImperativeHandle(ref, () => ({
     undo: () => { textareaRef.current?.focus(); document.execCommand('undo') },
