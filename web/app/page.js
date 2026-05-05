@@ -113,7 +113,7 @@ export default function Home() {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.altKey && e.key === 'w') {
+      if (e.altKey && e.code === 'KeyW') {
         e.preventDefault()
         setWordWrap((prev) => !prev)
       }

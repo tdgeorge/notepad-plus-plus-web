@@ -47,7 +47,7 @@
 .dropdownItem {
   display: flex;
   align-items: center;
-  padding: 3px 20px 3px 4px;
+  padding: 3px 20px 3px 0;
   cursor: default;
   white-space: nowrap;
   font-size: 12px;
