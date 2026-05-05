@@ -7,26 +7,26 @@ const MENUS = [
   {
     label: 'File',
     items: [
-      { label: 'New', shortcut: 'Ctrl+N' },
-      { label: 'New Window', shortcut: 'Ctrl+Shift+N' },
+      { label: 'New', shortcut: 'Ctrl+N', action: 'new' },
+      { label: 'New Window', shortcut: 'Ctrl+Shift+N', action: 'newWindow' },
       { separator: true },
-      { label: 'Open...', shortcut: 'Ctrl+O' },
+      { label: 'Open...', shortcut: 'Ctrl+O', action: 'open' },
       { label: 'Open Containing Folder' },
       { label: 'Open Folder as Workspace' },
       { separator: true },
-      { label: 'Reload from Disk', shortcut: 'Ctrl+R' },
+      { label: 'Reload from Disk', shortcut: 'Ctrl+R', action: 'reload' },
       { separator: true },
-      { label: 'Save', shortcut: 'Ctrl+S' },
-      { label: 'Save As...', shortcut: 'Ctrl+Alt+S' },
-      { label: 'Save a Copy As...' },
-      { label: 'Save All', shortcut: 'Ctrl+Shift+S' },
+      { label: 'Save', shortcut: 'Ctrl+S', action: 'save' },
+      { label: 'Save As...', shortcut: 'Ctrl+Alt+S', action: 'saveAs' },
+      { label: 'Save a Copy As...', action: 'saveCopyAs' },
+      { label: 'Save All', shortcut: 'Ctrl+Shift+S', action: 'saveAll' },
       { separator: true },
-      { label: 'Rename...' },
-      { label: 'Move to Recycle Bin' },
+      { label: 'Rename...', action: 'rename' },
+      { label: 'Move to Recycle Bin', action: 'closeActive' },
       { separator: true },
-      { label: 'Print...', shortcut: 'Ctrl+P' },
+      { label: 'Print...', shortcut: 'Ctrl+P', action: 'print' },
       { separator: true },
-      { label: 'Exit', shortcut: 'Alt+F4' },
+      { label: 'Exit', shortcut: 'Alt+F4', action: 'exit' },
     ],
   },
   {
@@ -233,7 +233,7 @@ const MENUS = [
   },
 ]
 
-export default function MenuBar({ onNew }) {
+export default function MenuBar({ onFileAction }) {
   const [openMenu, setOpenMenu] = useState(null)
   const barRef = useRef(null)
 
@@ -249,7 +249,7 @@ export default function MenuBar({ onNew }) {
 
   const handleItemClick = (item) => {
     if (item.separator) return
-    if (item.label === 'New') onNew?.()
+    if (item.action) onFileAction?.(item.action)
     setOpenMenu(null)
   }
 
