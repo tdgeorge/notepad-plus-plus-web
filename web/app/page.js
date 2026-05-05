@@ -12,6 +12,7 @@ import IncrementalSearch from '../components/IncrementalSearch'
 import AboutDialog from '../components/AboutDialog'
 import StyleConfiguratorDialog from '../components/StyleConfiguratorDialog'
 import { applyTheme, DEFAULT_THEME_ID } from '../lib/themes'
+import { detectLanguage } from '../lib/languages/index'
 import styles from './page.module.css'
 
 const DEFAULT_FONT_SIZE = 13
@@ -33,8 +34,6 @@ export default function Home() {
   const [showEol, setShowEol] = useState(false)
   const [showAllChars, setShowAllChars] = useState(false)
   const [showIndent, setShowIndent] = useState(false)
-
-  const viewState = { wordWrap, showWhitespace, showEol, showAllChars, showIndent }
 
   // Search state
   const [findDialogOpen, setFindDialogOpen] = useState(false)
@@ -76,11 +75,15 @@ export default function Home() {
     () => (activeTab?.content ?? '').split('\n').length,
     [activeTab?.content]
   )
+  // Language is stored per-tab (set at file-open time or overridden via Language menu).
+  const language = activeTab?.language ?? null
+
+  const viewState = { wordWrap, showWhitespace, showEol, showAllChars, showIndent, language }
 
   const handleNewTab = useCallback(() => {
     const id = nextTabId++
     const name = `new ${id}`
-    setTabs((prev) => [...prev, { id, name, content: '', modified: false }])
+    setTabs((prev) => [...prev, { id, name, content: '', modified: false, language: null }])
     setActiveTabId(id)
   }, [])
 
@@ -145,7 +148,7 @@ export default function Home() {
           const file = await handle.getFile()
           const content = await file.text()
           const id = nextTabId++
-          setTabs((prev) => [...prev, { id, name: file.name, content, modified: false }])
+          setTabs((prev) => [...prev, { id, name: file.name, content, modified: false, language: detectLanguage(file.name) }])
           setFileHandles((prev) => ({ ...prev, [id]: handle }))
           setActiveTabId(id)
         }
@@ -160,7 +163,7 @@ export default function Home() {
         for (const file of Array.from(e.target.files)) {
           const content = await file.text()
           const id = nextTabId++
-          setTabs((prev) => [...prev, { id, name: file.name, content, modified: false }])
+          setTabs((prev) => [...prev, { id, name: file.name, content, modified: false, language: detectLanguage(file.name) }])
           setActiveTabId(id)
         }
       }
@@ -371,6 +374,20 @@ export default function Home() {
     }
   }, [handleZoomIn, handleZoomOut, handleZoomReset])
 
+  const handleLanguageAction = useCallback((action) => {
+    const tabId = activeTabIdRef.current
+    switch (action) {
+      case 'lang-javascript':
+        setTabs((prev) => prev.map((t) => (t.id === tabId ? { ...t, language: 'javascript' } : t)))
+        break
+      case 'lang-plain-text':
+        setTabs((prev) => prev.map((t) => (t.id === tabId ? { ...t, language: null } : t)))
+        break
+      default:
+        break
+    }
+  }, [])
+
   // Search handlers
   const handleFindNext = useCallback((term, options) => {
     if (term !== undefined) {
@@ -564,6 +581,7 @@ export default function Home() {
         onEditAction={handleEditAction}
         onViewAction={handleViewAction}
         onSearchAction={handleSearchAction}
+        onLanguageAction={handleLanguageAction}
         viewState={viewState}
       />
       <Toolbar
@@ -603,6 +621,7 @@ export default function Home() {
         showWhitespace={showWhitespace}
         showEol={showEol}
         showIndent={showIndent}
+        language={language}
       />
       <StatusBar cursorPos={cursorPos} eol="Windows (CR LF)" encoding="UTF-8" />
       <FindDialog

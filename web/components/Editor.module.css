@@ -92,3 +92,52 @@
 .symIndent {
   color: #c8c8c8;
 }
+
+/* ── Syntax-highlight token colours ──────────────────────────────────────────
+   Default values match the Classic Notepad++ theme (stylers.model.xml).
+   Override these CSS variables per-theme to add dark-mode highlight support. */
+
+.hlKeyword {
+  color: var(--hl-keyword, #0000ff);
+  font-weight: bold;
+}
+
+.hlType {
+  color: var(--hl-type, #8000ff);
+}
+
+.hlBrowserApi {
+  color: var(--hl-browser-api, #804000);
+  font-weight: bold;
+}
+
+.hlNumber {
+  color: var(--hl-number, #ff8000);
+}
+
+.hlString {
+  color: var(--hl-string, #808080);
+}
+
+.hlTemplate {
+  color: var(--hl-template, #808080);
+  font-style: italic;
+}
+
+.hlComment {
+  color: var(--hl-comment, #008000);
+}
+
+.hlCommentDoc {
+  color: var(--hl-comment-doc, #008080);
+}
+
+.hlRegex {
+  color: var(--hl-regex, #000000);
+  font-weight: bold;
+}
+
+.hlOperator {
+  color: var(--hl-operator, #000080);
+  font-weight: bold;
+}
