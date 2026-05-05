@@ -1,0 +1,86 @@
+.tabBar {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  background: #bdbdbd;
+  border-bottom: 1px solid #a0a0a0;
+  height: 26px;
+  flex-shrink: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.tabBar::-webkit-scrollbar {
+  height: 3px;
+}
+
+.tabBar::-webkit-scrollbar-track {
+  background: #bdbdbd;
+}
+
+.tabBar::-webkit-scrollbar-thumb {
+  background: #888;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 6px 0 10px;
+  background: #d4d0c8;
+  border: 1px solid #a0a0a0;
+  border-bottom: none;
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 12px;
+  color: #333;
+  margin-right: 1px;
+  border-radius: 3px 3px 0 0;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.tab:hover {
+  background: #e8e8e0;
+}
+
+.tab.active {
+  background: #ffffff;
+  color: #000;
+  border-color: #888;
+  height: 24px;
+  padding-top: 0;
+}
+
+.tabName {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.closeButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  font-size: 14px;
+  line-height: 1;
+  color: #666;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.closeButton:hover {
+  background: #c42b1c;
+  border-color: #c42b1c;
+  color: #fff;
+}
+
+.tabFill {
+  flex: 1;
+}
