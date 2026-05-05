@@ -32,20 +32,20 @@ const MENUS = [
   {
     label: 'Edit',
     items: [
-      { label: 'Undo', shortcut: 'Ctrl+Z' },
-      { label: 'Redo', shortcut: 'Ctrl+Y' },
+      { label: 'Undo', shortcut: 'Ctrl+Z', action: 'undo' },
+      { label: 'Redo', shortcut: 'Ctrl+Y', action: 'redo' },
       { separator: true },
-      { label: 'Cut', shortcut: 'Ctrl+X' },
-      { label: 'Copy', shortcut: 'Ctrl+C' },
-      { label: 'Paste', shortcut: 'Ctrl+V' },
-      { label: 'Delete', shortcut: 'Del' },
-      { label: 'Select All', shortcut: 'Ctrl+A' },
+      { label: 'Cut', shortcut: 'Ctrl+X', action: 'cut' },
+      { label: 'Copy', shortcut: 'Ctrl+C', action: 'copy' },
+      { label: 'Paste', shortcut: 'Ctrl+V', action: 'paste' },
+      { label: 'Delete', shortcut: 'Del', action: 'delete' },
+      { label: 'Select All', shortcut: 'Ctrl+A', action: 'selectAll' },
       { separator: true },
       { label: 'Begin/End Select', shortcut: 'Alt+Shift+B' },
       { separator: true },
       { label: 'Copy to Clipboard' },
-      { label: 'Indent', shortcut: 'Tab' },
-      { label: 'Dedent', shortcut: 'Shift+Tab' },
+      { label: 'Indent', shortcut: 'Tab', action: 'indent' },
+      { label: 'Dedent', shortcut: 'Shift+Tab', action: 'dedent' },
       { separator: true },
       { label: 'EOL Conversion' },
       { label: 'Blank Operations' },
@@ -233,7 +233,7 @@ const MENUS = [
   },
 ]
 
-export default function MenuBar({ onFileAction }) {
+export default function MenuBar({ onFileAction, onEditAction }) {
   const [openMenu, setOpenMenu] = useState(null)
   const barRef = useRef(null)
 
@@ -247,9 +247,15 @@ export default function MenuBar({ onFileAction }) {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  const handleItemClick = (item) => {
+  const handleItemClick = (item, menuLabel) => {
     if (item.separator) return
-    if (item.action) onFileAction?.(item.action)
+    if (item.action) {
+      if (menuLabel === 'Edit') {
+        onEditAction?.(item.action)
+      } else {
+        onFileAction?.(item.action)
+      }
+    }
     setOpenMenu(null)
   }
 
@@ -276,7 +282,7 @@ export default function MenuBar({ onFileAction }) {
                   <li
                     key={idx}
                     className={styles.dropdownItem}
-                    onClick={() => handleItemClick(item)}
+                    onClick={() => handleItemClick(item, menu.label)}
                     role="menuitem"
                   >
                     <span className={styles.itemLabel}>{item.label}</span>

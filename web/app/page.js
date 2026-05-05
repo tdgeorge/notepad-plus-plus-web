@@ -14,6 +14,7 @@ export default function Home() {
   const [tabs, setTabs] = useState([{ id: 1, name: 'new 1', content: '', modified: false }])
   const [activeTabId, setActiveTabId] = useState(1)
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1, sel: 0 })
+  const editorRef = useRef(null)
   const [fileHandles, setFileHandles] = useState({})
 
   const activeTabIdRef = useRef(activeTabId)
@@ -61,11 +62,15 @@ export default function Home() {
     )
   }, [])
 
-  const handleUndo = useCallback(() => document.execCommand('undo'), [])
-  const handleRedo = useCallback(() => document.execCommand('redo'), [])
-  const handleCut = useCallback(() => document.execCommand('cut'), [])
-  const handleCopy = useCallback(() => document.execCommand('copy'), [])
-  const handlePaste = useCallback(() => document.execCommand('paste'), [])
+  const handleUndo = useCallback(() => editorRef.current?.undo(), [])
+  const handleRedo = useCallback(() => editorRef.current?.redo(), [])
+  const handleCut = useCallback(() => editorRef.current?.cut(), [])
+  const handleCopy = useCallback(() => editorRef.current?.copy(), [])
+  const handlePaste = useCallback(() => editorRef.current?.paste(), [])
+
+  const handleEditAction = useCallback((action) => {
+    editorRef.current?.[action]?.()
+  }, [])
 
   const downloadFile = useCallback((name, content) => {
     const blob = new Blob([content], { type: 'text/plain' })
@@ -301,7 +306,7 @@ export default function Home() {
 
   return (
     <div className={styles.app}>
-      <MenuBar onFileAction={handleFileAction} />
+      <MenuBar onFileAction={handleFileAction} onEditAction={handleEditAction} />
       <Toolbar
         onNew={handleNewTab}
         onOpen={handleOpen}
@@ -320,6 +325,7 @@ export default function Home() {
         onClose={handleCloseTab}
       />
       <Editor
+        ref={editorRef}
         content={activeTab?.content ?? ''}
         onChange={handleContentChange}
         onCursorChange={setCursorPos}
