@@ -31,8 +31,33 @@
   line-height: 19.5px;
 }
 
-.textarea {
+.textareaWrapper {
   flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.mirror {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  padding: 4px 4px;
+  margin: 0;
+  border: none;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  background: #fff;
+  color: #000;
+  tab-size: 4;
+  white-space: pre;
+  word-break: normal;
+}
+
+.textarea {
+  position: absolute;
+  inset: 0;
   border: none;
   outline: none;
   padding: 4px 4px;
@@ -40,7 +65,7 @@
   font-size: inherit;
   line-height: inherit;
   resize: none;
-  background: #fff;
+  background: transparent;
   color: #000;
   tab-size: 4;
   white-space: pre;
@@ -50,4 +75,20 @@
 .textarea::selection {
   background: #0078d4;
   color: #fff;
+}
+
+.symSpace {
+  color: #b0b0b0;
+}
+
+.symTab {
+  color: #b0b0b0;
+}
+
+.symEol {
+  color: #b0b0b0;
+}
+
+.symIndent {
+  color: #c8c8c8;
 }

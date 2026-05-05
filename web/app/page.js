@@ -156,6 +156,9 @@ export default function Home() {
         onCursorChange={setCursorPos}
         wordWrap={wordWrap}
         fontSize={fontSize}
+        showWhitespace={showWhitespace}
+        showEol={showEol}
+        showIndent={showIndent}
       />
       <StatusBar cursorPos={cursorPos} eol="Windows (CR LF)" encoding="UTF-8" />
     </div>

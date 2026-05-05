@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect } from 'react'
 import styles from './MenuBar.module.css'
 
 const MENUS = [
@@ -263,7 +263,31 @@ const MENUS = [
 export default function MenuBar({ onNew, onAction, viewState }) {
   const [openMenu, setOpenMenu] = useState(null)
   const [openSubmenu, setOpenSubmenu] = useState(null)
+  const [submenuFlipped, setSubmenuFlipped] = useState(false)
+  const [dropdownFlipped, setDropdownFlipped] = useState(false)
   const barRef = useRef(null)
+  const submenuRef = useRef(null)
+  const dropdownRef = useRef(null)
+
+  // Flip submenu to the left if it would overflow the viewport on the right
+  useLayoutEffect(() => {
+    if (!submenuRef.current) {
+      setSubmenuFlipped(false)
+      return
+    }
+    const rect = submenuRef.current.getBoundingClientRect()
+    setSubmenuFlipped(rect.right > window.innerWidth)
+  }, [openSubmenu])
+
+  // Flip main dropdown to align right if it would overflow the viewport on the right
+  useLayoutEffect(() => {
+    if (!dropdownRef.current) {
+      setDropdownFlipped(false)
+      return
+    }
+    const rect = dropdownRef.current.getBoundingClientRect()
+    setDropdownFlipped(rect.right > window.innerWidth)
+  }, [openMenu])
 
   useEffect(() => {
     const handleClick = (e) => {
@@ -309,6 +333,7 @@ export default function MenuBar({ onNew, onAction, viewState }) {
             key={idx}
             className={`${styles.dropdownItem} ${styles.hasSubmenu}`}
             onMouseEnter={() => setOpenSubmenu(submenuKey)}
+            onClick={() => setOpenSubmenu(submenuKey)}
             role="menuitem"
             aria-haspopup="true"
             aria-expanded={openSubmenu === submenuKey}
@@ -317,7 +342,11 @@ export default function MenuBar({ onNew, onAction, viewState }) {
             <span className={styles.itemLabel}>{item.label}</span>
             <span className={styles.submenuArrow} aria-hidden="true">▶</span>
             {openSubmenu === submenuKey && (
-              <ul className={styles.submenuDropdown} role="menu">
+              <ul
+                ref={submenuRef}
+                className={`${styles.submenuDropdown} ${submenuFlipped ? styles.submenuDropdownFlipped : ''}`}
+                role="menu"
+              >
                 {item.submenu.map((subitem, subIdx) =>
                   subitem.separator ? (
                     <li key={subIdx} className={styles.separator} role="separator" />
@@ -377,7 +406,11 @@ export default function MenuBar({ onNew, onAction, viewState }) {
             {menu.label}
           </button>
           {openMenu === menu.label && (
-            <ul className={styles.dropdown} role="menu">
+            <ul
+              ref={dropdownRef}
+              className={`${styles.dropdown} ${dropdownFlipped ? styles.dropdownFlipped : ''}`}
+              role="menu"
+            >
               {renderItems(menu.items, menu.label)}
             </ul>
           )}
