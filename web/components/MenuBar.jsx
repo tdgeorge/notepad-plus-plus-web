@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useLayoutEffect } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react'
 import styles from './MenuBar.module.css'
 
 const MENUS = [
@@ -253,9 +253,9 @@ const MENUS = [
   {
     label: '?',
     items: [
-      { label: 'About Notepad++ Web...' },
+      { label: 'About Notepad++ Web...', action: 'about' },
       { separator: true },
-      { label: 'GitHub Repository' },
+      { label: 'GitHub Repository', action: 'github' },
     ],
   },
 ]
@@ -265,9 +265,36 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
   const [openSubmenu, setOpenSubmenu] = useState(null)
   const [dropdownLeft, setDropdownLeft] = useState(null)
   const [submenuLeft, setSubmenuLeft] = useState(null)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
   const barRef = useRef(null)
+  const scrollRef = useRef(null)
   const submenuRef = useRef(null)
   const dropdownRef = useRef(null)
+
+  const updateScrollButtons = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const SCROLL_THRESHOLD = 1
+    setCanScrollLeft(el.scrollLeft > 0)
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - SCROLL_THRESHOLD)
+  }, [])
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    updateScrollButtons()
+    el.addEventListener('scroll', updateScrollButtons)
+    const ro = new ResizeObserver(updateScrollButtons)
+    ro.observe(el)
+    return () => {
+      el.removeEventListener('scroll', updateScrollButtons)
+      ro.disconnect()
+    }
+  }, [updateScrollButtons])
+
+  const handleScrollLeft = () => scrollRef.current?.scrollBy({ left: -120, behavior: 'smooth' })
+  const handleScrollRight = () => scrollRef.current?.scrollBy({ left: 120, behavior: 'smooth' })
 
   // Clamp main dropdown to viewport edges
   useLayoutEffect(() => {
@@ -323,6 +350,12 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
         onViewAction?.(item.action)
       } else if (menuLabel === 'Search') {
         onSearchAction?.(item.action)
+      } else if (menuLabel === '?') {
+        if (item.action === 'github') {
+          window.open('https://github.com/tdgeorge/notepad-plus-plus-web', '_blank', 'noopener,noreferrer')
+        } else {
+          onFileAction?.(item.action)
+        }
       } else {
         onFileAction?.(item.action)
       }
@@ -416,31 +449,53 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
     })
 
   return (
-    <nav className={styles.menuBar} ref={barRef} role="menubar">
-      {MENUS.map((menu) => (
-        <div key={menu.label} className={styles.menuItem}>
-          <button
-            className={`${styles.menuButton} ${openMenu === menu.label ? styles.active : ''}`}
-            onClick={() => setOpenMenu(openMenu === menu.label ? null : menu.label)}
-            onMouseEnter={() => openMenu !== null && setOpenMenu(menu.label)}
-            role="menuitem"
-            aria-haspopup="true"
-            aria-expanded={openMenu === menu.label}
-          >
-            {menu.label}
-          </button>
-          {openMenu === menu.label && (
-            <ul
-              ref={dropdownRef}
-              className={styles.dropdown}
-              style={dropdownLeft != null ? { left: dropdownLeft } : undefined}
-              role="menu"
+    <div className={styles.menuBarWrapper} ref={barRef}>
+      {canScrollLeft && (
+        <button
+          className={styles.scrollBtn}
+          onClick={handleScrollLeft}
+          aria-label="Scroll menu left"
+          tabIndex={-1}
+        >
+          &#8249;
+        </button>
+      )}
+      <nav className={styles.menuBar} ref={scrollRef} role="menubar">
+        {MENUS.map((menu) => (
+          <div key={menu.label} className={styles.menuItem}>
+            <button
+              className={`${styles.menuButton} ${openMenu === menu.label ? styles.active : ''}`}
+              onClick={() => setOpenMenu(openMenu === menu.label ? null : menu.label)}
+              onMouseEnter={() => openMenu !== null && setOpenMenu(menu.label)}
+              role="menuitem"
+              aria-haspopup="true"
+              aria-expanded={openMenu === menu.label}
             >
-              {renderItems(menu.items, menu.label)}
-            </ul>
-          )}
-        </div>
-      ))}
-    </nav>
+              {menu.label}
+            </button>
+            {openMenu === menu.label && (
+              <ul
+                ref={dropdownRef}
+                className={styles.dropdown}
+                style={dropdownLeft != null ? { left: dropdownLeft } : undefined}
+                role="menu"
+              >
+                {renderItems(menu.items, menu.label)}
+              </ul>
+            )}
+          </div>
+        ))}
+      </nav>
+      {canScrollRight && (
+        <button
+          className={styles.scrollBtn}
+          onClick={handleScrollRight}
+          aria-label="Scroll menu right"
+          tabIndex={-1}
+        >
+          &#8250;
+        </button>
+      )}
+    </div>
   )
 }

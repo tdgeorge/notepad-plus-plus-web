@@ -9,6 +9,7 @@ import StatusBar from '../components/StatusBar'
 import FindDialog from '../components/FindDialog'
 import GoToDialog from '../components/GoToDialog'
 import IncrementalSearch from '../components/IncrementalSearch'
+import AboutDialog from '../components/AboutDialog'
 import styles from './page.module.css'
 
 const DEFAULT_FONT_SIZE = 13
@@ -38,6 +39,7 @@ export default function Home() {
   const [findDialogMode, setFindDialogMode] = useState('find')
   const [goToDialogOpen, setGoToDialogOpen] = useState(false)
   const [incrementalSearchOpen, setIncrementalSearchOpen] = useState(false)
+  const [aboutDialogOpen, setAboutDialogOpen] = useState(false)
   const searchStateRef = useRef({ term: '', options: { matchCase: false, wholeWord: false, wrapAround: true } })
 
   const activeTabIdRef = useRef(activeTabId)
@@ -290,6 +292,7 @@ export default function Home() {
         case 'closeActive': handleCloseActive(); break
         case 'print': handlePrint(); break
         case 'exit': handleExit(); break
+        case 'about': setAboutDialogOpen(true); break
         default: break
       }
     },
@@ -595,6 +598,10 @@ export default function Home() {
         lineCount={lineCount}
         onClose={() => { setGoToDialogOpen(false); editorRef.current?.focus() }}
         onGoTo={(n) => editorRef.current?.goToLine(n)}
+      />
+      <AboutDialog
+        isOpen={aboutDialogOpen}
+        onClose={() => setAboutDialogOpen(false)}
       />
     </div>
   )
