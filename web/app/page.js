@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import MenuBar from '../components/MenuBar'
 import Toolbar from '../components/Toolbar'
 import TabBar from '../components/TabBar'
@@ -11,19 +11,43 @@ import GoToDialog from '../components/GoToDialog'
 import IncrementalSearch from '../components/IncrementalSearch'
 import styles from './page.module.css'
 
+const DEFAULT_FONT_SIZE = 13
+const MIN_FONT_SIZE = 6
+const MAX_FONT_SIZE = 32
+
 let nextTabId = 2
 
 export default function Home() {
   const [tabs, setTabs] = useState([{ id: 1, name: 'new 1', content: '', modified: false }])
   const [activeTabId, setActiveTabId] = useState(1)
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1, sel: 0 })
+  const editorRef = useRef(null)
+  const [fileHandles, setFileHandles] = useState({})
+
+  const [wordWrap, setWordWrap] = useState(false)
+  const [fontSize, setFontSize] = useState(DEFAULT_FONT_SIZE)
+  const [showWhitespace, setShowWhitespace] = useState(false)
+  const [showEol, setShowEol] = useState(false)
+  const [showAllChars, setShowAllChars] = useState(false)
+  const [showIndent, setShowIndent] = useState(false)
+
+  const viewState = { wordWrap, showWhitespace, showEol, showAllChars, showIndent }
+
+  // Search state
   const [findDialogOpen, setFindDialogOpen] = useState(false)
   const [findDialogMode, setFindDialogMode] = useState('find')
   const [goToDialogOpen, setGoToDialogOpen] = useState(false)
   const [incrementalSearchOpen, setIncrementalSearchOpen] = useState(false)
-
-  const editorRef = useRef(null)
   const searchStateRef = useRef({ term: '', options: { matchCase: false, wholeWord: false, wrapAround: true } })
+
+  const activeTabIdRef = useRef(activeTabId)
+  useEffect(() => { activeTabIdRef.current = activeTabId }, [activeTabId])
+
+  const tabsRef = useRef(tabs)
+  useEffect(() => { tabsRef.current = tabs }, [tabs])
+
+  const fileHandlesRef = useRef(fileHandles)
+  useEffect(() => { fileHandlesRef.current = fileHandles }, [fileHandles])
 
   const activeTab = tabs.find((t) => t.id === activeTabId)
   const lineCount = useMemo(
@@ -50,22 +74,280 @@ export default function Home() {
         }
         return remaining
       })
+      setFileHandles((prev) => {
+        const next = { ...prev }
+        delete next[id]
+        return next
+      })
     },
     [activeTabId]
   )
 
   const handleContentChange = useCallback((content) => {
     setTabs((prev) =>
-      prev.map((t) => (t.id === activeTabId ? { ...t, content, modified: true } : t))
+      prev.map((t) => (t.id === activeTabIdRef.current ? { ...t, content, modified: true } : t))
     )
-  }, [activeTabId])
+  }, [])
 
-  const handleUndo = useCallback(() => document.execCommand('undo'), [])
-  const handleRedo = useCallback(() => document.execCommand('redo'), [])
-  const handleCut = useCallback(() => document.execCommand('cut'), [])
-  const handleCopy = useCallback(() => document.execCommand('copy'), [])
-  const handlePaste = useCallback(() => document.execCommand('paste'), [])
+  const handleUndo = useCallback(() => editorRef.current?.undo(), [])
+  const handleRedo = useCallback(() => editorRef.current?.redo(), [])
+  const handleCut = useCallback(() => editorRef.current?.cut(), [])
+  const handleCopy = useCallback(() => editorRef.current?.copy(), [])
+  const handlePaste = useCallback(() => editorRef.current?.paste(), [])
 
+  const handleEditAction = useCallback((action) => {
+    editorRef.current?.[action]?.()
+  }, [])
+
+  const downloadFile = useCallback((name, content) => {
+    const blob = new Blob([content], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = name
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [])
+
+  const writeToHandle = useCallback(async (handle, content) => {
+    const writable = await handle.createWritable()
+    await writable.write(content)
+    await writable.close()
+  }, [])
+
+  const handleOpen = useCallback(async () => {
+    if (typeof window.showOpenFilePicker === 'function') {
+      try {
+        const handles = await window.showOpenFilePicker({ multiple: true })
+        for (const handle of handles) {
+          const file = await handle.getFile()
+          const content = await file.text()
+          const id = nextTabId++
+          setTabs((prev) => [...prev, { id, name: file.name, content, modified: false }])
+          setFileHandles((prev) => ({ ...prev, [id]: handle }))
+          setActiveTabId(id)
+        }
+      } catch (e) {
+        if (e.name !== 'AbortError') console.error(e)
+      }
+    } else {
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.multiple = true
+      input.onchange = async (e) => {
+        for (const file of Array.from(e.target.files)) {
+          const content = await file.text()
+          const id = nextTabId++
+          setTabs((prev) => [...prev, { id, name: file.name, content, modified: false }])
+          setActiveTabId(id)
+        }
+      }
+      input.click()
+    }
+  }, [])
+
+  const handleSaveAs = useCallback(async () => {
+    const tab = tabsRef.current.find((t) => t.id === activeTabIdRef.current)
+    if (!tab) return
+    if (typeof window.showSaveFilePicker === 'function') {
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: tab.name,
+          types: [{ description: 'Text files', accept: { 'text/plain': ['.txt', '.md', '.js', '.ts', '.css', '.html', '.json', '.xml', '.csv'] } }],
+        })
+        await writeToHandle(handle, tab.content)
+        const savedFile = await handle.getFile()
+        setFileHandles((prev) => ({ ...prev, [tab.id]: handle }))
+        setTabs((prev) =>
+          prev.map((t) => (t.id === tab.id ? { ...t, name: savedFile.name, modified: false } : t))
+        )
+      } catch (e) {
+        if (e.name !== 'AbortError') console.error(e)
+      }
+    } else {
+      downloadFile(tab.name, tab.content)
+      setTabs((prev) =>
+        prev.map((t) => (t.id === tab.id ? { ...t, modified: false } : t))
+      )
+    }
+  }, [downloadFile, writeToHandle])
+
+  const handleSave = useCallback(async () => {
+    const tab = tabsRef.current.find((t) => t.id === activeTabIdRef.current)
+    if (!tab) return
+    const handle = fileHandlesRef.current[tab.id]
+    if (handle) {
+      try {
+        await writeToHandle(handle, tab.content)
+        setTabs((prev) =>
+          prev.map((t) => (t.id === tab.id ? { ...t, modified: false } : t))
+        )
+      } catch (e) {
+        console.error(e)
+      }
+    } else {
+      await handleSaveAs()
+    }
+  }, [handleSaveAs, writeToHandle])
+
+  const handleSaveCopyAs = useCallback(async () => {
+    const tab = tabsRef.current.find((t) => t.id === activeTabIdRef.current)
+    if (!tab) return
+    if (typeof window.showSaveFilePicker === 'function') {
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: tab.name,
+          types: [{ description: 'Text files', accept: { 'text/plain': ['.txt', '.md', '.js', '.ts', '.css', '.html', '.json', '.xml', '.csv'] } }],
+        })
+        await writeToHandle(handle, tab.content)
+      } catch (e) {
+        if (e.name !== 'AbortError') console.error(e)
+      }
+    } else {
+      downloadFile(tab.name, tab.content)
+    }
+  }, [downloadFile, writeToHandle])
+
+  const handleSaveAll = useCallback(async () => {
+    const currentTabs = tabsRef.current
+    const currentHandles = fileHandlesRef.current
+    for (const tab of currentTabs) {
+      if (!tab.modified) continue
+      const handle = currentHandles[tab.id]
+      if (handle) {
+        try {
+          await writeToHandle(handle, tab.content)
+          setTabs((prev) =>
+            prev.map((t) => (t.id === tab.id ? { ...t, modified: false } : t))
+          )
+        } catch (e) {
+          console.error(e)
+        }
+      } else {
+        downloadFile(tab.name, tab.content)
+        setTabs((prev) =>
+          prev.map((t) => (t.id === tab.id ? { ...t, modified: false } : t))
+        )
+      }
+    }
+  }, [downloadFile, writeToHandle])
+
+  const handleReload = useCallback(async () => {
+    const tab = tabsRef.current.find((t) => t.id === activeTabIdRef.current)
+    if (!tab) return
+    const handle = fileHandlesRef.current[tab.id]
+    if (!handle) return
+    try {
+      const file = await handle.getFile()
+      const content = await file.text()
+      setTabs((prev) =>
+        prev.map((t) => (t.id === tab.id ? { ...t, content, modified: false } : t))
+      )
+    } catch (e) {
+      console.error(e)
+    }
+  }, [])
+
+  const handleRename = useCallback(() => {
+    const tab = tabsRef.current.find((t) => t.id === activeTabIdRef.current)
+    if (!tab) return
+    const newName = window.prompt('Enter new file name:', tab.name)
+    if (newName && newName.trim()) {
+      setTabs((prev) =>
+        prev.map((t) => (t.id === tab.id ? { ...t, name: newName.trim() } : t))
+      )
+    }
+  }, [])
+
+  const handleCloseActive = useCallback(() => {
+    handleCloseTab(activeTabIdRef.current)
+  }, [handleCloseTab])
+
+  const handlePrint = useCallback(() => {
+    window.print()
+  }, [])
+
+  const handleNewWindow = useCallback(() => {
+    window.open(window.location.href, '_blank')
+  }, [])
+
+  const handleExit = useCallback(() => {
+    window.close()
+  }, [])
+
+  const handleFileAction = useCallback(
+    (action) => {
+      switch (action) {
+        case 'new': handleNewTab(); break
+        case 'newWindow': handleNewWindow(); break
+        case 'open': handleOpen(); break
+        case 'reload': handleReload(); break
+        case 'save': handleSave(); break
+        case 'saveAs': handleSaveAs(); break
+        case 'saveCopyAs': handleSaveCopyAs(); break
+        case 'saveAll': handleSaveAll(); break
+        case 'rename': handleRename(); break
+        case 'closeActive': handleCloseActive(); break
+        case 'print': handlePrint(); break
+        case 'exit': handleExit(); break
+        default: break
+      }
+    },
+    [
+      handleNewTab, handleNewWindow, handleOpen, handleReload, handleSave,
+      handleSaveAs, handleSaveCopyAs, handleSaveAll, handleRename,
+      handleCloseActive, handlePrint, handleExit,
+    ]
+  )
+
+  const handleZoomIn = useCallback(() => setFontSize((prev) => Math.min(prev + 1, MAX_FONT_SIZE)), [])
+  const handleZoomOut = useCallback(() => setFontSize((prev) => Math.max(prev - 1, MIN_FONT_SIZE)), [])
+  const handleZoomReset = useCallback(() => setFontSize(DEFAULT_FONT_SIZE), [])
+
+  const handleViewAction = useCallback((action) => {
+    switch (action) {
+      case 'word-wrap':
+        setWordWrap((prev) => !prev)
+        break
+      case 'zoom-in':
+        handleZoomIn()
+        break
+      case 'zoom-out':
+        handleZoomOut()
+        break
+      case 'zoom-reset':
+        handleZoomReset()
+        break
+      case 'fullscreen':
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen?.()
+        } else {
+          document.exitFullscreen?.()
+        }
+        break
+      case 'show-whitespace':
+        setShowWhitespace((prev) => !prev)
+        break
+      case 'show-eol':
+        setShowEol((prev) => !prev)
+        break
+      case 'show-all-chars':
+        setShowAllChars((prev) => {
+          const next = !prev
+          setShowWhitespace(next)
+          setShowEol(next)
+          return next
+        })
+        break
+      case 'show-indent':
+        setShowIndent((prev) => !prev)
+        break
+      default:
+        break
+    }
+  }, [handleZoomIn, handleZoomOut, handleZoomReset])
+
+  // Search handlers
   const handleFindNext = useCallback((term, options) => {
     if (term !== undefined) {
       searchStateRef.current = { term, options }
@@ -110,41 +392,83 @@ export default function Home() {
     }
   }, [])
 
-  const handleMenuAction = useCallback((label) => {
-    switch (label) {
-      case 'Find...':
+  const handleSearchAction = useCallback((action) => {
+    switch (action) {
+      case 'find':
         setFindDialogMode('find')
         setFindDialogOpen(true)
         break
-      case 'Find Next':
+      case 'findNext':
         handleFindNext()
         break
-      case 'Find Previous':
+      case 'findPrev':
         handleFindPrev()
         break
-      case 'Select and Find Next':
+      case 'selectFindNext':
         handleSelectAndFindNext()
         break
-      case 'Select and Find Previous':
+      case 'selectFindPrev':
         handleSelectAndFindPrev()
         break
-      case 'Replace...':
+      case 'replace':
         setFindDialogMode('replace')
         setFindDialogOpen(true)
         break
-      case 'Incremental Search':
+      case 'incrementalSearch':
         setIncrementalSearchOpen((v) => !v)
         break
-      case 'Go to...':
+      case 'goTo':
         setGoToDialogOpen(true)
         break
-      case 'Go to Matching Brace':
+      case 'goToMatchingBrace':
         editorRef.current?.goToMatchingBrace()
         break
       default:
         break
     }
   }, [handleFindNext, handleFindPrev, handleSelectAndFindNext, handleSelectAndFindPrev])
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      const ctrl = e.ctrlKey || e.metaKey
+      const key = e.key.toLowerCase()
+      if (ctrl && !e.shiftKey && !e.altKey && key === 'n') {
+        e.preventDefault()
+        handleNewTab()
+      } else if (ctrl && e.shiftKey && !e.altKey && key === 'n') {
+        e.preventDefault()
+        handleNewWindow()
+      } else if (ctrl && !e.shiftKey && !e.altKey && key === 'o') {
+        e.preventDefault()
+        handleOpen()
+      } else if (ctrl && !e.shiftKey && !e.altKey && key === 's') {
+        e.preventDefault()
+        handleSave()
+      } else if (ctrl && e.altKey && !e.shiftKey && key === 's') {
+        e.preventDefault()
+        handleSaveAs()
+      } else if (ctrl && e.shiftKey && !e.altKey && key === 's') {
+        e.preventDefault()
+        handleSaveAll()
+      } else if (ctrl && !e.shiftKey && !e.altKey && key === 'p') {
+        e.preventDefault()
+        handlePrint()
+      } else if (e.altKey && e.code === 'KeyW') {
+        e.preventDefault()
+        setWordWrap((prev) => !prev)
+      } else if (e.key === 'F11') {
+        e.preventDefault()
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen?.()
+        } else {
+          document.exitFullscreen?.()
+        }
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [handleNewTab, handleNewWindow, handleOpen, handleSave, handleSaveAs, handleSaveAll, handlePrint])
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -187,37 +511,50 @@ export default function Home() {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [handleFindNext, handleFindPrev, handleSelectAndFindNext, handleSelectAndFindPrev])
 
+  // Incremental search handlers - pass noFocus so the search input keeps focus
   const handleIncrementalSearch = useCallback((term) => {
     if (!term) return true
-    const options = { matchCase: false, wholeWord: false, wrapAround: true }
+    const options = { matchCase: false, wholeWord: false, wrapAround: true, noFocus: true }
     searchStateRef.current = { term, options }
     return editorRef.current?.findNext(term, options) ?? false
   }, [])
 
   const handleIncrementalSearchNext = useCallback((term) => {
     if (!term) return true
-    const { options } = searchStateRef.current
+    const options = { ...searchStateRef.current.options, noFocus: true }
     searchStateRef.current = { term, options }
     return editorRef.current?.findNext(term, options) ?? false
   }, [])
 
   const handleIncrementalSearchPrev = useCallback((term) => {
     if (!term) return true
-    const { options } = searchStateRef.current
+    const options = { ...searchStateRef.current.options, noFocus: true }
     searchStateRef.current = { term, options }
     return editorRef.current?.findPrev(term, options) ?? false
   }, [])
 
   return (
     <div className={styles.app}>
-      <MenuBar onNew={handleNewTab} onAction={handleMenuAction} />
+      <MenuBar
+        onFileAction={handleFileAction}
+        onEditAction={handleEditAction}
+        onViewAction={handleViewAction}
+        onSearchAction={handleSearchAction}
+        viewState={viewState}
+      />
       <Toolbar
         onNew={handleNewTab}
+        onOpen={handleOpen}
+        onSave={handleSave}
+        onSaveAll={handleSaveAll}
         onUndo={handleUndo}
         onRedo={handleRedo}
         onCut={handleCut}
         onCopy={handleCopy}
         onPaste={handlePaste}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onZoomReset={handleZoomReset}
       />
       <TabBar
         tabs={tabs}
@@ -225,18 +562,23 @@ export default function Home() {
         onSelect={setActiveTabId}
         onClose={handleCloseTab}
       />
-      <Editor
-        ref={editorRef}
-        content={activeTab?.content ?? ''}
-        onChange={handleContentChange}
-        onCursorChange={setCursorPos}
-      />
       <IncrementalSearch
         isOpen={incrementalSearchOpen}
         onClose={() => { setIncrementalSearchOpen(false); editorRef.current?.focus() }}
         onSearch={handleIncrementalSearch}
         onSearchNext={handleIncrementalSearchNext}
         onSearchPrev={handleIncrementalSearchPrev}
+      />
+      <Editor
+        ref={editorRef}
+        content={activeTab?.content ?? ''}
+        onChange={handleContentChange}
+        onCursorChange={setCursorPos}
+        wordWrap={wordWrap}
+        fontSize={fontSize}
+        showWhitespace={showWhitespace}
+        showEol={showEol}
+        showIndent={showIndent}
       />
       <StatusBar cursorPos={cursorPos} eol="Windows (CR LF)" encoding="UTF-8" />
       <FindDialog

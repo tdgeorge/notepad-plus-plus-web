@@ -10,7 +10,7 @@
   flex: 1;
   overflow: hidden;
   font-family: 'Courier New', Courier, monospace;
-  font-size: 13px;
+  font-size: 13px; /* overridden by inline style when font size changes */
   line-height: 1.5;
 }
 
@@ -27,13 +27,37 @@
 }
 
 .lineNumber {
-  height: 19.5px; /* must match textarea line-height * font-size */
+  height: 19.5px; /* overridden by inline style when font size changes */
   line-height: 19.5px;
-  font-size: 13px;
+}
+
+.textareaWrapper {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.mirror {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  padding: 4px 4px;
+  margin: 0;
+  border: none;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  background: #fff;
+  color: #000;
+  tab-size: 4;
+  white-space: pre;
+  word-break: normal;
 }
 
 .textarea {
-  flex: 1;
+  position: absolute;
+  inset: 0;
   border: none;
   outline: none;
   padding: 4px 4px;
@@ -41,7 +65,7 @@
   font-size: inherit;
   line-height: inherit;
   resize: none;
-  background: #fff;
+  background: transparent;
   color: #000;
   tab-size: 4;
   white-space: pre;
@@ -51,4 +75,20 @@
 .textarea::selection {
   background: #0078d4;
   color: #fff;
+}
+
+.symSpace {
+  color: #b0b0b0;
+}
+
+.symTab {
+  color: #b0b0b0;
+}
+
+.symEol {
+  color: #b0b0b0;
+}
+
+.symIndent {
+  color: #c8c8c8;
 }
