@@ -7,45 +7,45 @@ const MENUS = [
   {
     label: 'File',
     items: [
-      { label: 'New', shortcut: 'Ctrl+N' },
-      { label: 'New Window', shortcut: 'Ctrl+Shift+N' },
+      { label: 'New', shortcut: 'Ctrl+N', action: 'new' },
+      { label: 'New Window', shortcut: 'Ctrl+Shift+N', action: 'newWindow' },
       { separator: true },
-      { label: 'Open...', shortcut: 'Ctrl+O' },
+      { label: 'Open...', shortcut: 'Ctrl+O', action: 'open' },
       { label: 'Open Containing Folder' },
       { label: 'Open Folder as Workspace' },
       { separator: true },
-      { label: 'Reload from Disk', shortcut: 'Ctrl+R' },
+      { label: 'Reload from Disk', shortcut: 'Ctrl+R', action: 'reload' },
       { separator: true },
-      { label: 'Save', shortcut: 'Ctrl+S' },
-      { label: 'Save As...', shortcut: 'Ctrl+Alt+S' },
-      { label: 'Save a Copy As...' },
-      { label: 'Save All', shortcut: 'Ctrl+Shift+S' },
+      { label: 'Save', shortcut: 'Ctrl+S', action: 'save' },
+      { label: 'Save As...', shortcut: 'Ctrl+Alt+S', action: 'saveAs' },
+      { label: 'Save a Copy As...', action: 'saveCopyAs' },
+      { label: 'Save All', shortcut: 'Ctrl+Shift+S', action: 'saveAll' },
       { separator: true },
-      { label: 'Rename...' },
-      { label: 'Move to Recycle Bin' },
+      { label: 'Rename...', action: 'rename' },
+      { label: 'Move to Recycle Bin', action: 'closeActive' },
       { separator: true },
-      { label: 'Print...', shortcut: 'Ctrl+P' },
+      { label: 'Print...', shortcut: 'Ctrl+P', action: 'print' },
       { separator: true },
-      { label: 'Exit', shortcut: 'Alt+F4' },
+      { label: 'Exit', shortcut: 'Alt+F4', action: 'exit' },
     ],
   },
   {
     label: 'Edit',
     items: [
-      { label: 'Undo', shortcut: 'Ctrl+Z' },
-      { label: 'Redo', shortcut: 'Ctrl+Y' },
+      { label: 'Undo', shortcut: 'Ctrl+Z', action: 'undo' },
+      { label: 'Redo', shortcut: 'Ctrl+Y', action: 'redo' },
       { separator: true },
-      { label: 'Cut', shortcut: 'Ctrl+X' },
-      { label: 'Copy', shortcut: 'Ctrl+C' },
-      { label: 'Paste', shortcut: 'Ctrl+V' },
-      { label: 'Delete', shortcut: 'Del' },
-      { label: 'Select All', shortcut: 'Ctrl+A' },
+      { label: 'Cut', shortcut: 'Ctrl+X', action: 'cut' },
+      { label: 'Copy', shortcut: 'Ctrl+C', action: 'copy' },
+      { label: 'Paste', shortcut: 'Ctrl+V', action: 'paste' },
+      { label: 'Delete', shortcut: 'Del', action: 'delete' },
+      { label: 'Select All', shortcut: 'Ctrl+A', action: 'selectAll' },
       { separator: true },
       { label: 'Begin/End Select', shortcut: 'Alt+Shift+B' },
       { separator: true },
       { label: 'Copy to Clipboard' },
-      { label: 'Indent', shortcut: 'Tab' },
-      { label: 'Dedent', shortcut: 'Shift+Tab' },
+      { label: 'Indent', shortcut: 'Tab', action: 'indent' },
+      { label: 'Dedent', shortcut: 'Shift+Tab', action: 'dedent' },
       { separator: true },
       { label: 'EOL Conversion' },
       { label: 'Blank Operations' },
@@ -260,34 +260,48 @@ const MENUS = [
   },
 ]
 
-export default function MenuBar({ onNew, onAction, viewState }) {
+export default function MenuBar({ onFileAction, onEditAction, onViewAction, viewState }) {
   const [openMenu, setOpenMenu] = useState(null)
   const [openSubmenu, setOpenSubmenu] = useState(null)
-  const [submenuFlipped, setSubmenuFlipped] = useState(false)
-  const [dropdownFlipped, setDropdownFlipped] = useState(false)
+  const [dropdownLeft, setDropdownLeft] = useState(null)
+  const [submenuLeft, setSubmenuLeft] = useState(null)
   const barRef = useRef(null)
   const submenuRef = useRef(null)
   const dropdownRef = useRef(null)
 
-  // Flip submenu to the left if it would overflow the viewport on the right
-  useLayoutEffect(() => {
-    if (!submenuRef.current) {
-      setSubmenuFlipped(false)
-      return
-    }
-    const rect = submenuRef.current.getBoundingClientRect()
-    setSubmenuFlipped(rect.right > window.innerWidth)
-  }, [openSubmenu])
-
-  // Flip main dropdown to align right if it would overflow the viewport on the right
+  // Clamp main dropdown to viewport edges
   useLayoutEffect(() => {
     if (!dropdownRef.current) {
-      setDropdownFlipped(false)
+      setDropdownLeft(null)
       return
     }
     const rect = dropdownRef.current.getBoundingClientRect()
-    setDropdownFlipped(rect.right > window.innerWidth)
+    let left = 0
+    if (rect.right > window.innerWidth) {
+      left -= (rect.right - window.innerWidth)
+    }
+    if (rect.left + left < 0) {
+      left = -rect.left
+    }
+    setDropdownLeft(left !== 0 ? left : null)
   }, [openMenu])
+
+  // Clamp submenu to viewport edges
+  useLayoutEffect(() => {
+    if (!submenuRef.current) {
+      setSubmenuLeft(null)
+      return
+    }
+    const rect = submenuRef.current.getBoundingClientRect()
+    let left = 0
+    if (rect.right > window.innerWidth) {
+      left -= (rect.right - window.innerWidth)
+    }
+    if (rect.left + left < 0) {
+      left = -rect.left
+    }
+    setSubmenuLeft(left !== 0 ? left : null)
+  }, [openSubmenu])
 
   useEffect(() => {
     const handleClick = (e) => {
@@ -300,10 +314,17 @@ export default function MenuBar({ onNew, onAction, viewState }) {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  const handleItemClick = (item) => {
+  const handleItemClick = (item, menuLabel) => {
     if (item.separator || item.submenu) return
-    if (item.label === 'New') onNew?.()
-    if (item.action) onAction?.(item.action)
+    if (item.action) {
+      if (menuLabel === 'Edit') {
+        onEditAction?.(item.action)
+      } else if (menuLabel === 'View') {
+        onViewAction?.(item.action)
+      } else {
+        onFileAction?.(item.action)
+      }
+    }
     setOpenMenu(null)
     setOpenSubmenu(null)
   }
@@ -340,11 +361,12 @@ export default function MenuBar({ onNew, onAction, viewState }) {
           >
             <span className={styles.checkmark} aria-hidden="true" />
             <span className={styles.itemLabel}>{item.label}</span>
-            <span className={styles.submenuArrow} aria-hidden="true">▶</span>
+            <span className={styles.submenuArrow} aria-hidden="true">▼</span>
             {openSubmenu === submenuKey && (
               <ul
                 ref={submenuRef}
-                className={`${styles.submenuDropdown} ${submenuFlipped ? styles.submenuDropdownFlipped : ''}`}
+                className={styles.submenuDropdown}
+                style={submenuLeft != null ? { left: submenuLeft } : undefined}
                 role="menu"
               >
                 {item.submenu.map((subitem, subIdx) =>
@@ -354,7 +376,7 @@ export default function MenuBar({ onNew, onAction, viewState }) {
                     <li
                       key={subIdx}
                       className={styles.dropdownItem}
-                      onClick={() => handleItemClick(subitem)}
+                      onClick={(e) => { e.stopPropagation(); handleItemClick(subitem, menuLabel) }}
                       role="menuitem"
                     >
                       <span className={styles.checkmark} aria-hidden="true">
@@ -376,7 +398,7 @@ export default function MenuBar({ onNew, onAction, viewState }) {
         <li
           key={idx}
           className={styles.dropdownItem}
-          onClick={() => handleItemClick(item)}
+          onClick={() => handleItemClick(item, menuLabel)}
           onMouseEnter={() => setOpenSubmenu(null)}
           role="menuitem"
         >
@@ -408,7 +430,8 @@ export default function MenuBar({ onNew, onAction, viewState }) {
           {openMenu === menu.label && (
             <ul
               ref={dropdownRef}
-              className={`${styles.dropdown} ${dropdownFlipped ? styles.dropdownFlipped : ''}`}
+              className={styles.dropdown}
+              style={dropdownLeft != null ? { left: dropdownLeft } : undefined}
               role="menu"
             >
               {renderItems(menu.items, menu.label)}

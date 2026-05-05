@@ -44,11 +44,6 @@
   z-index: 200;
 }
 
-.dropdownFlipped {
-  left: auto;
-  right: 0;
-}
-
 .dropdownItem {
   display: flex;
   align-items: center;
@@ -104,8 +99,8 @@
 
 .submenuDropdown {
   position: absolute;
-  top: -3px;
-  left: 100%;
+  top: 100%;
+  left: 0;
   background: #f5f5f5;
   border: 1px solid #a0a0a0;
   min-width: 220px;
@@ -113,9 +108,4 @@
   padding: 2px 0;
   box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
   z-index: 300;
-}
-
-.submenuDropdownFlipped {
-  left: auto;
-  right: 100%;
 }

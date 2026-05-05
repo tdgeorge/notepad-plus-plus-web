@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, useCallback, useState, Fragment } from 'react'
+import { useRef, useEffect, useCallback, useState, forwardRef, useImperativeHandle, Fragment } from 'react'
 import styles from './Editor.module.css'
 
 const TAB_SIZE = 4
@@ -69,7 +69,10 @@ function renderSymbols(text, { showWhitespace, showEol, showIndent }) {
   })
 }
 
-export default function Editor({ content, onChange, onCursorChange, wordWrap, fontSize, showWhitespace, showEol, showIndent }) {
+const Editor = forwardRef(function Editor(
+  { content, onChange, onCursorChange, wordWrap, fontSize, showWhitespace, showEol, showIndent },
+  ref
+) {
   const textareaRef = useRef(null)
   const lineNumbersRef = useRef(null)
   const mirrorRef = useRef(null)
@@ -119,7 +122,7 @@ export default function Editor({ content, onChange, onCursorChange, wordWrap, fo
   )
 
   const handleKeyUp = useCallback(
-    (e) => {
+    () => {
       updateCursor()
     },
     [updateCursor]
@@ -139,6 +142,101 @@ export default function Editor({ content, onChange, onCursorChange, wordWrap, fo
       updateLineCount(content)
     }
   }, [content, updateLineCount])
+
+  const indent = useCallback(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.focus()
+    const start = el.selectionStart
+    const end = el.selectionEnd
+    const value = el.value
+    const lineStart = value.lastIndexOf('\n', start - 1) + 1
+    if (start === end) {
+      // No selection: insert tab at the start of the current line
+      el.setSelectionRange(lineStart, lineStart)
+      document.execCommand('insertText', false, '\t')
+      // Restore cursor shifted right by one (the inserted tab)
+      el.setSelectionRange(start + 1, start + 1)
+    } else {
+      // Selection: prepend tab to every selected line
+      const chunk = value.substring(lineStart, end)
+      const indented = chunk.split('\n').map((line) => '\t' + line).join('\n')
+      el.setSelectionRange(lineStart, end)
+      document.execCommand('insertText', false, indented)
+      el.setSelectionRange(lineStart, lineStart + indented.length)
+    }
+  }, [])
+
+  const dedent = useCallback(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.focus()
+    const start = el.selectionStart
+    const end = el.selectionEnd
+    const value = el.value
+    const lineStart = value.lastIndexOf('\n', start - 1) + 1
+    if (start === end) {
+      // No selection: remove leading whitespace from the start of the current line
+      const lineText = value.substring(lineStart)
+      let removeCount = 0
+      if (lineText.startsWith('\t')) {
+        removeCount = 1
+      } else {
+        const spaces = lineText.match(/^ {1,4}/)
+        if (spaces) removeCount = spaces[0].length
+      }
+      if (removeCount > 0) {
+        el.setSelectionRange(lineStart, lineStart + removeCount)
+        document.execCommand('insertText', false, '')
+        // Restore cursor shifted left, but not before the line start
+        el.setSelectionRange(
+          Math.max(lineStart, start - removeCount),
+          Math.max(lineStart, start - removeCount)
+        )
+      }
+    } else {
+      // Selection: remove leading whitespace from every selected line
+      const chunk = value.substring(lineStart, end)
+      const dedented = chunk
+        .split('\n')
+        .map((line) => {
+          if (line.startsWith('\t')) return line.slice(1)
+          const spaces = line.match(/^ {1,4}/)
+          if (spaces) return line.slice(spaces[0].length)
+          return line
+        })
+        .join('\n')
+      el.setSelectionRange(lineStart, end)
+      document.execCommand('insertText', false, dedented)
+      el.setSelectionRange(lineStart, lineStart + dedented.length)
+    }
+  }, [])
+
+  useImperativeHandle(ref, () => ({
+    undo: () => { textareaRef.current?.focus(); document.execCommand('undo') },
+    redo: () => { textareaRef.current?.focus(); document.execCommand('redo') },
+    cut: () => { textareaRef.current?.focus(); document.execCommand('cut') },
+    copy: () => { textareaRef.current?.focus(); document.execCommand('copy') },
+    paste: () => { textareaRef.current?.focus(); document.execCommand('paste') },
+    delete: () => { textareaRef.current?.focus(); document.execCommand('forwardDelete') },
+    selectAll: () => { textareaRef.current?.focus(); textareaRef.current?.select(); updateCursor() },
+    indent,
+    dedent,
+  }), [indent, dedent, updateCursor])
+
+  const handleKeyDown = useCallback(
+    (e) => {
+      if (e.key === 'Tab') {
+        e.preventDefault()
+        if (e.shiftKey) {
+          dedent()
+        } else {
+          indent()
+        }
+      }
+    },
+    [indent, dedent]
+  )
 
   return (
     <div className={styles.editorWrapper}>
@@ -170,6 +268,7 @@ export default function Editor({ content, onChange, onCursorChange, wordWrap, fo
             className={styles.textarea}
             defaultValue={content}
             onChange={handleChange}
+            onKeyDown={handleKeyDown}
             onKeyUp={handleKeyUp}
             onClick={handleClick}
             onScroll={syncScroll}
@@ -189,4 +288,6 @@ export default function Editor({ content, onChange, onCursorChange, wordWrap, fo
       </div>
     </div>
   )
-}
+})
+
+export default Editor
