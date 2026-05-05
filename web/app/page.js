@@ -10,6 +10,8 @@ import FindDialog from '../components/FindDialog'
 import GoToDialog from '../components/GoToDialog'
 import IncrementalSearch from '../components/IncrementalSearch'
 import AboutDialog from '../components/AboutDialog'
+import StyleConfiguratorDialog from '../components/StyleConfiguratorDialog'
+import { applyTheme, DEFAULT_THEME_ID } from '../lib/themes'
 import styles from './page.module.css'
 
 const DEFAULT_FONT_SIZE = 13
@@ -40,7 +42,25 @@ export default function Home() {
   const [goToDialogOpen, setGoToDialogOpen] = useState(false)
   const [incrementalSearchOpen, setIncrementalSearchOpen] = useState(false)
   const [aboutDialogOpen, setAboutDialogOpen] = useState(false)
+  const [styleConfiguratorOpen, setStyleConfiguratorOpen] = useState(false)
+  const [themeId, setThemeId] = useState(DEFAULT_THEME_ID)
   const searchStateRef = useRef({ term: '', options: { matchCase: false, wholeWord: false, wrapAround: true } })
+
+  // Load persisted theme on mount and apply it
+  useEffect(() => {
+    const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('nppw-theme') : null
+    const id = saved ?? DEFAULT_THEME_ID
+    setThemeId(id)
+    applyTheme(id)
+  }, [])
+
+  // Apply theme whenever it changes
+  useEffect(() => {
+    applyTheme(themeId)
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('nppw-theme', themeId)
+    }
+  }, [themeId])
 
   const activeTabIdRef = useRef(activeTabId)
   useEffect(() => { activeTabIdRef.current = activeTabId }, [activeTabId])
@@ -293,6 +313,7 @@ export default function Home() {
         case 'print': handlePrint(); break
         case 'exit': handleExit(); break
         case 'about': setAboutDialogOpen(true); break
+        case 'styleConfigurator': setStyleConfiguratorOpen(true); break
         default: break
       }
     },
@@ -602,6 +623,12 @@ export default function Home() {
       <AboutDialog
         isOpen={aboutDialogOpen}
         onClose={() => setAboutDialogOpen(false)}
+      />
+      <StyleConfiguratorDialog
+        isOpen={styleConfiguratorOpen}
+        currentThemeId={themeId}
+        onApply={(id) => setThemeId(id)}
+        onClose={() => setStyleConfiguratorOpen(false)}
       />
     </div>
   )

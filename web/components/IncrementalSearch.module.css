@@ -17,9 +17,11 @@
 .input {
   padding: 1px 4px;
   font-size: 12px;
-  border: 1px solid #a0a0a0;
-  background: #fff;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  border-radius: var(--ui-radius);
   min-width: 200px;
+  color: var(--chrome-text);
 }
 
 .input.notFound {
@@ -29,7 +31,8 @@
 
 .navBtn {
   background: none;
-  border: 1px solid #a0a0a0;
+  border: 1px solid var(--input-border);
+  border-radius: var(--ui-radius);
   padding: 1px 5px;
   cursor: pointer;
   font-size: 10px;

@@ -9,20 +9,22 @@
 }
 
 .dialog {
-  background: #f5f5f5;
-  border: 1px solid #a0a0a0;
-  box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.3);
+  background: var(--dialog-bg);
+  border: 1px solid var(--chrome-border);
+  box-shadow: var(--dialog-shadow);
+  border-radius: var(--dialog-radius);
   min-width: 320px;
   max-width: 90vw;
   font-size: 12px;
+  overflow: hidden;
 }
 
 .titleBar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #dcdcdc;
-  border-bottom: 1px solid #a0a0a0;
+  background: var(--chrome-bg-title);
+  border-bottom: 1px solid var(--chrome-border);
   padding: 4px 8px;
   font-weight: bold;
 }
@@ -34,11 +36,11 @@
   cursor: pointer;
   padding: 0 2px;
   line-height: 1;
-  color: #555;
+  color: var(--chrome-text-subtle);
 }
 
 .closeBtn:hover {
-  color: #000;
+  color: var(--chrome-text);
 }
 
 .body {
@@ -51,30 +53,30 @@
 .appName {
   font-size: 16px;
   font-weight: bold;
-  color: #000;
+  color: var(--chrome-text);
 }
 
 .version {
   font-size: 12px;
-  color: #555;
+  color: var(--chrome-text-subtle);
 }
 
 .divider {
   border: none;
-  border-top: 1px solid #c0c0c0;
+  border-top: 1px solid var(--chrome-border-light);
   margin: 4px 0;
 }
 
 .description {
   font-size: 12px;
-  color: #333;
+  color: var(--chrome-text-muted);
   margin: 0;
   line-height: 1.5;
 }
 
 .disclaimer {
   font-size: 11px;
-  color: #666;
+  color: var(--chrome-text-subtle);
   margin: 0;
   line-height: 1.4;
   font-style: italic;
@@ -86,7 +88,7 @@
 
 .githubLink {
   font-size: 12px;
-  color: #0078d4;
+  color: var(--accent);
   text-decoration: none;
 }
 
@@ -98,19 +100,21 @@
   display: flex;
   gap: 4px;
   padding: 8px 12px;
-  border-top: 1px solid #d0d0d0;
+  border-top: 1px solid var(--chrome-border-light);
   justify-content: flex-end;
 }
 
 .btn {
   padding: 3px 16px;
   font-size: 12px;
-  background: #e8e8e8;
-  border: 1px solid #a0a0a0;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: var(--ui-radius);
   cursor: pointer;
   min-width: 54px;
+  color: var(--btn-text);
 }
 
 .btn:hover {
-  background: #d0d0d0;
+  background: var(--btn-hover-bg);
 }

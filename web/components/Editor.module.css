@@ -2,24 +2,24 @@
   flex: 1;
   display: flex;
   overflow: hidden;
-  background: #fff;
+  background: var(--editor-bg);
 }
 
 .editorContainer {
   display: flex;
   flex: 1;
   overflow: hidden;
-  font-family: 'Courier New', Courier, monospace;
+  font-family: var(--font-editor);
   font-size: 13px; /* overridden by inline style when font size changes */
   line-height: 1.5;
 }
 
 .lineNumbers {
-  background: #f0f0f0;
-  border-right: 1px solid #d0d0d0;
+  background: var(--editor-gutter-bg);
+  border-right: 1px solid var(--editor-gutter-border);
   padding: 4px 6px;
   text-align: right;
-  color: #888;
+  color: var(--editor-gutter-fg);
   min-width: 44px;
   overflow: hidden;
   user-select: none;
@@ -48,8 +48,8 @@
   font-family: inherit;
   font-size: inherit;
   line-height: inherit;
-  background: #fff;
-  color: #000;
+  background: var(--editor-bg);
+  color: var(--editor-fg);
   tab-size: 4;
   white-space: pre;
   word-break: normal;
@@ -66,15 +66,15 @@
   line-height: inherit;
   resize: none;
   background: transparent;
-  color: #000;
+  color: var(--editor-fg);
   tab-size: 4;
   white-space: pre;
   overflow: auto;
 }
 
 .textarea::selection {
-  background: #0078d4;
-  color: #fff;
+  background: var(--accent);
+  color: var(--accent-text);
 }
 
 .symSpace {
