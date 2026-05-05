@@ -1,0 +1,135 @@
+.dialog {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  background: #f5f5f5;
+  border: 1px solid #a0a0a0;
+  box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.3);
+  z-index: 500;
+  min-width: 400px;
+  font-size: 12px;
+}
+
+.titleBar {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  background: #dcdcdc;
+  border-bottom: 1px solid #a0a0a0;
+}
+
+.tabs {
+  display: flex;
+}
+
+.tab {
+  background: none;
+  border: none;
+  border-right: 1px solid #a0a0a0;
+  padding: 4px 14px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tab:hover {
+  background: #c8c8c8;
+}
+
+.activeTab {
+  background: #f5f5f5;
+  font-weight: bold;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 8px;
+  line-height: 1;
+  color: #555;
+}
+
+.closeBtn:hover {
+  color: #000;
+}
+
+.body {
+  padding: 10px 14px 6px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+  gap: 6px;
+}
+
+.label {
+  width: 88px;
+  font-size: 12px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.input {
+  flex: 1;
+  padding: 2px 4px;
+  font-size: 12px;
+  border: 1px solid #a0a0a0;
+  background: #fff;
+}
+
+.input.notFound {
+  border-color: #cc0000;
+  background: #fff0f0;
+}
+
+.options {
+  display: flex;
+  gap: 14px;
+  margin-top: 6px;
+  padding-left: 94px;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.message {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #555;
+  padding-left: 94px;
+}
+
+.buttons {
+  display: flex;
+  gap: 4px;
+  padding: 8px 14px;
+  border-top: 1px solid #d0d0d0;
+  justify-content: flex-end;
+}
+
+.btn {
+  padding: 3px 10px;
+  font-size: 12px;
+  background: #e8e8e8;
+  border: 1px solid #a0a0a0;
+  cursor: pointer;
+  min-width: 74px;
+}
+
+.btn:hover:not(:disabled) {
+  background: #d0d0d0;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

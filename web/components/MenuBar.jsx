@@ -233,7 +233,7 @@ const MENUS = [
   },
 ]
 
-export default function MenuBar({ onNew }) {
+export default function MenuBar({ onNew, onAction }) {
   const [openMenu, setOpenMenu] = useState(null)
   const barRef = useRef(null)
 
@@ -250,6 +250,7 @@ export default function MenuBar({ onNew }) {
   const handleItemClick = (item) => {
     if (item.separator) return
     if (item.label === 'New') onNew?.()
+    onAction?.(item.label)
     setOpenMenu(null)
   }
 
