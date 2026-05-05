@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import styles from './MenuBar.module.css'
 
 const MENUS = [
@@ -263,14 +264,19 @@ const MENUS = [
 export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSearchAction, viewState }) {
   const [openMenu, setOpenMenu] = useState(null)
   const [openSubmenu, setOpenSubmenu] = useState(null)
-  const [dropdownLeft, setDropdownLeft] = useState(null)
+  const [dropdownPos, setDropdownPos] = useState(null)   // { top, left } for portal dropdown
+  const [dropdownLeft, setDropdownLeft] = useState(null) // clamping adjustment
   const [submenuLeft, setSubmenuLeft] = useState(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const barRef = useRef(null)
   const scrollRef = useRef(null)
   const submenuRef = useRef(null)
   const dropdownRef = useRef(null)
+  const menuButtonRefs = useRef({})
+
+  useEffect(() => setMounted(true), [])
 
   const updateScrollButtons = useCallback(() => {
     const el = scrollRef.current
@@ -296,22 +302,36 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
   const handleScrollLeft = () => scrollRef.current?.scrollBy({ left: -120, behavior: 'smooth' })
   const handleScrollRight = () => scrollRef.current?.scrollBy({ left: 120, behavior: 'smooth' })
 
-  // Clamp main dropdown to viewport edges
+  // Step 1: when openMenu changes, record the button's viewport position for the portal
   useLayoutEffect(() => {
-    if (!dropdownRef.current) {
+    if (!openMenu) {
+      setDropdownPos(null)
+      setDropdownLeft(null)
+      return
+    }
+    const btn = menuButtonRefs.current[openMenu]
+    if (!btn) return
+    const rect = btn.getBoundingClientRect()
+    setDropdownPos({ top: rect.bottom, left: rect.left })
+    setDropdownLeft(null)
+  }, [openMenu])
+
+  // Step 2: after the portal dropdown renders, clamp its left so it stays in the viewport
+  useLayoutEffect(() => {
+    if (!dropdownRef.current || !dropdownPos) {
       setDropdownLeft(null)
       return
     }
     const rect = dropdownRef.current.getBoundingClientRect()
-    let left = 0
+    let adjust = 0
     if (rect.right > window.innerWidth) {
-      left -= (rect.right - window.innerWidth)
+      adjust = -(rect.right - window.innerWidth)
     }
-    if (rect.left + left < 0) {
-      left = -rect.left
+    if (rect.left + adjust < 0) {
+      adjust = -rect.left
     }
-    setDropdownLeft(left !== 0 ? left : null)
-  }, [openMenu])
+    setDropdownLeft(adjust !== 0 ? adjust : null)
+  }, [openMenu, dropdownPos])
 
   // Clamp submenu to viewport edges
   useLayoutEffect(() => {
@@ -332,7 +352,9 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
 
   useEffect(() => {
     const handleClick = (e) => {
-      if (barRef.current && !barRef.current.contains(e.target)) {
+      const inBar = barRef.current && barRef.current.contains(e.target)
+      const inDropdown = dropdownRef.current && dropdownRef.current.contains(e.target)
+      if (!inBar && !inDropdown) {
         setOpenMenu(null)
         setOpenSubmenu(null)
       }
@@ -448,6 +470,24 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
       )
     })
 
+  const activeMenu = MENUS.find((m) => m.label === openMenu)
+
+  const portalDropdown = mounted && activeMenu && dropdownPos ? createPortal(
+    <ul
+      ref={dropdownRef}
+      className={styles.dropdown}
+      style={{
+        position: 'fixed',
+        top: dropdownPos.top,
+        left: dropdownPos.left + (dropdownLeft ?? 0),
+      }}
+      role="menu"
+    >
+      {renderItems(activeMenu.items, activeMenu.label)}
+    </ul>,
+    document.body
+  ) : null
+
   return (
     <div className={styles.menuBarWrapper} ref={barRef}>
       {canScrollLeft && (
@@ -464,6 +504,7 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
         {MENUS.map((menu) => (
           <div key={menu.label} className={styles.menuItem}>
             <button
+              ref={(el) => { menuButtonRefs.current[menu.label] = el }}
               className={`${styles.menuButton} ${openMenu === menu.label ? styles.active : ''}`}
               onClick={() => setOpenMenu(openMenu === menu.label ? null : menu.label)}
               onMouseEnter={() => openMenu !== null && setOpenMenu(menu.label)}
@@ -473,16 +514,6 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
             >
               {menu.label}
             </button>
-            {openMenu === menu.label && (
-              <ul
-                ref={dropdownRef}
-                className={styles.dropdown}
-                style={dropdownLeft != null ? { left: dropdownLeft } : undefined}
-                role="menu"
-              >
-                {renderItems(menu.items, menu.label)}
-              </ul>
-            )}
           </div>
         ))}
       </nav>
@@ -496,6 +527,7 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
           &#8250;
         </button>
       )}
+      {portalDropdown}
     </div>
   )
 }
