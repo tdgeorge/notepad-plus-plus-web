@@ -117,13 +117,13 @@ const Editor = forwardRef(function Editor({ content, onChange, onCursorChange },
         } else {
           break
         }
-        if (regex.lastIndex === match.index) break
+        if (match[0].length === 0) { regex.lastIndex++; break }
       }
       if (!lastMatch && wrapAround) {
         regex.lastIndex = 0
         while ((match = regex.exec(text)) !== null) {
           lastMatch = match
-          if (regex.lastIndex === match.index) break
+          if (match[0].length === 0) { regex.lastIndex++; break }
         }
       }
       if (lastMatch) {

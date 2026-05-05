@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import MenuBar from '../components/MenuBar'
 import Toolbar from '../components/Toolbar'
 import TabBar from '../components/TabBar'
@@ -26,7 +26,10 @@ export default function Home() {
   const searchStateRef = useRef({ term: '', options: { matchCase: false, wholeWord: false, wrapAround: true } })
 
   const activeTab = tabs.find((t) => t.id === activeTabId)
-  const lineCount = (activeTab?.content ?? '').split('\n').length
+  const lineCount = useMemo(
+    () => (activeTab?.content ?? '').split('\n').length,
+    [activeTab?.content]
+  )
 
   const handleNewTab = useCallback(() => {
     const id = nextTabId++
