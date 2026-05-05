@@ -1,0 +1,64 @@
+.bar {
+  display: flex;
+  align-items: center;
+  background: #f0e6a0;
+  border-top: 1px solid #c8b400;
+  padding: 2px 8px;
+  gap: 4px;
+  flex-shrink: 0;
+  font-size: 12px;
+}
+
+.label {
+  font-weight: bold;
+  color: #444;
+}
+
+.input {
+  padding: 1px 4px;
+  font-size: 12px;
+  border: 1px solid #a0a0a0;
+  background: #fff;
+  min-width: 200px;
+}
+
+.input.notFound {
+  background: #ffb0b0;
+  border-color: #cc0000;
+}
+
+.navBtn {
+  background: none;
+  border: 1px solid #a0a0a0;
+  padding: 1px 5px;
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.navBtn:hover:not(:disabled) {
+  background: #e0d090;
+}
+
+.navBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.notFoundMsg {
+  color: #cc0000;
+  font-size: 11px;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+  color: #555;
+  margin-left: auto;
+}
+
+.closeBtn:hover {
+  color: #000;
+}

@@ -5,6 +5,20 @@ import styles from './Editor.module.css'
 
 const TAB_SIZE = 4
 
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function buildSearchRegex(term, { matchCase = false, wholeWord = false } = {}) {
+  const flags = matchCase ? 'g' : 'gi'
+  const escaped = escapeRegex(term)
+  const pattern = wholeWord ? `\\b${escaped}\\b` : escaped
+  return new RegExp(pattern, flags)
+}
+
+const BRACE_PAIRS = { '(': ')', '[': ']', '{': '}', ')': '(', ']': '[', '}': '{' }
+const OPEN_BRACES = new Set(['(', '[', '{'])
+
 function renderSymbols(text, { showWhitespace, showEol, showIndent }) {
   const lines = text.split('\n')
   return lines.map((line, lineIdx) => {
@@ -77,6 +91,8 @@ const Editor = forwardRef(function Editor(
   const lineNumbersRef = useRef(null)
   const mirrorRef = useRef(null)
   const [lineCount, setLineCount] = useState(1)
+  const onChangeRef = useRef(onChange)
+  useEffect(() => { onChangeRef.current = onChange }, [onChange])
 
   const effectiveFontSize = fontSize ?? 13
   const lineHeightRatio = 1.5
@@ -212,7 +228,14 @@ const Editor = forwardRef(function Editor(
     }
   }, [])
 
+  // Scroll the textarea to show the character at `charIndex` without stealing focus.
+  const scrollToChar = useCallback((textarea, charIndex) => {
+    const linesBeforeMatch = textarea.value.substring(0, charIndex).split('\n').length - 1
+    textarea.scrollTop = Math.max(0, linesBeforeMatch * lineHeightPx - textarea.clientHeight / 2)
+  }, [lineHeightPx])
+
   useImperativeHandle(ref, () => ({
+    // Edit operations
     undo: () => { textareaRef.current?.focus(); document.execCommand('undo') },
     redo: () => { textareaRef.current?.focus(); document.execCommand('redo') },
     cut: () => { textareaRef.current?.focus(); document.execCommand('cut') },
@@ -222,7 +245,195 @@ const Editor = forwardRef(function Editor(
     selectAll: () => { textareaRef.current?.focus(); textareaRef.current?.select(); updateCursor() },
     indent,
     dedent,
-  }), [indent, dedent, updateCursor])
+
+    // Search operations
+    // noFocus: true keeps keyboard focus in the calling element (e.g. IncrementalSearch input)
+    findNext(term, options = {}) {
+      if (!term || !textareaRef.current) return false
+      const { wrapAround = true, noFocus = false } = options
+      const textarea = textareaRef.current
+      const text = textarea.value
+      const fromIndex = textarea.selectionEnd
+      const regex = buildSearchRegex(term, options)
+      regex.lastIndex = fromIndex
+      let match = regex.exec(text)
+      if (!match && wrapAround && fromIndex > 0) {
+        regex.lastIndex = 0
+        match = regex.exec(text)
+      }
+      if (match) {
+        if (noFocus) {
+          scrollToChar(textarea, match.index)
+        } else {
+          textarea.focus()
+        }
+        textarea.setSelectionRange(match.index, match.index + match[0].length)
+        return true
+      }
+      return false
+    },
+
+    findPrev(term, options = {}) {
+      if (!term || !textareaRef.current) return false
+      const { wrapAround = true, noFocus = false } = options
+      const textarea = textareaRef.current
+      const text = textarea.value
+      const fromIndex = textarea.selectionStart
+      const regex = buildSearchRegex(term, options)
+      let lastMatch = null
+      let match
+      regex.lastIndex = 0
+      while ((match = regex.exec(text)) !== null) {
+        if (match.index < fromIndex) {
+          lastMatch = match
+        } else {
+          break
+        }
+        if (match[0].length === 0) { regex.lastIndex++; break }
+      }
+      if (!lastMatch && wrapAround) {
+        regex.lastIndex = 0
+        while ((match = regex.exec(text)) !== null) {
+          lastMatch = match
+          if (match[0].length === 0) { regex.lastIndex++; break }
+        }
+      }
+      if (lastMatch) {
+        if (noFocus) {
+          scrollToChar(textarea, lastMatch.index)
+        } else {
+          textarea.focus()
+        }
+        textarea.setSelectionRange(lastMatch.index, lastMatch.index + lastMatch[0].length)
+        return true
+      }
+      return false
+    },
+
+    replaceOne(term, replacement, options = {}) {
+      if (!term || !textareaRef.current) return false
+      const textarea = textareaRef.current
+      const text = textarea.value
+      const { selectionStart, selectionEnd } = textarea
+      const selected = text.substring(selectionStart, selectionEnd)
+      const compareA = options.matchCase ? selected : selected.toLowerCase()
+      const compareB = options.matchCase ? term : term.toLowerCase()
+      if (compareA === compareB) {
+        const newText = text.substring(0, selectionStart) + replacement + text.substring(selectionEnd)
+        const newPos = selectionStart + replacement.length
+        textarea.value = newText
+        onChangeRef.current(newText)
+        updateLineCount(newText)
+        textarea.setSelectionRange(newPos, newPos)
+      }
+      const regex = buildSearchRegex(term, options)
+      const searchFrom = textarea.selectionEnd
+      regex.lastIndex = searchFrom
+      let match = regex.exec(textarea.value)
+      if (!match && options.wrapAround !== false) {
+        regex.lastIndex = 0
+        match = regex.exec(textarea.value)
+      }
+      if (match) {
+        textarea.focus()
+        textarea.setSelectionRange(match.index, match.index + match[0].length)
+        return true
+      }
+      textarea.focus()
+      return false
+    },
+
+    replaceAll(term, replacement, options = {}) {
+      if (!term || !textareaRef.current) return 0
+      const textarea = textareaRef.current
+      const text = textarea.value
+      const regex = buildSearchRegex(term, options)
+      let count = 0
+      const newText = text.replace(regex, (m) => { count++; return replacement })
+      if (count > 0) {
+        textarea.value = newText
+        onChangeRef.current(newText)
+        updateLineCount(newText)
+        textarea.focus()
+        textarea.setSelectionRange(0, 0)
+      }
+      return count
+    },
+
+    goToLine(lineNum) {
+      if (!textareaRef.current) return
+      const textarea = textareaRef.current
+      const lines = textarea.value.split('\n')
+      const target = Math.max(1, Math.min(lineNum, lines.length))
+      let pos = 0
+      for (let i = 0; i < target - 1; i++) {
+        pos += lines[i].length + 1
+      }
+      textarea.focus()
+      textarea.setSelectionRange(pos, pos)
+      textarea.scrollTop = Math.max(0, (target - 1) * lineHeightPx - textarea.clientHeight / 2)
+      updateCursor()
+    },
+
+    getSelectedText() {
+      if (!textareaRef.current) return ''
+      const { selectionStart, selectionEnd, value } = textareaRef.current
+      return value.substring(selectionStart, selectionEnd)
+    },
+
+    selectWordAtCursor() {
+      if (!textareaRef.current) return ''
+      const textarea = textareaRef.current
+      const text = textarea.value
+      let start = textarea.selectionStart
+      let end = textarea.selectionEnd
+      if (start === end) {
+        while (start > 0 && /\w/.test(text[start - 1])) start--
+        while (end < text.length && /\w/.test(text[end])) end++
+        textarea.setSelectionRange(start, end)
+      }
+      return text.substring(start, end)
+    },
+
+    goToMatchingBrace() {
+      if (!textareaRef.current) return
+      const textarea = textareaRef.current
+      const text = textarea.value
+      const pos = textarea.selectionStart
+      const char = text[pos]
+      if (!BRACE_PAIRS[char]) return
+      const isOpen = OPEN_BRACES.has(char)
+      const target = BRACE_PAIRS[char]
+      let depth = 0
+      if (isOpen) {
+        for (let i = pos; i < text.length; i++) {
+          if (text[i] === char) depth++
+          else if (text[i] === target && --depth === 0) {
+            textarea.focus()
+            textarea.setSelectionRange(i, i + 1)
+            return
+          }
+        }
+      } else {
+        for (let i = pos; i >= 0; i--) {
+          if (text[i] === char) depth++
+          else if (text[i] === target && --depth === 0) {
+            textarea.focus()
+            textarea.setSelectionRange(i, i + 1)
+            return
+          }
+        }
+      }
+    },
+
+    getLineCount() {
+      return lineCount
+    },
+
+    focus() {
+      textareaRef.current?.focus()
+    },
+  }), [indent, dedent, lineCount, lineHeightPx, updateCursor, updateLineCount, scrollToChar])
 
   const handleKeyDown = useCallback(
     (e) => {

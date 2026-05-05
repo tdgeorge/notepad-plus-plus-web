@@ -60,20 +60,20 @@ const MENUS = [
   {
     label: 'Search',
     items: [
-      { label: 'Find...', shortcut: 'Ctrl+F' },
-      { label: 'Find Next', shortcut: 'F3' },
-      { label: 'Find Previous', shortcut: 'Shift+F3' },
-      { label: 'Select and Find Next', shortcut: 'Ctrl+F3' },
-      { label: 'Select and Find Previous', shortcut: 'Ctrl+Shift+F3' },
+      { label: 'Find...', shortcut: 'Ctrl+F', action: 'find' },
+      { label: 'Find Next', shortcut: 'F3', action: 'findNext' },
+      { label: 'Find Previous', shortcut: 'Shift+F3', action: 'findPrev' },
+      { label: 'Select and Find Next', shortcut: 'Ctrl+F3', action: 'selectFindNext' },
+      { label: 'Select and Find Previous', shortcut: 'Ctrl+Shift+F3', action: 'selectFindPrev' },
       { separator: true },
-      { label: 'Replace...', shortcut: 'Ctrl+H' },
+      { label: 'Replace...', shortcut: 'Ctrl+H', action: 'replace' },
       { separator: true },
       { label: 'Find in Files...', shortcut: 'Ctrl+Shift+F' },
       { separator: true },
-      { label: 'Incremental Search', shortcut: 'Ctrl+Alt+I' },
+      { label: 'Incremental Search', shortcut: 'Ctrl+Alt+I', action: 'incrementalSearch' },
       { separator: true },
-      { label: 'Go to...', shortcut: 'Ctrl+G' },
-      { label: 'Go to Matching Brace', shortcut: 'Ctrl+B' },
+      { label: 'Go to...', shortcut: 'Ctrl+G', action: 'goTo' },
+      { label: 'Go to Matching Brace', shortcut: 'Ctrl+B', action: 'goToMatchingBrace' },
     ],
   },
   {
@@ -260,7 +260,7 @@ const MENUS = [
   },
 ]
 
-export default function MenuBar({ onFileAction, onEditAction, onViewAction, viewState }) {
+export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSearchAction, viewState }) {
   const [openMenu, setOpenMenu] = useState(null)
   const [openSubmenu, setOpenSubmenu] = useState(null)
   const [dropdownLeft, setDropdownLeft] = useState(null)
@@ -321,6 +321,8 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, view
         onEditAction?.(item.action)
       } else if (menuLabel === 'View') {
         onViewAction?.(item.action)
+      } else if (menuLabel === 'Search') {
+        onSearchAction?.(item.action)
       } else {
         onFileAction?.(item.action)
       }
