@@ -70,19 +70,22 @@ const Editor = forwardRef(function Editor({ content, onChange, onCursorChange },
     const start = el.selectionStart
     const end = el.selectionEnd
     const value = el.value
+    const lineStart = value.lastIndexOf('\n', start - 1) + 1
     if (start === end) {
-      el.setRangeText('\t', start, start, 'end')
-      onChange(el.value)
-      updateLineCount(el.value)
+      // No selection: insert tab at the start of the current line
+      el.setSelectionRange(lineStart, lineStart)
+      document.execCommand('insertText', false, '\t')
+      // Restore cursor shifted right by one (the inserted tab)
+      el.setSelectionRange(start + 1, start + 1)
     } else {
-      const lineStart = value.lastIndexOf('\n', start - 1) + 1
+      // Selection: prepend tab to every selected line
       const chunk = value.substring(lineStart, end)
       const indented = chunk.split('\n').map((line) => '\t' + line).join('\n')
-      el.setRangeText(indented, lineStart, end, 'select')
-      onChange(el.value)
-      updateLineCount(el.value)
+      el.setSelectionRange(lineStart, end)
+      document.execCommand('insertText', false, indented)
+      el.setSelectionRange(lineStart, lineStart + indented.length)
     }
-  }, [onChange, updateLineCount])
+  }, [])
 
   const dedent = useCallback(() => {
     const el = textareaRef.current
@@ -92,20 +95,42 @@ const Editor = forwardRef(function Editor({ content, onChange, onCursorChange },
     const end = el.selectionEnd
     const value = el.value
     const lineStart = value.lastIndexOf('\n', start - 1) + 1
-    const chunk = value.substring(lineStart, end)
-    const dedented = chunk
-      .split('\n')
-      .map((line) => {
-        if (line.startsWith('\t')) return line.slice(1)
-        const spaces = line.match(/^ {1,4}/)
-        if (spaces) return line.slice(spaces[0].length)
-        return line
-      })
-      .join('\n')
-    el.setRangeText(dedented, lineStart, end, 'select')
-    onChange(el.value)
-    updateLineCount(el.value)
-  }, [onChange, updateLineCount])
+    if (start === end) {
+      // No selection: remove leading whitespace from the start of the current line
+      const lineText = value.substring(lineStart)
+      let removeCount = 0
+      if (lineText.startsWith('\t')) {
+        removeCount = 1
+      } else {
+        const spaces = lineText.match(/^ {1,4}/)
+        if (spaces) removeCount = spaces[0].length
+      }
+      if (removeCount > 0) {
+        el.setSelectionRange(lineStart, lineStart + removeCount)
+        document.execCommand('insertText', false, '')
+        // Restore cursor shifted left, but not before the line start
+        el.setSelectionRange(
+          Math.max(lineStart, start - removeCount),
+          Math.max(lineStart, start - removeCount)
+        )
+      }
+    } else {
+      // Selection: remove leading whitespace from every selected line
+      const chunk = value.substring(lineStart, end)
+      const dedented = chunk
+        .split('\n')
+        .map((line) => {
+          if (line.startsWith('\t')) return line.slice(1)
+          const spaces = line.match(/^ {1,4}/)
+          if (spaces) return line.slice(spaces[0].length)
+          return line
+        })
+        .join('\n')
+      el.setSelectionRange(lineStart, end)
+      document.execCommand('insertText', false, dedented)
+      el.setSelectionRange(lineStart, lineStart + dedented.length)
+    }
+  }, [])
 
   useImperativeHandle(ref, () => ({
     undo: () => { textareaRef.current?.focus(); document.execCommand('undo') },
