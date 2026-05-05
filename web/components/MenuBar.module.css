@@ -2,8 +2,8 @@
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  background: #f0f0f0;
-  border-bottom: 1px solid #a0a0a0;
+  background: var(--chrome-bg);
+  border-bottom: 1px solid var(--chrome-border);
   height: 22px;
   flex-shrink: 0;
   position: relative;
@@ -25,13 +25,13 @@
 }
 
 .scrollBtn {
-  background: #f0f0f0;
+  background: var(--chrome-bg);
   border: none;
-  border-left: 1px solid #a0a0a0;
+  border-left: 1px solid var(--chrome-border);
   padding: 0 6px;
   height: 100%;
   font-size: 14px;
-  color: #333;
+  color: var(--chrome-text-muted);
   cursor: pointer;
   flex-shrink: 0;
   line-height: 1;
@@ -41,11 +41,11 @@
 
 .scrollBtn:first-child {
   border-left: none;
-  border-right: 1px solid #a0a0a0;
+  border-right: 1px solid var(--chrome-border);
 }
 
 .scrollBtn:hover {
-  background: #d8d8d8;
+  background: var(--chrome-hover);
 }
 
 .menuItem {
@@ -58,24 +58,24 @@
   padding: 2px 6px;
   height: 100%;
   font-size: 12px;
-  color: #000;
+  color: var(--chrome-text);
   white-space: nowrap;
 }
 
 .menuButton:hover,
 .menuButton.active {
-  background: #0078d4;
-  color: #fff;
+  background: var(--accent);
+  color: var(--accent-text);
 }
 
 .dropdown {
-  background: #f5f5f5;
-  border: 1px solid #a0a0a0;
+  background: var(--chrome-bg-raised);
+  border: 1px solid var(--chrome-border);
   border-top: none;
   min-width: 220px;
   list-style: none;
   padding: 2px 0;
-  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--dialog-shadow);
   z-index: 9999;
 }
 
@@ -90,12 +90,12 @@
 }
 
 .dropdownItem:hover {
-  background: #0078d4;
-  color: #fff;
+  background: var(--accent);
+  color: var(--accent-text);
 }
 
 .dropdownItem:hover .shortcut {
-  color: #fff;
+  color: var(--accent-text);
 }
 
 .checkmark {
@@ -112,13 +112,13 @@
 
 .shortcut {
   margin-left: 24px;
-  color: #666;
+  color: var(--chrome-text-subtle);
   font-size: 11px;
 }
 
 .separator {
   height: 1px;
-  background: #c0c0c0;
+  background: var(--chrome-separator);
   margin: 2px 0;
 }
 
@@ -136,11 +136,11 @@
   position: absolute;
   top: 100%;
   left: 0;
-  background: #f5f5f5;
-  border: 1px solid #a0a0a0;
+  background: var(--chrome-bg-raised);
+  border: 1px solid var(--chrome-border);
   min-width: 220px;
   list-style: none;
   padding: 2px 0;
-  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--dialog-shadow);
   z-index: 300;
 }

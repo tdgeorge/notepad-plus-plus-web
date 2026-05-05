@@ -2,20 +2,22 @@
   position: fixed;
   top: 80px;
   right: 20px;
-  background: #f5f5f5;
-  border: 1px solid #a0a0a0;
-  box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.3);
+  background: var(--dialog-bg);
+  border: 1px solid var(--chrome-border);
+  box-shadow: var(--dialog-shadow);
+  border-radius: var(--dialog-radius);
   z-index: 500;
   min-width: 400px;
   font-size: 12px;
+  overflow: hidden;
 }
 
 .titleBar {
   display: flex;
   align-items: stretch;
   justify-content: space-between;
-  background: #dcdcdc;
-  border-bottom: 1px solid #a0a0a0;
+  background: var(--chrome-bg-title);
+  border-bottom: 1px solid var(--chrome-border);
 }
 
 .tabs {
@@ -25,18 +27,19 @@
 .tab {
   background: none;
   border: none;
-  border-right: 1px solid #a0a0a0;
+  border-right: 1px solid var(--chrome-border);
   padding: 4px 14px;
   font-size: 12px;
   cursor: pointer;
+  color: var(--chrome-text);
 }
 
 .tab:hover {
-  background: #c8c8c8;
+  background: var(--chrome-hover);
 }
 
 .activeTab {
-  background: #f5f5f5;
+  background: var(--dialog-bg);
   font-weight: bold;
 }
 
@@ -47,11 +50,11 @@
   cursor: pointer;
   padding: 0 8px;
   line-height: 1;
-  color: #555;
+  color: var(--chrome-text-subtle);
 }
 
 .closeBtn:hover {
-  color: #000;
+  color: var(--chrome-text);
 }
 
 .body {
@@ -70,14 +73,17 @@
   font-size: 12px;
   flex-shrink: 0;
   text-align: right;
+  color: var(--chrome-text-muted);
 }
 
 .input {
   flex: 1;
   padding: 2px 4px;
   font-size: 12px;
-  border: 1px solid #a0a0a0;
-  background: #fff;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  border-radius: var(--ui-radius);
+  color: var(--chrome-text);
 }
 
 .input.notFound {
@@ -99,12 +105,13 @@
   font-size: 12px;
   cursor: pointer;
   user-select: none;
+  color: var(--chrome-text-muted);
 }
 
 .message {
   margin-top: 6px;
   font-size: 11px;
-  color: #555;
+  color: var(--chrome-text-subtle);
   padding-left: 94px;
 }
 
@@ -112,21 +119,23 @@
   display: flex;
   gap: 4px;
   padding: 8px 14px;
-  border-top: 1px solid #d0d0d0;
+  border-top: 1px solid var(--chrome-border-light);
   justify-content: flex-end;
 }
 
 .btn {
   padding: 3px 10px;
   font-size: 12px;
-  background: #e8e8e8;
-  border: 1px solid #a0a0a0;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: var(--ui-radius);
   cursor: pointer;
   min-width: 74px;
+  color: var(--btn-text);
 }
 
 .btn:hover:not(:disabled) {
-  background: #d0d0d0;
+  background: var(--btn-hover-bg);
 }
 
 .btn:disabled {

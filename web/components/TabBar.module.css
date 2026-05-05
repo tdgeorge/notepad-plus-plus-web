@@ -2,8 +2,8 @@
   display: flex;
   flex-direction: row;
   align-items: flex-end;
-  background: #bdbdbd;
-  border-bottom: 1px solid #a0a0a0;
+  background: var(--tab-bar-bg);
+  border-bottom: 1px solid var(--chrome-border);
   height: 26px;
   flex-shrink: 0;
   overflow-x: auto;
@@ -15,11 +15,11 @@
 }
 
 .tabBar::-webkit-scrollbar-track {
-  background: #bdbdbd;
+  background: var(--tab-bar-bg);
 }
 
 .tabBar::-webkit-scrollbar-thumb {
-  background: #888;
+  background: var(--chrome-border);
 }
 
 .tab {
@@ -28,27 +28,27 @@
   gap: 4px;
   height: 22px;
   padding: 0 6px 0 10px;
-  background: #d4d0c8;
-  border: 1px solid #a0a0a0;
+  background: var(--tab-inactive-bg);
+  border: 1px solid var(--chrome-border);
   border-bottom: none;
   cursor: pointer;
   white-space: nowrap;
   font-size: 12px;
-  color: #333;
+  color: var(--tab-inactive-text);
   margin-right: 1px;
-  border-radius: 3px 3px 0 0;
+  border-radius: var(--tab-radius);
   flex-shrink: 0;
   user-select: none;
 }
 
 .tab:hover {
-  background: #e8e8e0;
+  background: var(--tab-hover-bg);
 }
 
 .tab.active {
-  background: #ffffff;
-  color: #000;
-  border-color: #888;
+  background: var(--tab-active-bg);
+  color: var(--tab-active-text);
+  border-color: var(--chrome-border);
   height: 24px;
   padding-top: 0;
 }
@@ -67,10 +67,10 @@
   height: 14px;
   background: none;
   border: 1px solid transparent;
-  border-radius: 2px;
+  border-radius: var(--ui-radius);
   font-size: 14px;
   line-height: 1;
-  color: #666;
+  color: var(--chrome-text-subtle);
   padding: 0;
   flex-shrink: 0;
 }

@@ -2,13 +2,13 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  background: #f0f0f0;
-  border-top: 1px solid #a0a0a0;
+  background: var(--chrome-bg);
+  border-top: 1px solid var(--chrome-border);
   height: 22px;
   flex-shrink: 0;
   padding: 0 4px;
   font-size: 11px;
-  color: #333;
+  color: var(--chrome-text-muted);
   user-select: none;
 }
 
@@ -21,5 +21,5 @@
 .divider {
   width: 1px;
   height: 14px;
-  background: #a0a0a0;
+  background: var(--chrome-border);
 }

@@ -1,0 +1,246 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dialog {
+  background: var(--dialog-bg);
+  border: 1px solid var(--chrome-border);
+  box-shadow: var(--dialog-shadow);
+  border-radius: var(--dialog-radius);
+  width: 560px;
+  max-width: 96vw;
+  max-height: 90vh;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.titleBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--chrome-bg-title);
+  border-bottom: 1px solid var(--chrome-border);
+  padding: 4px 8px;
+  font-weight: bold;
+  color: var(--chrome-text);
+  flex-shrink: 0;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  color: var(--chrome-text-subtle);
+}
+
+.closeBtn:hover {
+  color: var(--chrome-text);
+}
+
+.body {
+  padding: 12px;
+  flex: 1;
+  overflow: auto;
+}
+
+.columns {
+  display: flex;
+  gap: 12px;
+  height: 100%;
+}
+
+/* ── Left panel: theme list ────────────────────────────────────────────── */
+
+.themePanel {
+  width: 160px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.panelTitle {
+  font-weight: bold;
+  color: var(--chrome-text-muted);
+  margin-bottom: 4px;
+}
+
+.themeList {
+  list-style: none;
+  border: 1px solid var(--chrome-border);
+  background: var(--input-bg);
+  border-radius: var(--ui-radius);
+  overflow: hidden;
+  flex: 1;
+}
+
+.themeItem {
+  padding: 6px 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  color: var(--chrome-text);
+  border-bottom: 1px solid var(--chrome-border-light);
+}
+
+.themeItem:last-child {
+  border-bottom: none;
+}
+
+.themeItem:hover {
+  background: var(--chrome-hover);
+}
+
+.themeItemSelected {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+.themeItemSelected:hover {
+  background: var(--accent);
+}
+
+.activeBadge {
+  font-size: 10px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  padding: 1px 5px;
+  flex-shrink: 0;
+}
+
+/* ── Right panel: preview ──────────────────────────────────────────────── */
+
+.previewPanel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.description {
+  font-size: 11px;
+  color: var(--chrome-text-subtle);
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* Mini theme preview */
+.preview {
+  flex: 1;
+  overflow: hidden;
+  font-size: 10px;
+  display: flex;
+  flex-direction: column;
+  min-height: 140px;
+}
+
+.previewMenuBar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 4px;
+  flex-shrink: 0;
+}
+
+.previewMenuActive {
+  padding: 1px 5px;
+  font-size: 10px;
+}
+
+.previewMenuItem {
+  padding: 1px 5px;
+  font-size: 10px;
+}
+
+.previewTabBar {
+  display: flex;
+  align-items: flex-end;
+  padding: 2px 4px 0;
+  flex-shrink: 0;
+}
+
+.previewTabActive,
+.previewTabInactive {
+  font-size: 10px;
+  padding: 1px 8px;
+  margin-right: 2px;
+}
+
+.previewEditor {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.previewGutter {
+  width: 18px;
+  padding: 2px 2px;
+  font-size: 9px;
+  text-align: right;
+  flex-shrink: 0;
+  line-height: 1.6;
+}
+
+.previewCode {
+  flex: 1;
+  padding: 2px 4px;
+  font-size: 10px;
+  line-height: 1.6;
+  overflow: hidden;
+}
+
+/* ── Footer buttons ────────────────────────────────────────────────────── */
+
+.buttons {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--chrome-border-light);
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.btn {
+  padding: 4px 18px;
+  font-size: 12px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: var(--ui-radius);
+  cursor: pointer;
+  min-width: 60px;
+  color: var(--btn-text);
+}
+
+.btn:hover {
+  background: var(--btn-hover-bg);
+}
+
+.btnPrimary {
+  padding: 4px 18px;
+  font-size: 12px;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: var(--ui-radius);
+  cursor: pointer;
+  min-width: 60px;
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.btnPrimary:hover {
+  opacity: 0.9;
+}

@@ -187,7 +187,7 @@ const MENUS = [
     items: [
       { label: 'Preferences...', shortcut: 'Ctrl+Alt+P' },
       { separator: true },
-      { label: 'Style Configurator...' },
+      { label: 'Style Configurator...', action: 'styleConfigurator' },
       { label: 'Shortcut Mapper...' },
       { separator: true },
       { label: 'Import' },
