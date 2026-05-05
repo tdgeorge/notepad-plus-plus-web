@@ -376,15 +376,11 @@ export default function Home() {
 
   const handleLanguageAction = useCallback((action) => {
     const tabId = activeTabIdRef.current
-    switch (action) {
-      case 'lang-javascript':
-        setTabs((prev) => prev.map((t) => (t.id === tabId ? { ...t, language: 'javascript' } : t)))
-        break
-      case 'lang-plain-text':
-        setTabs((prev) => prev.map((t) => (t.id === tabId ? { ...t, language: null } : t)))
-        break
-      default:
-        break
+    if (action === 'lang-plain-text') {
+      setTabs((prev) => prev.map((t) => (t.id === tabId ? { ...t, language: null } : t)))
+    } else if (action.startsWith('lang-')) {
+      const langId = action.slice(5)
+      setTabs((prev) => prev.map((t) => (t.id === tabId ? { ...t, language: langId } : t)))
     }
   }, [])
 
@@ -623,7 +619,7 @@ export default function Home() {
         showIndent={showIndent}
         language={language}
       />
-      <StatusBar cursorPos={cursorPos} eol="Windows (CR LF)" encoding="UTF-8" />
+      <StatusBar cursorPos={cursorPos} eol="Windows (CR LF)" encoding="UTF-8" language={language} />
       <FindDialog
         isOpen={findDialogOpen}
         mode={findDialogMode}

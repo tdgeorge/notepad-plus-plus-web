@@ -141,3 +141,27 @@
   color: var(--hl-operator, #000080);
   font-weight: bold;
 }
+
+.hlTag {
+  color: var(--hl-tag, #000080);
+  font-weight: bold;
+}
+
+.hlAttribute {
+  color: var(--hl-attribute, #ff0000);
+}
+
+.hlHeading {
+  color: var(--hl-heading, #0000ff);
+  font-weight: bold;
+}
+
+.hlBold {
+  color: var(--hl-bold, #000000);
+  font-weight: bold;
+}
+
+.hlItalic {
+  color: var(--hl-italic, #000000);
+  font-style: italic;
+}

@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "generate": "node scripts/generate-lang-data.mjs",
+    "prebuild": "node scripts/generate-lang-data.mjs"
   },
   "dependencies": {
     "next": "15.5.15",

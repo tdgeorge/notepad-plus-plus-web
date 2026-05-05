@@ -152,34 +152,34 @@ const MENUS = [
       { label: 'User Defined Language...' },
       { separator: true },
       { label: 'Plain Text', action: 'lang-plain-text' },
-      { label: 'Ada' },
-      { label: 'ASP' },
-      { label: 'Assembly' },
-      { label: 'AutoIt' },
-      { label: 'Bash' },
-      { label: 'Batch' },
-      { label: 'C' },
-      { label: 'C#' },
-      { label: 'C++' },
-      { label: 'CSS' },
-      { label: 'HTML' },
-      { label: 'Java' },
+      { label: 'Ada', action: 'lang-ada' },
+      { label: 'ASP', action: 'lang-asp' },
+      { label: 'Assembly', action: 'lang-asm' },
+      { label: 'AutoIt', action: 'lang-autoit' },
+      { label: 'Bash', action: 'lang-bash' },
+      { label: 'Batch', action: 'lang-batch' },
+      { label: 'C', action: 'lang-c' },
+      { label: 'C#', action: 'lang-cs' },
+      { label: 'C++', action: 'lang-cpp' },
+      { label: 'CSS', action: 'lang-css' },
+      { label: 'HTML', action: 'lang-html' },
+      { label: 'Java', action: 'lang-java' },
       { label: 'JavaScript', action: 'lang-javascript' },
-      { label: 'JSON' },
-      { label: 'Lua' },
-      { label: 'Makefile' },
-      { label: 'Markdown' },
-      { label: 'PHP' },
-      { label: 'PowerShell' },
-      { label: 'Python' },
-      { label: 'Ruby' },
-      { label: 'Rust' },
-      { label: 'Shell' },
-      { label: 'SQL' },
-      { label: 'TypeScript' },
-      { label: 'VBScript' },
-      { label: 'XML' },
-      { label: 'YAML' },
+      { label: 'JSON', action: 'lang-json' },
+      { label: 'Lua', action: 'lang-lua' },
+      { label: 'Makefile', action: 'lang-makefile' },
+      { label: 'Markdown', action: 'lang-markdown' },
+      { label: 'PHP', action: 'lang-php' },
+      { label: 'PowerShell', action: 'lang-powershell' },
+      { label: 'Python', action: 'lang-python' },
+      { label: 'Ruby', action: 'lang-ruby' },
+      { label: 'Rust', action: 'lang-rust' },
+      { label: 'Shell', action: 'lang-bash' },
+      { label: 'SQL', action: 'lang-sql' },
+      { label: 'TypeScript', action: 'lang-typescript' },
+      { label: 'VBScript', action: 'lang-vb' },
+      { label: 'XML', action: 'lang-xml' },
+      { label: 'YAML', action: 'lang-yaml' },
     ],
   },
   {
@@ -396,9 +396,13 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
       case 'show-eol': return viewState.showEol
       case 'show-all-chars': return viewState.showAllChars
       case 'show-indent': return viewState.showIndent
-      case 'lang-javascript': return viewState.language === 'javascript'
       case 'lang-plain-text': return viewState.language == null
-      default: return false
+      default:
+        if (action.startsWith('lang-')) {
+          const langId = action.slice(5)
+          return viewState.language === langId
+        }
+        return false
     }
   }
 

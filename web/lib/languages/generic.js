@@ -42,7 +42,7 @@ const IDENT_CONT = /[a-zA-Z0-9_$]/
  * @param {Set<string>} [opts.builtins]       instre2 — built-in functions (BROWSER_API colour)
  * @param {string|null} [opts.commentLine]    line-comment opener, e.g. '//', '#', '--', ';'
  * @param {string|null} [opts.commentStart]   block-comment opener, e.g. '/*'
- * @param {string|null} [opts.commentEnd]     block-comment closer, e.g. '*/'
+ * @param {string|null} [opts.commentEnd]     block-comment closer, e.g. '* /'  (no space)
  * @param {string[]}    [opts.stringChars]    characters that delimit strings, default ['"', "'"]
  * @param {boolean}     [opts.tripleStrings]  whether ''' / """ triple-quoted strings are supported
  * @param {boolean}     [opts.caseInsensitive] treat keywords case-insensitively (Batch, VB, SQL)
