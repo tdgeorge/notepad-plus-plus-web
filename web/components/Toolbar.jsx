@@ -20,7 +20,7 @@ function ToolbarSep() {
   return <div className={styles.separator} />
 }
 
-export default function Toolbar({ onNew, onOpen, onSave, onSaveAll, onUndo, onRedo, onCut, onCopy, onPaste, onFind, onReplace }) {
+export default function Toolbar({ onNew, onOpen, onSave, onSaveAll, onUndo, onRedo, onCut, onCopy, onPaste, onFind, onReplace, onZoomIn, onZoomOut, onZoomReset }) {
   return (
     <div className={styles.toolbar} role="toolbar" aria-label="Main toolbar">
       <ToolbarButton title="New (Ctrl+N)" onClick={onNew}>
@@ -105,19 +105,19 @@ export default function Toolbar({ onNew, onOpen, onSave, onSaveAll, onUndo, onRe
 
       <ToolbarSep />
 
-      <ToolbarButton title="Zoom In (Ctrl+Numpad+)">
+      <ToolbarButton title="Zoom In (Ctrl+Numpad+)" onClick={onZoomIn}>
         <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
           <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0zm-5-2.5a.5.5 0 0 1 .5.5v1.5H9a.5.5 0 0 1 0 1H8v1.5a.5.5 0 0 1-1 0V7H5.5a.5.5 0 0 1 0-1H7V5a.5.5 0 0 1 .5-.5z" />
         </svg>
       </ToolbarButton>
 
-      <ToolbarButton title="Zoom Out (Ctrl+Numpad-)">
+      <ToolbarButton title="Zoom Out (Ctrl+Numpad-)" onClick={onZoomOut}>
         <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
           <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0zm-5-2.5a.5.5 0 0 1 .5.5v2H9a.5.5 0 0 1 0 1H5.5a.5.5 0 0 1 0-1H7V5a.5.5 0 0 1 .5-.5z" />
         </svg>
       </ToolbarButton>
 
-      <ToolbarButton title="Restore Default Zoom">
+      <ToolbarButton title="Restore Default Zoom" onClick={onZoomReset}>
         <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
           <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
         </svg>
