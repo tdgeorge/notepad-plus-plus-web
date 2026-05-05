@@ -433,7 +433,7 @@ const Editor = forwardRef(function Editor(
     focus() {
       textareaRef.current?.focus()
     },
-  }), [indent, dedent, lineCount, updateCursor, updateLineCount, scrollToChar])
+  }), [indent, dedent, lineCount, lineHeightPx, updateCursor, updateLineCount, scrollToChar])
 
   const handleKeyDown = useCallback(
     (e) => {
