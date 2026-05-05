@@ -34,6 +34,11 @@ export const TOKENIZERS = {
  */
 export function detectLanguage(filename) {
   if (!filename) return null
-  const ext = filename.split('.').pop().toLowerCase()
+  // Strip any leading path components before inspecting the extension so that
+  // dots in directory names (e.g. "my.folder/file") do not produce false matches.
+  const basename = filename.split(/[\\/]/).pop() ?? ''
+  const dotIdx = basename.lastIndexOf('.')
+  if (dotIdx === -1) return null // no extension (e.g. "README", "Makefile")
+  const ext = basename.slice(dotIdx + 1).toLowerCase()
   return EXTENSION_MAP[ext] ?? null
 }
