@@ -451,14 +451,16 @@ export default function Home() {
     const name = tab?.name ?? 'document'
     const printWindow = window.open('', '_blank')
     if (!printWindow) return
-    const escaped = content
+    const escapeHtml = (str) => str
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
     printWindow.document.write(
-      `<!DOCTYPE html><html><head><title>${name}</title>` +
+      `<!DOCTYPE html><html><head><title>${escapeHtml(name)}</title>` +
       `<style>body{margin:1cm;font-family:monospace;white-space:pre-wrap;word-wrap:break-word;}</style>` +
-      `</head><body><pre>${escaped}</pre></body></html>`
+      `</head><body><pre>${escapeHtml(content)}</pre></body></html>`
     )
     printWindow.document.close()
     printWindow.focus()
