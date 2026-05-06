@@ -924,7 +924,7 @@ const Editor = forwardRef(function Editor(
     'eol-to-space': () => {
       const el = textareaRef.current
       if (!el) return
-      const newText = el.value.replace(/\n/g, ' ')
+      const newText = el.value.replace(/\r\n|\r|\n/g, ' ')
       if (newText === el.value) return
       el.value = newText
       onChangeRef.current(newText)
