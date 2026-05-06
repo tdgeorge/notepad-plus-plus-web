@@ -133,7 +133,7 @@ export default function Home() {
     if (!history || history.index <= 0) return
     history.index--
     const content = history.stack[history.index]
-    const modified = history.index !== (history.savedIndex ?? 0)
+    const modified = history.index !== history.savedIndex
     setTabs((prev) =>
       prev.map((t) => (t.id === tabId ? { ...t, content, modified } : t))
     )
@@ -145,7 +145,7 @@ export default function Home() {
     if (!history || history.index >= history.stack.length - 1) return
     history.index++
     const content = history.stack[history.index]
-    const modified = history.index !== (history.savedIndex ?? 0)
+    const modified = history.index !== history.savedIndex
     setTabs((prev) =>
       prev.map((t) => (t.id === tabId ? { ...t, content, modified } : t))
     )
