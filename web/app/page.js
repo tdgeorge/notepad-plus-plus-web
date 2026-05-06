@@ -26,7 +26,7 @@ const MAX_FONT_SIZE = 32
 
 // Cap the undo stack for large files to avoid unbounded memory growth.
 // Each entry stores a full copy of the document content.
-const LARGE_FILE_THRESHOLD = 1_000_000 // ~1 MB of text
+const LARGE_FILE_THRESHOLD = 100_000 // ~100 KB of text
 const MAX_UNDO_LARGE_FILE = 20
 
 /**
@@ -702,6 +702,12 @@ export default function Home() {
 
   const handleLanguageAction = useCallback((action) => {
     const tabId = activeTabIdRef.current
+    const tab = tabsRef.current.find((t) => t.id === tabId)
+    // Warn when setting a syntax language on a large file — highlighting is
+    // disabled above the threshold so the selection will have no visual effect.
+    if (action !== 'lang-plain-text' && action.startsWith('lang-') && tab && tab.content.length > LARGE_FILE_THRESHOLD) {
+      window.alert('This file is too large for syntax highlighting. Language mode has been changed but highlighting will not be applied.')
+    }
     if (action === 'lang-plain-text') {
       setTabs((prev) => prev.map((t) => (t.id === tabId ? { ...t, language: null } : t)))
     } else if (action.startsWith('lang-')) {
@@ -949,6 +955,8 @@ export default function Home() {
   const view2ActiveTab = view2Tabs.find((t) => t.id === view2ActiveTabId)
   const displayCursorPos = activeView === 1 ? cursorPos : view2CursorPos
   const displayLanguage = activeView === 1 ? language : (view2ActiveTab?.language ?? null)
+  const displayContent = activeView === 1 ? (activeTab?.content ?? '') : (view2ActiveTab?.content ?? '')
+  const displayIsLargeFile = displayContent.length > LARGE_FILE_THRESHOLD
 
   return (
     <div
@@ -1062,7 +1070,7 @@ export default function Home() {
           />
         </>
       )}
-      <StatusBar cursorPos={displayCursorPos} eol="Windows (CR LF)" encoding="UTF-8" language={displayLanguage} />
+      <StatusBar cursorPos={displayCursorPos} eol="Windows (CR LF)" encoding="UTF-8" language={displayLanguage} isLargeFile={displayIsLargeFile} />
       <FindDialog
         isOpen={findDialogOpen}
         mode={findDialogMode}

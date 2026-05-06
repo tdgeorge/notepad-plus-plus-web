@@ -7,10 +7,10 @@ import { TOKEN } from '../lib/languages/javascript'
 
 const TAB_SIZE = 4
 
-// Files larger than this threshold (~1 MB) bypass expensive processing so they
+// Files larger than this threshold (~100 KB) bypass expensive processing so they
 // remain responsive. Heavy features (syntax highlighting, fold detection) are
 // disabled and line numbers are virtualised.
-const LARGE_FILE_THRESHOLD = 1_000_000
+const LARGE_FILE_THRESHOLD = 100_000
 // Extra lines rendered above/below the visible viewport during virtual scrolling
 const VIRTUAL_BUFFER = 20
 

@@ -18,6 +18,15 @@
   padding: 0 8px;
 }
 
+.largeFileBadge {
+  color: var(--chrome-bg, #fff);
+  background: #c07000;
+  border-radius: 3px;
+  padding: 0 4px;
+  font-weight: bold;
+  letter-spacing: 0.02em;
+}
+
 .divider {
   width: 1px;
   height: 14px;
