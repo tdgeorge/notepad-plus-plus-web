@@ -28,6 +28,9 @@ export default function Home() {
   const editorRef = useRef(null)
   const [fileHandles, setFileHandles] = useState({})
 
+  // Per-tab undo/redo history: { [tabId]: { stack: string[], index: number, savedIndex: number } }
+  const undoHistoryRef = useRef({ 1: { stack: [''], index: 0, savedIndex: 0 } })
+
   const [wordWrap, setWordWrap] = useState(false)
   const [fontSize, setFontSize] = useState(DEFAULT_FONT_SIZE)
   const [showWhitespace, setShowWhitespace] = useState(false)
@@ -83,6 +86,7 @@ export default function Home() {
   const handleNewTab = useCallback(() => {
     const id = nextTabId++
     const name = `new ${id}`
+    undoHistoryRef.current[id] = { stack: [''], index: 0, savedIndex: 0 }
     setTabs((prev) => [...prev, { id, name, content: '', modified: false, language: null }])
     setActiveTabId(id)
   }, [])
@@ -104,18 +108,48 @@ export default function Home() {
         delete next[id]
         return next
       })
+      delete undoHistoryRef.current[id]
     },
     [activeTabId]
   )
 
   const handleContentChange = useCallback((content) => {
+    const tabId = activeTabIdRef.current
+    const history = undoHistoryRef.current[tabId]
+    if (history) {
+      const newStack = history.stack.slice(0, history.index + 1)
+      newStack.push(content)
+      history.stack = newStack
+      history.index = newStack.length - 1
+    }
     setTabs((prev) =>
-      prev.map((t) => (t.id === activeTabIdRef.current ? { ...t, content, modified: true } : t))
+      prev.map((t) => (t.id === tabId ? { ...t, content, modified: true } : t))
     )
   }, [])
 
-  const handleUndo = useCallback(() => editorRef.current?.undo(), [])
-  const handleRedo = useCallback(() => editorRef.current?.redo(), [])
+  const handleUndo = useCallback(() => {
+    const tabId = activeTabIdRef.current
+    const history = undoHistoryRef.current[tabId]
+    if (!history || history.index <= 0) return
+    history.index--
+    const content = history.stack[history.index]
+    const modified = history.index !== history.savedIndex
+    setTabs((prev) =>
+      prev.map((t) => (t.id === tabId ? { ...t, content, modified } : t))
+    )
+  }, [])
+
+  const handleRedo = useCallback(() => {
+    const tabId = activeTabIdRef.current
+    const history = undoHistoryRef.current[tabId]
+    if (!history || history.index >= history.stack.length - 1) return
+    history.index++
+    const content = history.stack[history.index]
+    const modified = history.index !== history.savedIndex
+    setTabs((prev) =>
+      prev.map((t) => (t.id === tabId ? { ...t, content, modified } : t))
+    )
+  }, [])
   const handleCut = useCallback(() => editorRef.current?.cut(), [])
   const handleCopy = useCallback(() => editorRef.current?.copy(), [])
   const handlePaste = useCallback(() => editorRef.current?.paste(), [])
@@ -148,6 +182,7 @@ export default function Home() {
           const file = await handle.getFile()
           const content = await file.text()
           const id = nextTabId++
+          undoHistoryRef.current[id] = { stack: [content], index: 0, savedIndex: 0 }
           setTabs((prev) => [...prev, { id, name: file.name, content, modified: false, language: detectLanguage(file.name) }])
           setFileHandles((prev) => ({ ...prev, [id]: handle }))
           setActiveTabId(id)
@@ -163,6 +198,7 @@ export default function Home() {
         for (const file of Array.from(e.target.files)) {
           const content = await file.text()
           const id = nextTabId++
+          undoHistoryRef.current[id] = { stack: [content], index: 0, savedIndex: 0 }
           setTabs((prev) => [...prev, { id, name: file.name, content, modified: false, language: detectLanguage(file.name) }])
           setActiveTabId(id)
         }
@@ -183,6 +219,8 @@ export default function Home() {
         await writeToHandle(handle, tab.content)
         const savedFile = await handle.getFile()
         setFileHandles((prev) => ({ ...prev, [tab.id]: handle }))
+        const history = undoHistoryRef.current[tab.id]
+        if (history) history.savedIndex = history.index
         setTabs((prev) =>
           prev.map((t) => (t.id === tab.id ? { ...t, name: savedFile.name, modified: false } : t))
         )
@@ -191,6 +229,8 @@ export default function Home() {
       }
     } else {
       downloadFile(tab.name, tab.content)
+      const history = undoHistoryRef.current[tab.id]
+      if (history) history.savedIndex = history.index
       setTabs((prev) =>
         prev.map((t) => (t.id === tab.id ? { ...t, modified: false } : t))
       )
@@ -204,6 +244,8 @@ export default function Home() {
     if (handle) {
       try {
         await writeToHandle(handle, tab.content)
+        const history = undoHistoryRef.current[tab.id]
+        if (history) history.savedIndex = history.index
         setTabs((prev) =>
           prev.map((t) => (t.id === tab.id ? { ...t, modified: false } : t))
         )
@@ -242,6 +284,8 @@ export default function Home() {
       if (handle) {
         try {
           await writeToHandle(handle, tab.content)
+          const history = undoHistoryRef.current[tab.id]
+          if (history) history.savedIndex = history.index
           setTabs((prev) =>
             prev.map((t) => (t.id === tab.id ? { ...t, modified: false } : t))
           )
@@ -250,6 +294,8 @@ export default function Home() {
         }
       } else {
         downloadFile(tab.name, tab.content)
+        const history = undoHistoryRef.current[tab.id]
+        if (history) history.savedIndex = history.index
         setTabs((prev) =>
           prev.map((t) => (t.id === tab.id ? { ...t, modified: false } : t))
         )
@@ -265,6 +311,7 @@ export default function Home() {
     try {
       const file = await handle.getFile()
       const content = await file.text()
+      undoHistoryRef.current[tab.id] = { stack: [content], index: 0, savedIndex: 0 }
       setTabs((prev) =>
         prev.map((t) => (t.id === tab.id ? { ...t, content, modified: false } : t))
       )
@@ -590,6 +637,8 @@ export default function Home() {
         onCut={handleCut}
         onCopy={handleCopy}
         onPaste={handlePaste}
+        onFind={() => { setFindDialogMode('find'); setFindDialogOpen(true) }}
+        onReplace={() => { setFindDialogMode('replace'); setFindDialogOpen(true) }}
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
         onZoomReset={handleZoomReset}
@@ -612,6 +661,8 @@ export default function Home() {
         content={activeTab?.content ?? ''}
         onChange={handleContentChange}
         onCursorChange={setCursorPos}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
         wordWrap={wordWrap}
         fontSize={fontSize}
         showWhitespace={showWhitespace}

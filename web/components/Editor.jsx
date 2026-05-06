@@ -205,7 +205,7 @@ function renderSymbols(text, { showWhitespace, showEol, showIndent }) {
 }
 
 const Editor = forwardRef(function Editor(
-  { content, onChange, onCursorChange, wordWrap, fontSize, showWhitespace, showEol, showIndent, language },
+  { content, onChange, onCursorChange, wordWrap, fontSize, showWhitespace, showEol, showIndent, language, onUndo, onRedo },
   ref
 ) {
   const textareaRef = useRef(null)
@@ -214,6 +214,10 @@ const Editor = forwardRef(function Editor(
   const [lineCount, setLineCount] = useState(1)
   const onChangeRef = useRef(onChange)
   useEffect(() => { onChangeRef.current = onChange }, [onChange])
+  const onUndoRef = useRef(onUndo)
+  useEffect(() => { onUndoRef.current = onUndo }, [onUndo])
+  const onRedoRef = useRef(onRedo)
+  useEffect(() => { onRedoRef.current = onRedo }, [onRedo])
 
   const effectiveFontSize = fontSize ?? 13
   const lineHeightRatio = 1.5
@@ -368,8 +372,8 @@ const Editor = forwardRef(function Editor(
 
   useImperativeHandle(ref, () => ({
     // Edit operations
-    undo: () => { textareaRef.current?.focus(); document.execCommand('undo') },
-    redo: () => { textareaRef.current?.focus(); document.execCommand('redo') },
+    undo: () => { textareaRef.current?.focus(); onUndoRef.current?.() },
+    redo: () => { textareaRef.current?.focus(); onRedoRef.current?.() },
     cut: () => { textareaRef.current?.focus(); document.execCommand('cut') },
     copy: () => { textareaRef.current?.focus(); document.execCommand('copy') },
     paste: () => { textareaRef.current?.focus(); document.execCommand('paste') },
@@ -576,6 +580,12 @@ const Editor = forwardRef(function Editor(
         } else {
           indent()
         }
+      } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
+        e.preventDefault()
+        onUndoRef.current?.()
+      } else if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) {
+        e.preventDefault()
+        onRedoRef.current?.()
       }
     },
     [indent, dedent]
