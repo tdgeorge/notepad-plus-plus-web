@@ -843,7 +843,6 @@ const Editor = forwardRef(function Editor(
               <div
                 key={i}
                 className={styles.lineNumber}
-                style={{ height: `${lineHeightPx}px`, lineHeight: `${lineHeightPx}px` }}
               >
                 {region && (
                   <button

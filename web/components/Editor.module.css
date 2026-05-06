@@ -28,8 +28,7 @@
 
 .lineNumber {
   position: relative;
-  height: 19.5px; /* overridden by inline style when font size changes */
-  line-height: 19.5px;
+  line-height: inherit;
 }
 
 .lineNumberHidden {
