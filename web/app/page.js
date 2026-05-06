@@ -703,16 +703,16 @@ export default function Home() {
   const handleLanguageAction = useCallback((action) => {
     const tabId = activeTabIdRef.current
     const tab = tabsRef.current.find((t) => t.id === tabId)
-    // Warn when setting a syntax language on a large file — highlighting is
-    // disabled above the threshold so the selection will have no visual effect.
-    if (action !== 'lang-plain-text' && action.startsWith('lang-') && tab && tab.content.length > LARGE_FILE_THRESHOLD) {
-      window.alert('This file is too large for syntax highlighting. Language mode has been changed but highlighting will not be applied.')
-    }
     if (action === 'lang-plain-text') {
       setTabs((prev) => prev.map((t) => (t.id === tabId ? { ...t, language: null } : t)))
     } else if (action.startsWith('lang-')) {
       const langId = action.slice(5)
       setTabs((prev) => prev.map((t) => (t.id === tabId ? { ...t, language: langId } : t)))
+      // Warn after applying the change — highlighting is disabled above the
+      // threshold so the selection will have no visual effect.
+      if (tab && tab.content.length > LARGE_FILE_THRESHOLD) {
+        window.alert('This file is too large for syntax highlighting. Language mode has been changed but highlighting will not be applied.')
+      }
     }
   }, [])
 
