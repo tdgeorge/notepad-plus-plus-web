@@ -845,7 +845,7 @@ const Editor = forwardRef(function Editor(
                 className={styles.lineNumber}
                 style={{ height: `${lineHeightPx}px`, lineHeight: `${lineHeightPx}px` }}
               >
-                {region ? (
+                {region && (
                   <button
                     className={styles.foldBtn}
                     onClick={() => toggleFold(i)}
@@ -854,8 +854,6 @@ const Editor = forwardRef(function Editor(
                   >
                     {isFolded ? '+' : '\u2212'}
                   </button>
-                ) : (
-                  <span className={styles.foldBtnSpacer} aria-hidden="true" />
                 )}
                 {i + 1}
               </div>

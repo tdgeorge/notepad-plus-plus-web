@@ -17,22 +17,19 @@
 .lineNumbers {
   background: var(--editor-gutter-bg);
   border-right: 1px solid var(--editor-gutter-border);
-  padding: 4px 6px;
+  padding: 4px 6px 4px 20px;
   text-align: right;
   color: var(--editor-gutter-fg);
-  min-width: 44px;
+  min-width: 58px;
   overflow: hidden;
   user-select: none;
   flex-shrink: 0;
 }
 
 .lineNumber {
+  position: relative;
   height: 19.5px; /* overridden by inline style when font size changes */
   line-height: 19.5px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 2px;
 }
 
 .lineNumberHidden {
@@ -42,7 +39,11 @@
 
 /* ── Fold gutter buttons ──────────────────────────────────────────────────── */
 .foldBtn {
-  display: inline-flex;
+  position: absolute;
+  left: -16px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
   align-items: center;
   justify-content: center;
   width: 13px;
@@ -62,13 +63,6 @@
   background: var(--chrome-hover);
   color: var(--chrome-text);
   border-color: var(--chrome-text);
-}
-
-.foldBtnSpacer {
-  display: inline-block;
-  width: 13px;
-  height: 13px;
-  flex-shrink: 0;
 }
 
 .textareaWrapper {
