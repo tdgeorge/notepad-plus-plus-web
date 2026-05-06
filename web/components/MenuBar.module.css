@@ -132,6 +132,10 @@
   flex-shrink: 0;
 }
 
+.submenuArrow::before {
+  content: '▼';
+}
+
 .submenuDropdown {
   position: absolute;
   top: 100%;
@@ -143,4 +147,16 @@
   padding: 2px 0;
   box-shadow: var(--dialog-shadow);
   z-index: 300;
+}
+
+/* On desktop (fine pointer / mouse), open submenus to the right side */
+@media (hover: hover) and (pointer: fine) {
+  .submenuArrow::before {
+    content: '▶';
+  }
+
+  .submenuDropdown {
+    top: 0;
+    left: 100%;
+  }
 }

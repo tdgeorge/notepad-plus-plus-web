@@ -281,6 +281,7 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
   const [dropdownPos, setDropdownPos] = useState(null)   // { top, left } for portal dropdown
   const [dropdownLeft, setDropdownLeft] = useState(null) // clamping adjustment
   const [submenuLeft, setSubmenuLeft] = useState(null)
+  const [submenuFlipped, setSubmenuFlipped] = useState(false) // desktop: flip to left side
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -351,18 +352,34 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
   useLayoutEffect(() => {
     if (!submenuRef.current) {
       setSubmenuLeft(null)
+      setSubmenuFlipped(false)
       return
     }
+    const isDesktop = window.matchMedia('(hover: hover) and (pointer: fine)').matches // mirrors CSS media query in MenuBar.module.css
     const rect = submenuRef.current.getBoundingClientRect()
-    let left = 0
-    if (rect.right > window.innerWidth) {
-      left -= (rect.right - window.innerWidth)
+    if (isDesktop) {
+      // CSS default: top: 0, left: 100% (opens to the right of the parent item)
+      // If it overflows the right viewport edge, flip it to open leftward instead
+      setSubmenuFlipped(rect.right > window.innerWidth)
+    } else {
+      // Mobile/touch: submenu opens downward; clamp its left offset to stay in viewport
+      let left = 0
+      if (rect.right > window.innerWidth) {
+        left -= (rect.right - window.innerWidth)
+      }
+      if (rect.left + left < 0) {
+        left = -rect.left
+      }
+      setSubmenuLeft(left !== 0 ? left : null)
     }
-    if (rect.left + left < 0) {
-      left = -rect.left
-    }
-    setSubmenuLeft(left !== 0 ? left : null)
   }, [openSubmenu])
+
+  // Batch-reset submenu position state so each new submenu is measured from its CSS default
+  const openSubmenuItem = (key) => {
+    setOpenSubmenu(key)
+    setSubmenuFlipped(false)
+    setSubmenuLeft(null)
+  }
 
   useEffect(() => {
     const handleClick = (e) => {
@@ -441,20 +458,26 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
           <li
             key={idx}
             className={`${styles.dropdownItem} ${styles.hasSubmenu}`}
-            onMouseEnter={() => setOpenSubmenu(submenuKey)}
-            onClick={() => setOpenSubmenu(submenuKey)}
+            onMouseEnter={() => openSubmenuItem(submenuKey)}
+            onClick={() => openSubmenuItem(submenuKey)}
             role="menuitem"
             aria-haspopup="true"
             aria-expanded={openSubmenu === submenuKey}
           >
             <span className={styles.checkmark} aria-hidden="true" />
             <span className={styles.itemLabel}>{item.label}</span>
-            <span className={styles.submenuArrow} aria-hidden="true">▼</span>
+            <span className={styles.submenuArrow} aria-hidden="true" />
             {openSubmenu === submenuKey && (
               <ul
                 ref={submenuRef}
                 className={styles.submenuDropdown}
-                style={submenuLeft != null ? { left: submenuLeft } : undefined}
+                style={
+                  submenuFlipped
+                    ? { left: 'auto', right: '100%' }
+                    : submenuLeft != null
+                    ? { left: submenuLeft }
+                    : undefined
+                }
                 role="menu"
               >
                 {item.submenu.map((subitem, subIdx) =>
