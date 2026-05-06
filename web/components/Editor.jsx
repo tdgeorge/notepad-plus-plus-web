@@ -858,6 +858,251 @@ const Editor = forwardRef(function Editor(
     unfoldAll() {
       setFoldedLines(new Set())
     },
+
+    // ── EOL Conversion ────────────────────────────────────────────────────
+    'eol-crlf': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const newText = el.value.replace(/\r\n|\r|\n/g, '\r\n')
+      if (newText === el.value) return
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
+    },
+
+    'eol-lf': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const newText = el.value.replace(/\r\n|\r/g, '\n')
+      if (newText === el.value) return
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
+    },
+
+    'eol-cr': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const newText = el.value.replace(/\r\n|\n/g, '\r')
+      if (newText === el.value) return
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
+    },
+
+    // ── Blank Operations ──────────────────────────────────────────────────
+    'trim-both': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const newText = el.value.split('\n').map((line) => line.trim()).join('\n')
+      if (newText === el.value) return
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
+    },
+
+    'trim-leading': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const newText = el.value.split('\n').map((line) => line.replace(/^\s+/, '')).join('\n')
+      if (newText === el.value) return
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
+    },
+
+    'trim-trailing': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const newText = el.value.split('\n').map((line) => line.replace(/\s+$/, '')).join('\n')
+      if (newText === el.value) return
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
+    },
+
+    'eol-to-space': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const newText = el.value.replace(/\n/g, ' ')
+      if (newText === el.value) return
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
+    },
+
+    'remove-blank-eol': () => {
+      // Remove blank/whitespace-only lines and trim trailing whitespace from remaining lines
+      const el = textareaRef.current
+      if (!el) return
+      const newText = el.value
+        .split('\n')
+        .filter((line) => line.trim() !== '')
+        .map((line) => line.replace(/\s+$/, ''))
+        .join('\n')
+      if (newText === el.value) return
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
+    },
+
+    'remove-blank': () => {
+      // Remove lines that consist entirely of whitespace
+      const el = textareaRef.current
+      if (!el) return
+      const newText = el.value
+        .split('\n')
+        .filter((line) => line.trim() !== '')
+        .join('\n')
+      if (newText === el.value) return
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
+    },
+
+    // ── Line Operations ───────────────────────────────────────────────────
+    'line-duplicate': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const value = el.value
+      const pos = el.selectionStart
+      const lineStart = value.lastIndexOf('\n', pos - 1) + 1
+      const lineEnd = value.indexOf('\n', pos)
+      const line = lineEnd === -1 ? value.substring(lineStart) : value.substring(lineStart, lineEnd)
+      const insertAt = lineEnd === -1 ? value.length : lineEnd
+      const newText = value.substring(0, insertAt) + '\n' + line + value.substring(insertAt)
+      const colInLine = pos - lineStart
+      const newPos = insertAt + 1 + colInLine
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
+      el.setSelectionRange(newPos, newPos)
+      el.focus()
+    },
+
+    'line-move-up': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const value = el.value
+      const pos = el.selectionStart
+      const lineStart = value.lastIndexOf('\n', pos - 1) + 1
+      if (lineStart === 0) return // already at first line
+      const colInLine = pos - lineStart
+      const lineEnd = value.indexOf('\n', pos)
+      const currentLine = lineEnd === -1 ? value.substring(lineStart) : value.substring(lineStart, lineEnd)
+      const prevLineEnd = lineStart - 1 // index of \n before current line
+      const prevLineStart = value.lastIndexOf('\n', prevLineEnd - 1) + 1
+      const prevLine = value.substring(prevLineStart, prevLineEnd)
+      const before = value.substring(0, prevLineStart)
+      const after = lineEnd === -1 ? '' : value.substring(lineEnd)
+      const newText = before + currentLine + '\n' + prevLine + after
+      const newPos = prevLineStart + Math.min(colInLine, currentLine.length)
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
+      el.setSelectionRange(newPos, newPos)
+      el.focus()
+    },
+
+    'line-move-down': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const value = el.value
+      const pos = el.selectionStart
+      const lineStart = value.lastIndexOf('\n', pos - 1) + 1
+      const lineEnd = value.indexOf('\n', pos)
+      if (lineEnd === -1) return // already at last line
+      const colInLine = pos - lineStart
+      const currentLine = value.substring(lineStart, lineEnd)
+      const nextLineStart = lineEnd + 1
+      const nextLineEnd = value.indexOf('\n', nextLineStart)
+      const nextLine = nextLineEnd === -1 ? value.substring(nextLineStart) : value.substring(nextLineStart, nextLineEnd)
+      const before = value.substring(0, lineStart)
+      const after = nextLineEnd === -1 ? '' : value.substring(nextLineEnd)
+      const newText = before + nextLine + '\n' + currentLine + after
+      const newPos = lineStart + nextLine.length + 1 + Math.min(colInLine, currentLine.length)
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
+      el.setSelectionRange(newPos, newPos)
+      el.focus()
+    },
+
+    'line-delete': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const value = el.value
+      const pos = el.selectionStart
+      const lineStart = value.lastIndexOf('\n', pos - 1) + 1
+      const lineEnd = value.indexOf('\n', pos)
+      let newText, newPos
+      if (lineEnd === -1) {
+        // Last line
+        newText = lineStart === 0 ? '' : value.substring(0, lineStart - 1)
+        newPos = newText.length
+      } else {
+        newText = value.substring(0, lineStart) + value.substring(lineEnd + 1)
+        newPos = lineStart
+      }
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
+      el.setSelectionRange(newPos, newPos)
+      el.focus()
+    },
+
+    'sort-asc': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const newText = el.value.split('\n').sort((a, b) => a.localeCompare(b)).join('\n')
+      if (newText === el.value) return
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
+      el.setSelectionRange(0, 0)
+      el.focus()
+    },
+
+    'sort-desc': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const newText = el.value.split('\n').sort((a, b) => b.localeCompare(a)).join('\n')
+      if (newText === el.value) return
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
+      el.setSelectionRange(0, 0)
+      el.focus()
+    },
+
+    'remove-duplicate-lines': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const seen = new Set()
+      const newText = el.value.split('\n').filter((line) => {
+        if (seen.has(line)) return false
+        seen.add(line)
+        return true
+      }).join('\n')
+      if (newText === el.value) return
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
+      el.setSelectionRange(0, 0)
+      el.focus()
+    },
+
+    'remove-empty-lines': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const newText = el.value.split('\n').filter((line) => line !== '').join('\n')
+      if (newText === el.value) return
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
+      el.setSelectionRange(0, 0)
+      el.focus()
+    },
   }), [indent, dedent, lineCount, lineHeightPx, updateCursor, updateLineCount, scrollToChar])
 
   const handleKeyDown = useCallback(

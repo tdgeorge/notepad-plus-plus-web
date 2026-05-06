@@ -251,6 +251,14 @@ export default function Home() {
   const handlePaste = useCallback(() => getActiveEditor()?.paste(), [getActiveEditor])
 
   const handleEditAction = useCallback((action) => {
+    if (action === 'copy-filename' || action === 'copy-filepath' || action === 'copy-filedir') {
+      const tab = tabsRef.current.find((t) => t.id === activeTabIdRef.current)
+      const filename = tab?.name ?? ''
+      // Browsers cannot expose the full filesystem path; copy the filename for all three variants
+      const text = action === 'copy-filedir' ? '' : filename
+      navigator.clipboard?.writeText(text).catch(() => {})
+      return
+    }
     getActiveEditor()?.[action]?.()
   }, [getActiveEditor])
 
