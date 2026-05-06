@@ -483,12 +483,19 @@ export default function Home() {
   }, [])
 
   const handleDropFiles = useCallback(async (files) => {
-    for (const file of Array.from(files)) {
+    const fileArray = Array.from(files)
+    const ids = fileArray.map(() => nextTabId++)
+    let lastId = null
+    for (let i = 0; i < fileArray.length; i++) {
+      const file = fileArray[i]
+      const id = ids[i]
       const content = await file.text()
-      const id = nextTabId++
       undoHistoryRef.current[id] = { stack: [content], index: 0, savedIndex: 0 }
       setTabs((prev) => [...prev, { id, name: file.name, content, modified: false, language: detectLanguage(file.name) }])
-      setActiveTabId(id)
+      lastId = id
+    }
+    if (lastId !== null) {
+      setActiveTabId(lastId)
     }
   }, [])
 

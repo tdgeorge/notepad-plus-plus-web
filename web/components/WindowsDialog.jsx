@@ -48,7 +48,6 @@ export default function WindowsDialog({ isOpen, tabs, view2Tabs, activeTabId, vi
                   role="option"
                   aria-selected={isActive}
                   onClick={() => { onActivate(tab.id, tab.view); onClose() }}
-                  onDoubleClick={() => { onActivate(tab.id, tab.view); onClose() }}
                 >
                   <span className={styles.tabName}>
                     {tab.modified ? `${tab.name} \u25cf` : tab.name}
