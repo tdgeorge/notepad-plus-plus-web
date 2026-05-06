@@ -5,6 +5,7 @@ import MenuBar from '../components/MenuBar'
 import Toolbar from '../components/Toolbar'
 import TabBar from '../components/TabBar'
 import Editor from '../components/Editor'
+import SplitPane from '../components/SplitPane'
 import StatusBar from '../components/StatusBar'
 import FindDialog from '../components/FindDialog'
 import GoToDialog from '../components/GoToDialog'
@@ -27,6 +28,21 @@ export default function Home() {
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1, sel: 0 })
   const editorRef = useRef(null)
   const [fileHandles, setFileHandles] = useState({})
+
+  // ── Split-view state ──────────────────────────────────────────────────────
+  const [splitEnabled, setSplitEnabled] = useState(false)
+  const [splitRatio, setSplitRatio] = useState(0.5)
+  const [view2Tabs, setView2Tabs] = useState([])
+  const [view2ActiveTabId, setView2ActiveTabId] = useState(null)
+  const [view2CursorPos, setView2CursorPos] = useState({ line: 1, col: 1, sel: 0 })
+  const [activeView, setActiveView] = useState(1) // 1 or 2
+  const secondEditorRef = useRef(null)
+
+  const view2TabsRef = useRef(view2Tabs)
+  useEffect(() => { view2TabsRef.current = view2Tabs }, [view2Tabs])
+
+  const view2ActiveTabIdRef = useRef(view2ActiveTabId)
+  useEffect(() => { view2ActiveTabIdRef.current = view2ActiveTabId }, [view2ActiveTabId])
 
   const [wordWrap, setWordWrap] = useState(false)
   const [fontSize, setFontSize] = useState(DEFAULT_FONT_SIZE)
@@ -78,7 +94,14 @@ export default function Home() {
   // Language is stored per-tab (set at file-open time or overridden via Language menu).
   const language = activeTab?.language ?? null
 
-  const viewState = { wordWrap, showWhitespace, showEol, showAllChars, showIndent, language }
+  const viewState = { wordWrap, showWhitespace, showEol, showAllChars, showIndent, language, splitEnabled }
+
+  // ── Active editor helper ──────────────────────────────────────────────────
+  // Returns the ref for whichever view is currently active.
+  const getActiveEditor = useCallback(
+    () => (activeView === 1 ? editorRef.current : secondEditorRef.current),
+    [activeView]
+  )
 
   const handleNewTab = useCallback(() => {
     const id = nextTabId++
@@ -108,21 +131,50 @@ export default function Home() {
     [activeTabId]
   )
 
+  // ── View-2 tab management ─────────────────────────────────────────────────
+  const handleCloseView2Tab = useCallback(
+    (id) => {
+      setView2Tabs((prev) => {
+        const remaining = prev.filter((t) => t.id !== id)
+        if (remaining.length === 0) {
+          setSplitEnabled(false)
+          setActiveView(1)
+        } else if (view2ActiveTabIdRef.current === id) {
+          const idx = prev.findIndex((t) => t.id === id)
+          setView2ActiveTabId(remaining[Math.min(idx, remaining.length - 1)].id)
+        }
+        return remaining
+      })
+      setFileHandles((prev) => {
+        const next = { ...prev }
+        delete next[id]
+        return next
+      })
+    },
+    []
+  )
+
   const handleContentChange = useCallback((content) => {
     setTabs((prev) =>
       prev.map((t) => (t.id === activeTabIdRef.current ? { ...t, content, modified: true } : t))
     )
   }, [])
 
-  const handleUndo = useCallback(() => editorRef.current?.undo(), [])
-  const handleRedo = useCallback(() => editorRef.current?.redo(), [])
-  const handleCut = useCallback(() => editorRef.current?.cut(), [])
-  const handleCopy = useCallback(() => editorRef.current?.copy(), [])
-  const handlePaste = useCallback(() => editorRef.current?.paste(), [])
+  const handleView2ContentChange = useCallback((content) => {
+    setView2Tabs((prev) =>
+      prev.map((t) => (t.id === view2ActiveTabIdRef.current ? { ...t, content, modified: true } : t))
+    )
+  }, [])
+
+  const handleUndo = useCallback(() => getActiveEditor()?.undo(), [getActiveEditor])
+  const handleRedo = useCallback(() => getActiveEditor()?.redo(), [getActiveEditor])
+  const handleCut = useCallback(() => getActiveEditor()?.cut(), [getActiveEditor])
+  const handleCopy = useCallback(() => getActiveEditor()?.copy(), [getActiveEditor])
+  const handlePaste = useCallback(() => getActiveEditor()?.paste(), [getActiveEditor])
 
   const handleEditAction = useCallback((action) => {
-    editorRef.current?.[action]?.()
-  }, [])
+    getActiveEditor()?.[action]?.()
+  }, [getActiveEditor])
 
   const downloadFile = useCallback((name, content) => {
     const blob = new Blob([content], { type: 'text/plain' })
@@ -331,6 +383,79 @@ export default function Home() {
   const handleZoomOut = useCallback(() => setFontSize((prev) => Math.max(prev - 1, MIN_FONT_SIZE)), [])
   const handleZoomReset = useCallback(() => setFontSize(DEFAULT_FONT_SIZE), [])
 
+  // ── Move / Clone / Focus other view ──────────────────────────────────────
+  const handleMoveToOtherView = useCallback(() => {
+    const srcView = activeView
+    const srcTabId = srcView === 1 ? activeTabIdRef.current : view2ActiveTabIdRef.current
+    const srcTabs = srcView === 1 ? tabsRef.current : view2TabsRef.current
+
+    const movedTab = srcTabs.find((t) => t.id === srcTabId)
+    if (!movedTab) return
+
+    if (srcView === 1) {
+      const remaining = srcTabs.filter((t) => t.id !== srcTabId)
+      if (remaining.length === 0) {
+        const newId = nextTabId++
+        setTabs([{ id: newId, name: `new ${newId}`, content: '', modified: false }])
+        setActiveTabId(newId)
+      } else {
+        const idx = srcTabs.findIndex((t) => t.id === srcTabId)
+        setTabs(remaining)
+        setActiveTabId(remaining[Math.min(idx, remaining.length - 1)].id)
+      }
+      setView2Tabs((prev) => [...prev, movedTab])
+      setView2ActiveTabId(srcTabId)
+      setSplitEnabled(true)
+      setActiveView(2)
+    } else {
+      const remaining = srcTabs.filter((t) => t.id !== srcTabId)
+      setView2Tabs(remaining)
+      if (remaining.length === 0) {
+        setSplitEnabled(false)
+        setActiveView(1)
+      } else {
+        const idx = srcTabs.findIndex((t) => t.id === srcTabId)
+        setView2ActiveTabId(remaining[Math.min(idx, remaining.length - 1)].id)
+      }
+      setTabs((prev) => [...prev, movedTab])
+      setActiveTabId(srcTabId)
+      setActiveView(1)
+    }
+  }, [activeView])
+
+  const handleCloneToOtherView = useCallback(() => {
+    const srcView = activeView
+    const srcTabId = srcView === 1 ? activeTabIdRef.current : view2ActiveTabIdRef.current
+    const srcTabs = srcView === 1 ? tabsRef.current : view2TabsRef.current
+
+    const srcTab = srcTabs.find((t) => t.id === srcTabId)
+    if (!srcTab) return
+
+    const newId = nextTabId++
+    const cloneTab = { ...srcTab, id: newId }
+
+    if (srcView === 1) {
+      setView2Tabs((prev) => [...prev, cloneTab])
+      setView2ActiveTabId(newId)
+    } else {
+      setTabs((prev) => [...prev, cloneTab])
+      setActiveTabId(newId)
+      setActiveView(1)
+    }
+    setSplitEnabled(true)
+  }, [activeView])
+
+  const handleFocusOtherView = useCallback(() => {
+    if (!splitEnabled) return
+    const nextView = activeView === 1 ? 2 : 1
+    setActiveView(nextView)
+    if (nextView === 2) {
+      secondEditorRef.current?.focus()
+    } else {
+      editorRef.current?.focus()
+    }
+  }, [splitEnabled, activeView])
+
   const handleViewAction = useCallback((action) => {
     switch (action) {
       case 'word-wrap':
@@ -369,10 +494,25 @@ export default function Home() {
       case 'show-indent':
         setShowIndent((prev) => !prev)
         break
+      case 'move-to-other-view':
+        handleMoveToOtherView()
+        break
+      case 'clone-to-other-view':
+        handleCloneToOtherView()
+        break
+      case 'focus-other-view':
+        handleFocusOtherView()
+        break
+      case 'fold-all':
+        getActiveEditor()?.foldAll()
+        break
+      case 'unfold-all':
+        getActiveEditor()?.unfoldAll()
+        break
       default:
         break
     }
-  }, [handleZoomIn, handleZoomOut, handleZoomReset])
+  }, [handleZoomIn, handleZoomOut, handleZoomReset, handleMoveToOtherView, handleCloneToOtherView, handleFocusOtherView, getActiveEditor])
 
   const handleLanguageAction = useCallback((action) => {
     const tabId = activeTabIdRef.current
@@ -390,44 +530,46 @@ export default function Home() {
       searchStateRef.current = { term, options }
     }
     const { term: t, options: o } = searchStateRef.current
-    return t ? (editorRef.current?.findNext(t, o) ?? false) : false
-  }, [])
+    return t ? (getActiveEditor()?.findNext(t, o) ?? false) : false
+  }, [getActiveEditor])
 
   const handleFindPrev = useCallback((term, options) => {
     if (term !== undefined) {
       searchStateRef.current = { term, options }
     }
     const { term: t, options: o } = searchStateRef.current
-    return t ? (editorRef.current?.findPrev(t, o) ?? false) : false
-  }, [])
+    return t ? (getActiveEditor()?.findPrev(t, o) ?? false) : false
+  }, [getActiveEditor])
 
   const handleReplace = useCallback((term, replacement, options) => {
     searchStateRef.current = { term, options }
-    editorRef.current?.replaceOne(term, replacement, options)
-  }, [])
+    getActiveEditor()?.replaceOne(term, replacement, options)
+  }, [getActiveEditor])
 
   const handleReplaceAll = useCallback((term, replacement, options) => {
     searchStateRef.current = { term, options }
-    return editorRef.current?.replaceAll(term, replacement, options) ?? 0
-  }, [])
+    return getActiveEditor()?.replaceAll(term, replacement, options) ?? 0
+  }, [getActiveEditor])
 
   const handleSelectAndFindNext = useCallback(() => {
-    const word = editorRef.current?.selectWordAtCursor()
+    const ed = getActiveEditor()
+    const word = ed?.selectWordAtCursor()
     if (word) {
       const options = { matchCase: false, wholeWord: false, wrapAround: true }
       searchStateRef.current = { term: word, options }
-      editorRef.current?.findNext(word, options)
+      ed?.findNext(word, options)
     }
-  }, [])
+  }, [getActiveEditor])
 
   const handleSelectAndFindPrev = useCallback(() => {
-    const word = editorRef.current?.selectWordAtCursor()
+    const ed = getActiveEditor()
+    const word = ed?.selectWordAtCursor()
     if (word) {
       const options = { matchCase: false, wholeWord: false, wrapAround: true }
       searchStateRef.current = { term: word, options }
-      editorRef.current?.findPrev(word, options)
+      ed?.findPrev(word, options)
     }
-  }, [])
+  }, [getActiveEditor])
 
   const handleSearchAction = useCallback((action) => {
     switch (action) {
@@ -458,12 +600,12 @@ export default function Home() {
         setGoToDialogOpen(true)
         break
       case 'goToMatchingBrace':
-        editorRef.current?.goToMatchingBrace()
+        getActiveEditor()?.goToMatchingBrace()
         break
       default:
         break
     }
-  }, [handleFindNext, handleFindPrev, handleSelectAndFindNext, handleSelectAndFindPrev])
+  }, [handleFindNext, handleFindPrev, handleSelectAndFindNext, handleSelectAndFindPrev, getActiveEditor])
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -538,7 +680,7 @@ export default function Home() {
         setGoToDialogOpen(true)
       } else if (ctrl && !shift && !alt && e.key === 'b') {
         e.preventDefault()
-        editorRef.current?.goToMatchingBrace()
+        getActiveEditor()?.goToMatchingBrace()
       } else if (ctrl && !shift && alt && e.key === 'i') {
         e.preventDefault()
         setIncrementalSearchOpen((v) => !v)
@@ -546,29 +688,36 @@ export default function Home() {
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [handleFindNext, handleFindPrev, handleSelectAndFindNext, handleSelectAndFindPrev])
+  }, [handleFindNext, handleFindPrev, handleSelectAndFindNext, handleSelectAndFindPrev, getActiveEditor])
 
   // Incremental search handlers - pass noFocus so the search input keeps focus
   const handleIncrementalSearch = useCallback((term) => {
     if (!term) return true
     const options = { matchCase: false, wholeWord: false, wrapAround: true, noFocus: true }
     searchStateRef.current = { term, options }
-    return editorRef.current?.findNext(term, options) ?? false
-  }, [])
+    return getActiveEditor()?.findNext(term, options) ?? false
+  }, [getActiveEditor])
 
   const handleIncrementalSearchNext = useCallback((term) => {
     if (!term) return true
     const options = { ...searchStateRef.current.options, noFocus: true }
     searchStateRef.current = { term, options }
-    return editorRef.current?.findNext(term, options) ?? false
-  }, [])
+    return getActiveEditor()?.findNext(term, options) ?? false
+  }, [getActiveEditor])
 
   const handleIncrementalSearchPrev = useCallback((term) => {
     if (!term) return true
     const options = { ...searchStateRef.current.options, noFocus: true }
     searchStateRef.current = { term, options }
-    return editorRef.current?.findPrev(term, options) ?? false
-  }, [])
+    return getActiveEditor()?.findPrev(term, options) ?? false
+  }, [getActiveEditor])
+
+  // ── Common editor props builder ───────────────────────────────────────────
+  const commonEditorProps = { wordWrap, fontSize, showWhitespace, showEol, showIndent }
+
+  const view2ActiveTab = view2Tabs.find((t) => t.id === view2ActiveTabId)
+  const displayCursorPos = activeView === 1 ? cursorPos : view2CursorPos
+  const displayLanguage = activeView === 1 ? language : (view2ActiveTab?.language ?? null)
 
   return (
     <div className={styles.app}>
@@ -594,36 +743,84 @@ export default function Home() {
         onZoomOut={handleZoomOut}
         onZoomReset={handleZoomReset}
       />
-      <TabBar
-        tabs={tabs}
-        activeTabId={activeTabId}
-        onSelect={setActiveTabId}
-        onClose={handleCloseTab}
-      />
       <IncrementalSearch
         isOpen={incrementalSearchOpen}
-        onClose={() => { setIncrementalSearchOpen(false); editorRef.current?.focus() }}
+        onClose={() => { setIncrementalSearchOpen(false); getActiveEditor()?.focus() }}
         onSearch={handleIncrementalSearch}
         onSearchNext={handleIncrementalSearchNext}
         onSearchPrev={handleIncrementalSearchPrev}
       />
-      <Editor
-        ref={editorRef}
-        content={activeTab?.content ?? ''}
-        onChange={handleContentChange}
-        onCursorChange={setCursorPos}
-        wordWrap={wordWrap}
-        fontSize={fontSize}
-        showWhitespace={showWhitespace}
-        showEol={showEol}
-        showIndent={showIndent}
-        language={language}
-      />
-      <StatusBar cursorPos={cursorPos} eol="Windows (CR LF)" encoding="UTF-8" language={language} />
+      {splitEnabled ? (
+        <SplitPane ratio={splitRatio} onRatioChange={setSplitRatio}
+          left={
+            <div
+              className={`${styles.viewPane} ${activeView === 1 ? styles.activeViewPane : ''}`}
+              onFocus={() => setActiveView(1)}
+            >
+              <TabBar
+                tabs={tabs}
+                activeTabId={activeTabId}
+                onSelect={setActiveTabId}
+                onClose={handleCloseTab}
+              />
+              <Editor
+                key={activeTabId}
+                ref={editorRef}
+                content={activeTab?.content ?? ''}
+                onChange={handleContentChange}
+                onCursorChange={setCursorPos}
+                {...commonEditorProps}
+                language={language}
+              />
+            </div>
+          }
+          right={
+            <div
+              className={`${styles.viewPane} ${activeView === 2 ? styles.activeViewPane : ''}`}
+              onFocus={() => setActiveView(2)}
+            >
+              <TabBar
+                tabs={view2Tabs}
+                activeTabId={view2ActiveTabId}
+                onSelect={setView2ActiveTabId}
+                onClose={handleCloseView2Tab}
+              />
+              <Editor
+                key={view2ActiveTabId ?? 'view2-empty'}
+                ref={secondEditorRef}
+                content={view2ActiveTab?.content ?? ''}
+                onChange={handleView2ContentChange}
+                onCursorChange={setView2CursorPos}
+                {...commonEditorProps}
+                language={view2ActiveTab?.language ?? null}
+              />
+            </div>
+          }
+        />
+      ) : (
+        <>
+          <TabBar
+            tabs={tabs}
+            activeTabId={activeTabId}
+            onSelect={setActiveTabId}
+            onClose={handleCloseTab}
+          />
+          <Editor
+            key={activeTabId}
+            ref={editorRef}
+            content={activeTab?.content ?? ''}
+            onChange={handleContentChange}
+            onCursorChange={setCursorPos}
+            {...commonEditorProps}
+            language={language}
+          />
+        </>
+      )}
+      <StatusBar cursorPos={displayCursorPos} eol="Windows (CR LF)" encoding="UTF-8" language={displayLanguage} />
       <FindDialog
         isOpen={findDialogOpen}
         mode={findDialogMode}
-        onClose={() => { setFindDialogOpen(false); editorRef.current?.focus() }}
+        onClose={() => { setFindDialogOpen(false); getActiveEditor()?.focus() }}
         onFindNext={handleFindNext}
         onFindPrev={handleFindPrev}
         onReplace={handleReplace}
@@ -632,8 +829,8 @@ export default function Home() {
       <GoToDialog
         isOpen={goToDialogOpen}
         lineCount={lineCount}
-        onClose={() => { setGoToDialogOpen(false); editorRef.current?.focus() }}
-        onGoTo={(n) => editorRef.current?.goToLine(n)}
+        onClose={() => { setGoToDialogOpen(false); getActiveEditor()?.focus() }}
+        onGoTo={(n) => getActiveEditor()?.goToLine(n)}
       />
       <AboutDialog
         isOpen={aboutDialogOpen}

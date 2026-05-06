@@ -245,8 +245,8 @@ const MENUS = [
       { label: 'Next Tab', shortcut: 'Ctrl+Tab' },
       { label: 'Previous Tab', shortcut: 'Ctrl+Shift+Tab' },
       { separator: true },
-      { label: 'Move to Other View' },
-      { label: 'Clone to Other View' },
+      { label: 'Move to Other View', action: 'move-to-other-view' },
+      { label: 'Clone to Other View', action: 'clone-to-other-view' },
       { separator: true },
       { label: 'Tab moves to right Tab Bar' },
     ],
@@ -370,6 +370,13 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
         onEditAction?.(item.action)
       } else if (menuLabel === 'View') {
         onViewAction?.(item.action)
+      } else if (menuLabel === 'Window') {
+        // Move/Clone actions use the same view handler as the View menu
+        if (item.action === 'move-to-other-view' || item.action === 'clone-to-other-view') {
+          onViewAction?.(item.action)
+        } else {
+          onFileAction?.(item.action)
+        }
       } else if (menuLabel === 'Search') {
         onSearchAction?.(item.action)
       } else if (menuLabel === 'Language') {
