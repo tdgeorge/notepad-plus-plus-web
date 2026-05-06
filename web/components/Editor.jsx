@@ -7,6 +7,13 @@ import { TOKEN } from '../lib/languages/javascript'
 
 const TAB_SIZE = 4
 
+// Files larger than this threshold (~100 KB) bypass expensive processing so they
+// remain responsive. Heavy features (syntax highlighting, fold detection) are
+// disabled and line numbers are virtualised.
+const LARGE_FILE_THRESHOLD = 100_000
+// Extra lines rendered above/below the visible viewport during virtual scrolling
+const VIRTUAL_BUFFER = 20
+
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
@@ -411,10 +418,40 @@ const Editor = forwardRef(function Editor(
   const onRedoRef = useRef(onRedo)
   useEffect(() => { onRedoRef.current = onRedo }, [onRedo])
 
+  // ── Large-file mode ───────────────────────────────────────────────────────
+  // Skip every expensive O(n) operation when the file exceeds the threshold.
+  const isLargeFile = content.length > LARGE_FILE_THRESHOLD
+
+  // Scroll-top of the textarea, tracked so we can virtualise line numbers.
+  const [editorScrollTop, setEditorScrollTop] = useState(0)
+  // Client height of the textarea, tracked so virtual rendering adjusts on resize.
+  const [editorClientHeight, setEditorClientHeight] = useState(2000)
+  // Ref-copy of isLargeFile so syncScroll (stable callback) can read it.
+  const isLargeFileRef = useRef(isLargeFile)
+  useEffect(() => { isLargeFileRef.current = isLargeFile }, [isLargeFile])
+
+  // Measure (and track) the textarea's client height so virtual rendering
+  // stays accurate even after window resize.
+  useEffect(() => {
+    const ta = textareaRef.current
+    if (!ta) return
+    setEditorClientHeight(ta.clientHeight)
+    const ro = new ResizeObserver(() => {
+      if (isLargeFileRef.current) setEditorClientHeight(ta.clientHeight)
+    })
+    ro.observe(ta)
+    return () => ro.disconnect()
+  }, []) // run once on mount; the ResizeObserver keeps it fresh
+
   // ── Fold state ────────────────────────────────────────────────────────────
   const [foldedLines, setFoldedLines] = useState(new Set())
 
-  const foldRegions = useMemo(() => computeFoldRegions(content), [content])
+  // Skip character-by-character fold scan for large files — it can block for
+  // hundreds of milliseconds on multi-MB documents.
+  const foldRegions = useMemo(
+    () => (isLargeFile ? [] : computeFoldRegions(content)),
+    [content, isLargeFile]
+  )
   const foldableMap = useMemo(() => buildFoldableMap(foldRegions), [foldRegions])
   const hiddenLines = useMemo(
     () => computeHiddenLines(foldRegions, foldedLines),
@@ -447,7 +484,10 @@ const Editor = forwardRef(function Editor(
 
   // When folds are active use the line-by-line renderer; otherwise keep the
   // original flat renderer (better whitespace-symbol support, fewer rerenders).
+  // For large files skip all of this — tokenising a multi-MB document creates
+  // millions of React nodes and makes the UI unresponsive.
   const mirrorContent = useMemo(() => {
+    if (isLargeFile) return null
     const hasFolds = foldedLines.size > 0
     if (hasFolds) {
       return renderLinesWithFolds(
@@ -463,11 +503,12 @@ const Editor = forwardRef(function Editor(
       return renderSymbols(content, { showWhitespace, showEol, showIndent })
     }
     return null
-  }, [content, tokenizeFn, showWhitespace, showEol, showIndent, foldedLines, hiddenLines, showSymbols])
+  }, [isLargeFile, content, tokenizeFn, showWhitespace, showEol, showIndent, foldedLines, hiddenLines, showSymbols])
 
   // The mirror <pre> is shown when syntax highlighting is active, any
   // whitespace / EOL / indent guide symbol is enabled, or folds are present.
-  const showMirror = showSymbols || !!tokenizeFn || foldedLines.size > 0
+  // Never shown for large files (textarea renders plain text natively).
+  const showMirror = !isLargeFile && (showSymbols || !!tokenizeFn || foldedLines.size > 0)
 
   const updateLineCount = useCallback((text) => {
     const lines = text.split('\n').length
@@ -476,12 +517,16 @@ const Editor = forwardRef(function Editor(
 
   const syncScroll = useCallback(() => {
     const ta = textareaRef.current
-    if (lineNumbersRef.current && ta) {
+    if (!ta) return
+    if (lineNumbersRef.current) {
       lineNumbersRef.current.scrollTop = ta.scrollTop
     }
-    if (mirrorRef.current && ta) {
+    if (mirrorRef.current) {
       mirrorRef.current.scrollTop = ta.scrollTop
       mirrorRef.current.scrollLeft = ta.scrollLeft
+    }
+    if (isLargeFileRef.current) {
+      setEditorScrollTop(ta.scrollTop)
     }
   }, [])
 
@@ -843,7 +888,25 @@ const Editor = forwardRef(function Editor(
           className={styles.lineNumbers}
           aria-hidden="true"
         >
-          {Array.from({ length: lineCount }, (_, i) => {
+          {isLargeFile ? (() => {
+            // Virtual rendering: only materialise the line numbers that are
+            // within (or close to) the current viewport.  Spacer divs above
+            // and below keep the total scroll height correct so that the
+            // manually-synced scrollTop from syncScroll still maps correctly.
+            const firstVisible = Math.max(0, Math.floor((editorScrollTop - 4) / lineHeightPx) - VIRTUAL_BUFFER)
+            const lastVisible = Math.min(lineCount - 1, Math.ceil((editorScrollTop + editorClientHeight) / lineHeightPx) + VIRTUAL_BUFFER)
+            const items = []
+            if (firstVisible > 0) {
+              items.push(<div key="top" style={{ height: firstVisible * lineHeightPx }} />)
+            }
+            for (let i = firstVisible; i <= lastVisible; i++) {
+              items.push(<div key={i} className={styles.lineNumber}>{i + 1}</div>)
+            }
+            if (lastVisible < lineCount - 1) {
+              items.push(<div key="bot" style={{ height: (lineCount - 1 - lastVisible) * lineHeightPx }} />)
+            }
+            return items
+          })() : Array.from({ length: lineCount }, (_, i) => {
             if (hiddenLines.has(i)) {
               return <div key={i} className={styles.lineNumberHidden} aria-hidden="true" />
             }

@@ -24,6 +24,30 @@ const DEFAULT_FONT_SIZE = 13
 const MIN_FONT_SIZE = 6
 const MAX_FONT_SIZE = 32
 
+// Cap the undo stack for large files to avoid unbounded memory growth.
+// Each entry stores a full copy of the document content.
+const LARGE_FILE_THRESHOLD = 100_000 // ~100 KB of text
+const MAX_UNDO_LARGE_FILE = 20
+
+/**
+ * Push `content` onto the undo history for `tabId`, capping the stack for
+ * large files so memory usage stays bounded.
+ */
+function pushUndoEntry(undoHistoryRef, tabId, content) {
+  const history = undoHistoryRef.current[tabId]
+  if (!history) return
+  const newStack = history.stack.slice(0, history.index + 1)
+  newStack.push(content)
+  if (content.length > LARGE_FILE_THRESHOLD && newStack.length > MAX_UNDO_LARGE_FILE) {
+    const removed = newStack.splice(0, newStack.length - MAX_UNDO_LARGE_FILE)
+    history.savedIndex = history.savedIndex >= removed.length
+      ? history.savedIndex - removed.length
+      : -1 // saved state was trimmed away; treat file as always-modified
+  }
+  history.stack = newStack
+  history.index = newStack.length - 1
+}
+
 let nextTabId = 2
 
 export default function Home() {
@@ -171,13 +195,7 @@ export default function Home() {
 
   const handleContentChange = useCallback((content) => {
     const tabId = activeTabIdRef.current
-    const history = undoHistoryRef.current[tabId]
-    if (history) {
-      const newStack = history.stack.slice(0, history.index + 1)
-      newStack.push(content)
-      history.stack = newStack
-      history.index = newStack.length - 1
-    }
+    pushUndoEntry(undoHistoryRef, tabId, content)
     setTabs((prev) =>
       prev.map((t) => (t.id === tabId ? { ...t, content, modified: true } : t))
     )
@@ -185,13 +203,7 @@ export default function Home() {
 
   const handleView2ContentChange = useCallback((content) => {
     const tabId = view2ActiveTabIdRef.current
-    const history = undoHistoryRef.current[tabId]
-    if (history) {
-      const newStack = history.stack.slice(0, history.index + 1)
-      newStack.push(content)
-      history.stack = newStack
-      history.index = newStack.length - 1
-    }
+    pushUndoEntry(undoHistoryRef, tabId, content)
     setView2Tabs((prev) =>
       prev.map((t) => (t.id === tabId ? { ...t, content, modified: true } : t))
     )
@@ -690,11 +702,17 @@ export default function Home() {
 
   const handleLanguageAction = useCallback((action) => {
     const tabId = activeTabIdRef.current
+    const tab = tabsRef.current.find((t) => t.id === tabId)
     if (action === 'lang-plain-text') {
       setTabs((prev) => prev.map((t) => (t.id === tabId ? { ...t, language: null } : t)))
     } else if (action.startsWith('lang-')) {
       const langId = action.slice(5)
       setTabs((prev) => prev.map((t) => (t.id === tabId ? { ...t, language: langId } : t)))
+      // Warn after applying the change — highlighting is disabled above the
+      // threshold so the selection will have no visual effect.
+      if (tab && tab.content.length > LARGE_FILE_THRESHOLD) {
+        window.alert('This file is too large for syntax highlighting. Language mode has been changed but highlighting will not be applied.')
+      }
     }
   }, [])
 
@@ -937,6 +955,8 @@ export default function Home() {
   const view2ActiveTab = view2Tabs.find((t) => t.id === view2ActiveTabId)
   const displayCursorPos = activeView === 1 ? cursorPos : view2CursorPos
   const displayLanguage = activeView === 1 ? language : (view2ActiveTab?.language ?? null)
+  const displayContent = activeView === 1 ? (activeTab?.content ?? '') : (view2ActiveTab?.content ?? '')
+  const displayIsLargeFile = displayContent.length > LARGE_FILE_THRESHOLD
 
   return (
     <div
@@ -1050,7 +1070,7 @@ export default function Home() {
           />
         </>
       )}
-      <StatusBar cursorPos={displayCursorPos} eol="Windows (CR LF)" encoding="UTF-8" language={displayLanguage} />
+      <StatusBar cursorPos={displayCursorPos} eol="Windows (CR LF)" encoding="UTF-8" language={displayLanguage} isLargeFile={displayIsLargeFile} />
       <FindDialog
         isOpen={findDialogOpen}
         mode={findDialogMode}

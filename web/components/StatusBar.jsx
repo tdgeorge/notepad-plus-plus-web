@@ -39,7 +39,7 @@ const LANG_LABELS = {
   gdscript: 'GDScript',
 }
 
-export default function StatusBar({ cursorPos, eol, encoding, language }) {
+export default function StatusBar({ cursorPos, eol, encoding, language, isLargeFile }) {
   const { line = 1, col = 1, sel = 0 } = cursorPos ?? {}
   const langLabel = language ? (LANG_LABELS[language] ?? language) : 'Plain Text'
 
@@ -66,6 +66,14 @@ export default function StatusBar({ cursorPos, eol, encoding, language }) {
       <div className={styles.section}>
         <span>INS</span>
       </div>
+      {isLargeFile && (
+        <>
+          <div className={styles.divider} />
+          <div className={styles.section}>
+            <span className={styles.largeFileBadge} title="Syntax highlighting and code folding are disabled for large files">Large File</span>
+          </div>
+        </>
+      )}
     </div>
   )
 }
