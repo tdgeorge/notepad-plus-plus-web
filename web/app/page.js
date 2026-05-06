@@ -24,6 +24,11 @@ const DEFAULT_FONT_SIZE = 13
 const MIN_FONT_SIZE = 6
 const MAX_FONT_SIZE = 32
 
+// Cap the undo stack for large files to avoid unbounded memory growth.
+// Each entry stores a full copy of the document content.
+const LARGE_FILE_THRESHOLD = 1_000_000 // ~1 MB of text
+const MAX_UNDO_LARGE_FILE = 20
+
 let nextTabId = 2
 
 export default function Home() {
@@ -175,6 +180,13 @@ export default function Home() {
     if (history) {
       const newStack = history.stack.slice(0, history.index + 1)
       newStack.push(content)
+      // Prevent unbounded memory growth for large files by capping the stack.
+      if (content.length > LARGE_FILE_THRESHOLD && newStack.length > MAX_UNDO_LARGE_FILE) {
+        const removed = newStack.splice(0, newStack.length - MAX_UNDO_LARGE_FILE)
+        history.savedIndex = history.savedIndex >= removed.length
+          ? history.savedIndex - removed.length
+          : -1 // saved state was trimmed away; treat file as always-modified
+      }
       history.stack = newStack
       history.index = newStack.length - 1
     }
@@ -189,6 +201,12 @@ export default function Home() {
     if (history) {
       const newStack = history.stack.slice(0, history.index + 1)
       newStack.push(content)
+      if (content.length > LARGE_FILE_THRESHOLD && newStack.length > MAX_UNDO_LARGE_FILE) {
+        const removed = newStack.splice(0, newStack.length - MAX_UNDO_LARGE_FILE)
+        history.savedIndex = history.savedIndex >= removed.length
+          ? history.savedIndex - removed.length
+          : -1
+      }
       history.stack = newStack
       history.index = newStack.length - 1
     }
