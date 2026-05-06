@@ -11,6 +11,9 @@ import GoToDialog from '../components/GoToDialog'
 import IncrementalSearch from '../components/IncrementalSearch'
 import AboutDialog from '../components/AboutDialog'
 import StyleConfiguratorDialog from '../components/StyleConfiguratorDialog'
+import ToolsHashDialog from '../components/ToolsHashDialog'
+import ToolsRandomDialog from '../components/ToolsRandomDialog'
+import { md5 } from '../lib/md5'
 import { applyTheme, DEFAULT_THEME_ID } from '../lib/themes'
 import { detectLanguage } from '../lib/languages/index'
 import styles from './page.module.css'
@@ -45,6 +48,10 @@ export default function Home() {
   const [incrementalSearchOpen, setIncrementalSearchOpen] = useState(false)
   const [aboutDialogOpen, setAboutDialogOpen] = useState(false)
   const [styleConfiguratorOpen, setStyleConfiguratorOpen] = useState(false)
+  const [toolsHashDialogOpen, setToolsHashDialogOpen] = useState(false)
+  const [toolsHashAlgorithm, setToolsHashAlgorithm] = useState('MD5')
+  const [toolsHashInitialText, setToolsHashInitialText] = useState('')
+  const [toolsRandomDialogOpen, setToolsRandomDialogOpen] = useState(false)
   const [themeId, setThemeId] = useState(DEFAULT_THEME_ID)
   const searchStateRef = useRef({ term: '', options: { matchCase: false, wholeWord: false, wrapAround: true } })
 
@@ -431,6 +438,44 @@ export default function Home() {
     }
   }, [])
 
+  const computeSha256 = useCallback(async (text) => {
+    const enc = new TextEncoder()
+    const data = enc.encode(text)
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+    const hashArray = Array.from(new Uint8Array(hashBuffer))
+    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+  }, [])
+
+  const handleToolsAction = useCallback(async (action) => {
+    if (action === 'tools-random') {
+      setToolsRandomDialogOpen(true)
+      return
+    }
+    const isFromSelection = action.endsWith('-from-selection')
+    const isFromClipboard = action.endsWith('-from-clipboard')
+    const algorithm = action.startsWith('md5') ? 'MD5' : 'SHA-256'
+
+    if (isFromSelection) {
+      const selected = editorRef.current?.getSelectedText?.() ?? ''
+      const hash = algorithm === 'MD5' ? md5(selected) : await computeSha256(selected)
+      navigator.clipboard.writeText(hash)
+      return
+    }
+
+    let initialText = ''
+    if (isFromClipboard) {
+      try {
+        initialText = await navigator.clipboard.readText()
+      } catch (_) {
+        initialText = ''
+      }
+    }
+
+    setToolsHashAlgorithm(algorithm)
+    setToolsHashInitialText(initialText)
+    setToolsHashDialogOpen(true)
+  }, [computeSha256])
+
   // Search handlers
   const handleFindNext = useCallback((term, options) => {
     if (term !== undefined) {
@@ -625,6 +670,7 @@ export default function Home() {
         onViewAction={handleViewAction}
         onSearchAction={handleSearchAction}
         onLanguageAction={handleLanguageAction}
+        onToolsAction={handleToolsAction}
         viewState={viewState}
       />
       <Toolbar
@@ -695,6 +741,16 @@ export default function Home() {
         currentThemeId={themeId}
         onApply={(id) => setThemeId(id)}
         onClose={() => setStyleConfiguratorOpen(false)}
+      />
+      <ToolsHashDialog
+        isOpen={toolsHashDialogOpen}
+        algorithm={toolsHashAlgorithm}
+        initialText={toolsHashInitialText}
+        onClose={() => setToolsHashDialogOpen(false)}
+      />
+      <ToolsRandomDialog
+        isOpen={toolsRandomDialogOpen}
+        onClose={() => setToolsRandomDialogOpen(false)}
       />
     </div>
   )

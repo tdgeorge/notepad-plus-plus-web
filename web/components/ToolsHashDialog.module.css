@@ -1,0 +1,136 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dialog {
+  background: var(--dialog-bg);
+  border: 1px solid var(--chrome-border);
+  box-shadow: var(--dialog-shadow);
+  border-radius: var(--dialog-radius);
+  min-width: 380px;
+  max-width: 90vw;
+  font-size: 12px;
+  overflow: hidden;
+}
+
+.titleBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--chrome-bg-title);
+  border-bottom: 1px solid var(--chrome-border);
+  padding: 4px 8px;
+  font-weight: bold;
+  color: var(--chrome-text);
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  color: var(--chrome-text-subtle);
+}
+
+.closeBtn:hover {
+  color: var(--chrome-text);
+}
+
+.body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 12px;
+  color: var(--chrome-text-muted);
+}
+
+.textarea {
+  padding: 4px 6px;
+  font-size: 12px;
+  font-family: monospace;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  border-radius: var(--ui-radius);
+  width: 100%;
+  box-sizing: border-box;
+  color: var(--chrome-text);
+  resize: vertical;
+  min-height: 70px;
+}
+
+.resultRow {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.resultInput {
+  flex: 1;
+  padding: 3px 6px;
+  font-size: 12px;
+  font-family: monospace;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  border-radius: var(--ui-radius);
+  color: var(--chrome-text);
+  box-sizing: border-box;
+}
+
+.copyBtn {
+  padding: 3px 12px;
+  font-size: 12px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: var(--ui-radius);
+  cursor: pointer;
+  color: var(--btn-text);
+  white-space: nowrap;
+}
+
+.copyBtn:hover:not(:disabled) {
+  background: var(--btn-hover-bg);
+}
+
+.copyBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.copyBtn.copied {
+  color: var(--accent, #007acc);
+}
+
+.buttons {
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--chrome-border-light);
+  justify-content: flex-end;
+}
+
+.btn {
+  padding: 3px 16px;
+  font-size: 12px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: var(--ui-radius);
+  cursor: pointer;
+  min-width: 54px;
+  color: var(--btn-text);
+}
+
+.btn:hover {
+  background: var(--btn-hover-bg);
+}
