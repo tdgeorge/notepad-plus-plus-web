@@ -254,10 +254,10 @@ const MENUS = [
   {
     label: 'Window',
     items: [
-      { label: 'Windows...' },
+      { label: 'Windows...', action: 'windows' },
       { separator: true },
-      { label: 'Next Tab', shortcut: 'Ctrl+Tab' },
-      { label: 'Previous Tab', shortcut: 'Ctrl+Shift+Tab' },
+      { label: 'Next Tab', shortcut: 'Ctrl+Tab', action: 'nextTab' },
+      { label: 'Previous Tab', shortcut: 'Ctrl+Shift+Tab', action: 'prevTab' },
       { separator: true },
       { label: 'Move to Other View', action: 'move-to-other-view' },
       { label: 'Clone to Other View', action: 'clone-to-other-view' },
