@@ -197,10 +197,24 @@ const MENUS = [
   {
     label: 'Tools',
     items: [
-      { label: 'MD5' },
-      { label: 'SHA-256' },
+      {
+        label: 'MD5',
+        submenu: [
+          { label: 'Generate', action: 'md5-generate' },
+          { label: 'Generate into clipboard from selection', action: 'md5-from-selection' },
+          { label: 'Generate from clipboard', action: 'md5-from-clipboard' },
+        ],
+      },
+      {
+        label: 'SHA-256',
+        submenu: [
+          { label: 'Generate', action: 'sha256-generate' },
+          { label: 'Generate into clipboard from selection', action: 'sha256-from-selection' },
+          { label: 'Generate from clipboard', action: 'sha256-from-clipboard' },
+        ],
+      },
       { separator: true },
-      { label: 'Generate Random Number' },
+      { label: 'Generate Random Number', action: 'tools-random' },
     ],
   },
   {
@@ -261,7 +275,7 @@ const MENUS = [
   },
 ]
 
-export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSearchAction, onLanguageAction, viewState }) {
+export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSearchAction, onLanguageAction, onToolsAction, viewState }) {
   const [openMenu, setOpenMenu] = useState(null)
   const [openSubmenu, setOpenSubmenu] = useState(null)
   const [dropdownPos, setDropdownPos] = useState(null)   // { top, left } for portal dropdown
@@ -381,6 +395,8 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
         onSearchAction?.(item.action)
       } else if (menuLabel === 'Language') {
         onLanguageAction?.(item.action)
+      } else if (menuLabel === 'Tools') {
+        onToolsAction?.(item.action)
       } else if (menuLabel === '?') {
         if (item.action === 'github') {
           window.open('https://github.com/tdgeorge/notepad-plus-plus-web', '_blank', 'noopener,noreferrer')

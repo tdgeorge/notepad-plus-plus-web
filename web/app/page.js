@@ -12,6 +12,9 @@ import GoToDialog from '../components/GoToDialog'
 import IncrementalSearch from '../components/IncrementalSearch'
 import AboutDialog from '../components/AboutDialog'
 import StyleConfiguratorDialog from '../components/StyleConfiguratorDialog'
+import ToolsHashDialog from '../components/ToolsHashDialog'
+import ToolsRandomDialog from '../components/ToolsRandomDialog'
+import { md5 } from '../lib/md5'
 import { applyTheme, DEFAULT_THEME_ID } from '../lib/themes'
 import { detectLanguage } from '../lib/languages/index'
 import styles from './page.module.css'
@@ -44,6 +47,9 @@ export default function Home() {
   const view2ActiveTabIdRef = useRef(view2ActiveTabId)
   useEffect(() => { view2ActiveTabIdRef.current = view2ActiveTabId }, [view2ActiveTabId])
 
+  // Per-tab undo/redo history: { [tabId]: { stack: string[], index: number, savedIndex: number } }
+  const undoHistoryRef = useRef({ 1: { stack: [''], index: 0, savedIndex: 0 } })
+
   const [wordWrap, setWordWrap] = useState(false)
   const [fontSize, setFontSize] = useState(DEFAULT_FONT_SIZE)
   const [showWhitespace, setShowWhitespace] = useState(false)
@@ -58,6 +64,10 @@ export default function Home() {
   const [incrementalSearchOpen, setIncrementalSearchOpen] = useState(false)
   const [aboutDialogOpen, setAboutDialogOpen] = useState(false)
   const [styleConfiguratorOpen, setStyleConfiguratorOpen] = useState(false)
+  const [toolsHashDialogOpen, setToolsHashDialogOpen] = useState(false)
+  const [toolsHashAlgorithm, setToolsHashAlgorithm] = useState('MD5')
+  const [toolsHashInitialText, setToolsHashInitialText] = useState('')
+  const [toolsRandomDialogOpen, setToolsRandomDialogOpen] = useState(false)
   const [themeId, setThemeId] = useState(DEFAULT_THEME_ID)
   const searchStateRef = useRef({ term: '', options: { matchCase: false, wholeWord: false, wrapAround: true } })
 
@@ -106,6 +116,7 @@ export default function Home() {
   const handleNewTab = useCallback(() => {
     const id = nextTabId++
     const name = `new ${id}`
+    undoHistoryRef.current[id] = { stack: [''], index: 0, savedIndex: 0 }
     setTabs((prev) => [...prev, { id, name, content: '', modified: false, language: null }])
     setActiveTabId(id)
   }, [])
@@ -127,6 +138,7 @@ export default function Home() {
         delete next[id]
         return next
       })
+      delete undoHistoryRef.current[id]
     },
     [activeTabId]
   )
@@ -155,19 +167,70 @@ export default function Home() {
   )
 
   const handleContentChange = useCallback((content) => {
+    const tabId = activeTabIdRef.current
+    const history = undoHistoryRef.current[tabId]
+    if (history) {
+      const newStack = history.stack.slice(0, history.index + 1)
+      newStack.push(content)
+      history.stack = newStack
+      history.index = newStack.length - 1
+    }
     setTabs((prev) =>
-      prev.map((t) => (t.id === activeTabIdRef.current ? { ...t, content, modified: true } : t))
+      prev.map((t) => (t.id === tabId ? { ...t, content, modified: true } : t))
     )
   }, [])
 
   const handleView2ContentChange = useCallback((content) => {
+    const tabId = view2ActiveTabIdRef.current
+    const history = undoHistoryRef.current[tabId]
+    if (history) {
+      const newStack = history.stack.slice(0, history.index + 1)
+      newStack.push(content)
+      history.stack = newStack
+      history.index = newStack.length - 1
+    }
     setView2Tabs((prev) =>
-      prev.map((t) => (t.id === view2ActiveTabIdRef.current ? { ...t, content, modified: true } : t))
+      prev.map((t) => (t.id === tabId ? { ...t, content, modified: true } : t))
     )
   }, [])
 
-  const handleUndo = useCallback(() => getActiveEditor()?.undo(), [getActiveEditor])
-  const handleRedo = useCallback(() => getActiveEditor()?.redo(), [getActiveEditor])
+  const handleUndo = useCallback(() => {
+    const isView1 = activeView === 1
+    const tabId = isView1 ? activeTabIdRef.current : view2ActiveTabIdRef.current
+    const history = undoHistoryRef.current[tabId]
+    if (!history || history.index <= 0) return
+    history.index--
+    const content = history.stack[history.index]
+    const modified = history.index !== history.savedIndex
+    if (isView1) {
+      setTabs((prev) =>
+        prev.map((t) => (t.id === tabId ? { ...t, content, modified } : t))
+      )
+    } else {
+      setView2Tabs((prev) =>
+        prev.map((t) => (t.id === tabId ? { ...t, content, modified } : t))
+      )
+    }
+  }, [activeView])
+
+  const handleRedo = useCallback(() => {
+    const isView1 = activeView === 1
+    const tabId = isView1 ? activeTabIdRef.current : view2ActiveTabIdRef.current
+    const history = undoHistoryRef.current[tabId]
+    if (!history || history.index >= history.stack.length - 1) return
+    history.index++
+    const content = history.stack[history.index]
+    const modified = history.index !== history.savedIndex
+    if (isView1) {
+      setTabs((prev) =>
+        prev.map((t) => (t.id === tabId ? { ...t, content, modified } : t))
+      )
+    } else {
+      setView2Tabs((prev) =>
+        prev.map((t) => (t.id === tabId ? { ...t, content, modified } : t))
+      )
+    }
+  }, [activeView])
   const handleCut = useCallback(() => getActiveEditor()?.cut(), [getActiveEditor])
   const handleCopy = useCallback(() => getActiveEditor()?.copy(), [getActiveEditor])
   const handlePaste = useCallback(() => getActiveEditor()?.paste(), [getActiveEditor])
@@ -200,6 +263,7 @@ export default function Home() {
           const file = await handle.getFile()
           const content = await file.text()
           const id = nextTabId++
+          undoHistoryRef.current[id] = { stack: [content], index: 0, savedIndex: 0 }
           setTabs((prev) => [...prev, { id, name: file.name, content, modified: false, language: detectLanguage(file.name) }])
           setFileHandles((prev) => ({ ...prev, [id]: handle }))
           setActiveTabId(id)
@@ -215,6 +279,7 @@ export default function Home() {
         for (const file of Array.from(e.target.files)) {
           const content = await file.text()
           const id = nextTabId++
+          undoHistoryRef.current[id] = { stack: [content], index: 0, savedIndex: 0 }
           setTabs((prev) => [...prev, { id, name: file.name, content, modified: false, language: detectLanguage(file.name) }])
           setActiveTabId(id)
         }
@@ -235,6 +300,8 @@ export default function Home() {
         await writeToHandle(handle, tab.content)
         const savedFile = await handle.getFile()
         setFileHandles((prev) => ({ ...prev, [tab.id]: handle }))
+        const history = undoHistoryRef.current[tab.id]
+        if (history) history.savedIndex = history.index
         setTabs((prev) =>
           prev.map((t) => (t.id === tab.id ? { ...t, name: savedFile.name, modified: false } : t))
         )
@@ -243,6 +310,8 @@ export default function Home() {
       }
     } else {
       downloadFile(tab.name, tab.content)
+      const history = undoHistoryRef.current[tab.id]
+      if (history) history.savedIndex = history.index
       setTabs((prev) =>
         prev.map((t) => (t.id === tab.id ? { ...t, modified: false } : t))
       )
@@ -256,6 +325,8 @@ export default function Home() {
     if (handle) {
       try {
         await writeToHandle(handle, tab.content)
+        const history = undoHistoryRef.current[tab.id]
+        if (history) history.savedIndex = history.index
         setTabs((prev) =>
           prev.map((t) => (t.id === tab.id ? { ...t, modified: false } : t))
         )
@@ -294,6 +365,8 @@ export default function Home() {
       if (handle) {
         try {
           await writeToHandle(handle, tab.content)
+          const history = undoHistoryRef.current[tab.id]
+          if (history) history.savedIndex = history.index
           setTabs((prev) =>
             prev.map((t) => (t.id === tab.id ? { ...t, modified: false } : t))
           )
@@ -302,6 +375,8 @@ export default function Home() {
         }
       } else {
         downloadFile(tab.name, tab.content)
+        const history = undoHistoryRef.current[tab.id]
+        if (history) history.savedIndex = history.index
         setTabs((prev) =>
           prev.map((t) => (t.id === tab.id ? { ...t, modified: false } : t))
         )
@@ -317,6 +392,7 @@ export default function Home() {
     try {
       const file = await handle.getFile()
       const content = await file.text()
+      undoHistoryRef.current[tab.id] = { stack: [content], index: 0, savedIndex: 0 }
       setTabs((prev) =>
         prev.map((t) => (t.id === tab.id ? { ...t, content, modified: false } : t))
       )
@@ -433,6 +509,7 @@ export default function Home() {
 
     const newId = nextTabId++
     const cloneTab = { ...srcTab, id: newId }
+    undoHistoryRef.current[newId] = { stack: [srcTab.content], index: 0, savedIndex: 0 }
 
     if (srcView === 1) {
       setView2Tabs((prev) => [...prev, cloneTab])
@@ -523,6 +600,44 @@ export default function Home() {
       setTabs((prev) => prev.map((t) => (t.id === tabId ? { ...t, language: langId } : t)))
     }
   }, [])
+
+  const computeSha256 = useCallback(async (text) => {
+    const enc = new TextEncoder()
+    const data = enc.encode(text)
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+    const hashArray = Array.from(new Uint8Array(hashBuffer))
+    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+  }, [])
+
+  const handleToolsAction = useCallback(async (action) => {
+    if (action === 'tools-random') {
+      setToolsRandomDialogOpen(true)
+      return
+    }
+    const isFromSelection = action.endsWith('-from-selection')
+    const isFromClipboard = action.endsWith('-from-clipboard')
+    const algorithm = action.startsWith('md5') ? 'MD5' : 'SHA-256'
+
+    if (isFromSelection) {
+      const selected = editorRef.current?.getSelectedText?.() ?? ''
+      const hash = algorithm === 'MD5' ? md5(selected) : await computeSha256(selected)
+      navigator.clipboard.writeText(hash)
+      return
+    }
+
+    let initialText = ''
+    if (isFromClipboard) {
+      try {
+        initialText = await navigator.clipboard.readText()
+      } catch (_) {
+        initialText = ''
+      }
+    }
+
+    setToolsHashAlgorithm(algorithm)
+    setToolsHashInitialText(initialText)
+    setToolsHashDialogOpen(true)
+  }, [computeSha256])
 
   // Search handlers
   const handleFindNext = useCallback((term, options) => {
@@ -713,7 +828,7 @@ export default function Home() {
   }, [getActiveEditor])
 
   // ── Common editor props builder ───────────────────────────────────────────
-  const commonEditorProps = { wordWrap, fontSize, showWhitespace, showEol, showIndent }
+  const commonEditorProps = { wordWrap, fontSize, showWhitespace, showEol, showIndent, onUndo: handleUndo, onRedo: handleRedo }
 
   const view2ActiveTab = view2Tabs.find((t) => t.id === view2ActiveTabId)
   const displayCursorPos = activeView === 1 ? cursorPos : view2CursorPos
@@ -727,6 +842,7 @@ export default function Home() {
         onViewAction={handleViewAction}
         onSearchAction={handleSearchAction}
         onLanguageAction={handleLanguageAction}
+        onToolsAction={handleToolsAction}
         viewState={viewState}
       />
       <Toolbar
@@ -739,6 +855,8 @@ export default function Home() {
         onCut={handleCut}
         onCopy={handleCopy}
         onPaste={handlePaste}
+        onFind={() => { setFindDialogMode('find'); setFindDialogOpen(true) }}
+        onReplace={() => { setFindDialogMode('replace'); setFindDialogOpen(true) }}
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
         onZoomReset={handleZoomReset}
@@ -843,6 +961,16 @@ export default function Home() {
         currentThemeId={themeId}
         onApply={(id) => setThemeId(id)}
         onClose={() => setStyleConfiguratorOpen(false)}
+      />
+      <ToolsHashDialog
+        isOpen={toolsHashDialogOpen}
+        algorithm={toolsHashAlgorithm}
+        initialText={toolsHashInitialText}
+        onClose={() => setToolsHashDialogOpen(false)}
+      />
+      <ToolsRandomDialog
+        isOpen={toolsRandomDialogOpen}
+        onClose={() => setToolsRandomDialogOpen(false)}
       />
     </div>
   )
