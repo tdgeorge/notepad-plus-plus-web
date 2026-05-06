@@ -14,6 +14,7 @@ import AboutDialog from '../components/AboutDialog'
 import StyleConfiguratorDialog from '../components/StyleConfiguratorDialog'
 import ToolsHashDialog from '../components/ToolsHashDialog'
 import ToolsRandomDialog from '../components/ToolsRandomDialog'
+import WindowsDialog from '../components/WindowsDialog'
 import { md5 } from '../lib/md5'
 import { applyTheme, DEFAULT_THEME_ID } from '../lib/themes'
 import { detectLanguage } from '../lib/languages/index'
@@ -69,6 +70,8 @@ export default function Home() {
   const [toolsHashInitialText, setToolsHashInitialText] = useState('')
   const [toolsRandomDialogOpen, setToolsRandomDialogOpen] = useState(false)
   const [themeId, setThemeId] = useState(DEFAULT_THEME_ID)
+  const [windowsDialogOpen, setWindowsDialogOpen] = useState(false)
+  const [isDragOver, setIsDragOver] = useState(false)
   const searchStateRef = useRef({ term: '', options: { matchCase: false, wholeWord: false, wrapAround: true } })
 
   // Load persisted theme on mount and apply it
@@ -421,12 +424,103 @@ export default function Home() {
   }, [])
 
   const handleNewWindow = useCallback(() => {
-    window.open(window.location.href, '_blank')
+    const url = window.location.href
+    const isAppMode =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.matchMedia('(display-mode: window-controls-overlay)').matches ||
+      window.navigator.standalone === true
+    if (isAppMode) {
+      window.open(url, '_blank')
+    } else {
+      window.open(url, '_blank', 'noopener,noreferrer,width=1200,height=800')
+    }
   }, [])
 
   const handleExit = useCallback(() => {
     window.close()
   }, [])
+
+  const handleNextTab = useCallback(() => {
+    if (activeView === 1) {
+      const currentTabs = tabsRef.current
+      const idx = currentTabs.findIndex((t) => t.id === activeTabIdRef.current)
+      if (idx === -1 || currentTabs.length <= 1) return
+      const nextIdx = (idx + 1) % currentTabs.length
+      setActiveTabId(currentTabs[nextIdx].id)
+    } else {
+      const currentTabs = view2TabsRef.current
+      const idx = currentTabs.findIndex((t) => t.id === view2ActiveTabIdRef.current)
+      if (idx === -1 || currentTabs.length <= 1) return
+      const nextIdx = (idx + 1) % currentTabs.length
+      setView2ActiveTabId(currentTabs[nextIdx].id)
+    }
+  }, [activeView])
+
+  const handlePrevTab = useCallback(() => {
+    if (activeView === 1) {
+      const currentTabs = tabsRef.current
+      const idx = currentTabs.findIndex((t) => t.id === activeTabIdRef.current)
+      if (idx === -1 || currentTabs.length <= 1) return
+      const prevIdx = (idx - 1 + currentTabs.length) % currentTabs.length
+      setActiveTabId(currentTabs[prevIdx].id)
+    } else {
+      const currentTabs = view2TabsRef.current
+      const idx = currentTabs.findIndex((t) => t.id === view2ActiveTabIdRef.current)
+      if (idx === -1 || currentTabs.length <= 1) return
+      const prevIdx = (idx - 1 + currentTabs.length) % currentTabs.length
+      setView2ActiveTabId(currentTabs[prevIdx].id)
+    }
+  }, [activeView])
+
+  const handleWindowsActivate = useCallback((tabId, view) => {
+    if (view === 2) {
+      setActiveView(2)
+      setView2ActiveTabId(tabId)
+    } else {
+      setActiveView(1)
+      setActiveTabId(tabId)
+    }
+  }, [])
+
+  const handleDropFiles = useCallback(async (files) => {
+    const fileArray = Array.from(files)
+    const ids = fileArray.map(() => nextTabId++)
+    let lastId = null
+    for (let i = 0; i < fileArray.length; i++) {
+      const file = fileArray[i]
+      const id = ids[i]
+      const content = await file.text()
+      undoHistoryRef.current[id] = { stack: [content], index: 0, savedIndex: 0 }
+      setTabs((prev) => [...prev, { id, name: file.name, content, modified: false, language: detectLanguage(file.name) }])
+      lastId = id
+    }
+    if (lastId !== null) {
+      setActiveTabId(lastId)
+    }
+  }, [])
+
+  const handleDragOver = useCallback((e) => {
+    if (e.dataTransfer.types.includes('Files')) {
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'copy'
+      setIsDragOver(true)
+    }
+  }, [])
+
+  const handleDragLeave = useCallback((e) => {
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setIsDragOver(false)
+    }
+  }, [])
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault()
+    setIsDragOver(false)
+    const files = e.dataTransfer.files
+    if (files && files.length > 0) {
+      handleDropFiles(files)
+    }
+  }, [handleDropFiles])
 
   const handleFileAction = useCallback(
     (action) => {
@@ -445,13 +539,16 @@ export default function Home() {
         case 'exit': handleExit(); break
         case 'about': setAboutDialogOpen(true); break
         case 'styleConfigurator': setStyleConfiguratorOpen(true); break
+        case 'windows': setWindowsDialogOpen(true); break
+        case 'nextTab': handleNextTab(); break
+        case 'prevTab': handlePrevTab(); break
         default: break
       }
     },
     [
       handleNewTab, handleNewWindow, handleOpen, handleReload, handleSave,
       handleSaveAs, handleSaveCopyAs, handleSaveAll, handleRename,
-      handleCloseActive, handlePrint, handleExit,
+      handleCloseActive, handlePrint, handleExit, handleNextTab, handlePrevTab,
     ]
   )
 
@@ -758,11 +855,18 @@ export default function Home() {
         } else {
           document.exitFullscreen?.()
         }
+      } else if (ctrl && !e.altKey && e.key === 'Tab') {
+        e.preventDefault()
+        if (e.shiftKey) {
+          handlePrevTab()
+        } else {
+          handleNextTab()
+        }
       }
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [handleNewTab, handleNewWindow, handleOpen, handleSave, handleSaveAs, handleSaveAll, handlePrint])
+  }, [handleNewTab, handleNewWindow, handleOpen, handleSave, handleSaveAs, handleSaveAll, handlePrint, handleNextTab, handlePrevTab])
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -835,7 +939,17 @@ export default function Home() {
   const displayLanguage = activeView === 1 ? language : (view2ActiveTab?.language ?? null)
 
   return (
-    <div className={styles.app}>
+    <div
+      className={`${styles.app} ${isDragOver ? styles.dragOver : ''}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {isDragOver && (
+        <div className={styles.dragOverlay} aria-hidden="true">
+          <span className={styles.dragOverlayText}>Drop files to open</span>
+        </div>
+      )}
       <MenuBar
         onFileAction={handleFileAction}
         onEditAction={handleEditAction}
@@ -971,6 +1085,15 @@ export default function Home() {
       <ToolsRandomDialog
         isOpen={toolsRandomDialogOpen}
         onClose={() => setToolsRandomDialogOpen(false)}
+      />
+      <WindowsDialog
+        isOpen={windowsDialogOpen}
+        tabs={tabs}
+        view2Tabs={view2Tabs}
+        activeTabId={activeTabId}
+        view2ActiveTabId={view2ActiveTabId}
+        onActivate={handleWindowsActivate}
+        onClose={() => setWindowsDialogOpen(false)}
       />
     </div>
   )

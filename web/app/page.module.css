@@ -6,6 +6,32 @@
   overflow: hidden;
 }
 
+.dragOver {
+  outline: 3px dashed var(--accent);
+  outline-offset: -3px;
+}
+
+.dragOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 500;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.dragOverlayText {
+  background: var(--dialog-bg);
+  border: 2px dashed var(--accent);
+  border-radius: var(--dialog-radius, 4px);
+  padding: 24px 48px;
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--accent);
+}
+
 /* ── Split-view pane containers ──────────────────────────────────────────── */
 .viewPane {
   display: flex;
