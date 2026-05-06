@@ -39,6 +39,12 @@
   cursor: default;
 }
 
+.active {
+  background: var(--btn-hover-bg);
+  border-color: var(--chrome-border);
+  color: var(--accent);
+}
+
 .separator {
   width: 1px;
   height: 20px;

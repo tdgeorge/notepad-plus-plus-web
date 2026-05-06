@@ -98,6 +98,11 @@
   color: var(--accent-text);
 }
 
+.disabledItem {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
 .checkmark {
   display: inline-block;
   width: 20px;
