@@ -1,0 +1,31 @@
+.container {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  overflow: hidden;
+}
+
+.container.dragging {
+  cursor: col-resize;
+  user-select: none;
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.divider {
+  width: 4px;
+  background: var(--chrome-border);
+  cursor: col-resize;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.divider:hover,
+.container.dragging .divider {
+  background: var(--accent);
+}

@@ -17,18 +17,51 @@
 .lineNumbers {
   background: var(--editor-gutter-bg);
   border-right: 1px solid var(--editor-gutter-border);
-  padding: 4px 6px;
+  padding: 4px 6px 4px 20px;
   text-align: right;
   color: var(--editor-gutter-fg);
-  min-width: 44px;
+  min-width: 58px;
   overflow: hidden;
   user-select: none;
   flex-shrink: 0;
 }
 
 .lineNumber {
-  height: 19.5px; /* overridden by inline style when font size changes */
-  line-height: 19.5px;
+  position: relative;
+  line-height: inherit;
+}
+
+.lineNumberHidden {
+  height: 0;
+  overflow: hidden;
+}
+
+/* ── Fold gutter buttons ──────────────────────────────────────────────────── */
+.foldBtn {
+  position: absolute;
+  left: -16px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+  padding: 0;
+  font-size: 10px;
+  line-height: 1;
+  background: var(--editor-gutter-bg);
+  border: 1px solid var(--editor-gutter-fg);
+  border-radius: 2px;
+  color: var(--editor-gutter-fg);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.foldBtn:hover {
+  background: var(--chrome-hover);
+  color: var(--chrome-text);
+  border-color: var(--chrome-text);
 }
 
 .textareaWrapper {
@@ -91,6 +124,27 @@
 
 .symIndent {
   color: #c8c8c8;
+}
+
+/* ── Fold-aware mirror line rendering ────────────────────────────────────────
+   When fold regions are active, the mirror renders each line as a display:block
+   span so hidden lines can be collapsed to zero height. */
+.mirrorLine {
+  display: block;
+  height: 1lh;
+  overflow: hidden;
+  white-space: pre;
+}
+
+.hiddenLine {
+  display: block;
+  height: 0;
+  overflow: hidden;
+}
+
+.foldEllipsis {
+  color: var(--editor-gutter-fg);
+  font-style: italic;
 }
 
 /* ── Syntax-highlight token colours ──────────────────────────────────────────
