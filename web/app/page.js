@@ -443,8 +443,28 @@ export default function Home() {
   }, [handleCloseTab])
 
   const handlePrint = useCallback(() => {
-    window.print()
-  }, [])
+    const isView1 = activeView === 1
+    const currentTabId = isView1 ? activeTabIdRef.current : view2ActiveTabIdRef.current
+    const currentTabs = isView1 ? tabsRef.current : view2TabsRef.current
+    const tab = currentTabs.find((t) => t.id === currentTabId)
+    const content = tab?.content ?? ''
+    const name = tab?.name ?? 'document'
+    const printWindow = window.open('', '_blank')
+    if (!printWindow) return
+    const escaped = content
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+    printWindow.document.write(
+      `<!DOCTYPE html><html><head><title>${name}</title>` +
+      `<style>body{margin:1cm;font-family:monospace;white-space:pre-wrap;word-wrap:break-word;}</style>` +
+      `</head><body><pre>${escaped}</pre></body></html>`
+    )
+    printWindow.document.close()
+    printWindow.focus()
+    printWindow.onafterprint = () => printWindow.close()
+    printWindow.print()
+  }, [activeView])
 
   const handleNewWindow = useCallback(() => {
     const url = window.location.href
