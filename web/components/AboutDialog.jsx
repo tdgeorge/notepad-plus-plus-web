@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react'
 import styles from './AboutDialog.module.css'
 
-const VERSION = '0.1.0'
+const VERSION = '1.0.0'
 const GITHUB_URL = 'https://github.com/tdgeorge/notepad-plus-plus-web'
 
 export default function AboutDialog({ isOpen, onClose }) {
