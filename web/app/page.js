@@ -29,6 +29,25 @@ const MAX_FONT_SIZE = 32
 const LARGE_FILE_THRESHOLD = 1_000_000 // ~1 MB of text
 const MAX_UNDO_LARGE_FILE = 20
 
+/**
+ * Push `content` onto the undo history for `tabId`, capping the stack for
+ * large files so memory usage stays bounded.
+ */
+function pushUndoEntry(undoHistoryRef, tabId, content) {
+  const history = undoHistoryRef.current[tabId]
+  if (!history) return
+  const newStack = history.stack.slice(0, history.index + 1)
+  newStack.push(content)
+  if (content.length > LARGE_FILE_THRESHOLD && newStack.length > MAX_UNDO_LARGE_FILE) {
+    const removed = newStack.splice(0, newStack.length - MAX_UNDO_LARGE_FILE)
+    history.savedIndex = history.savedIndex >= removed.length
+      ? history.savedIndex - removed.length
+      : -1 // saved state was trimmed away; treat file as always-modified
+  }
+  history.stack = newStack
+  history.index = newStack.length - 1
+}
+
 let nextTabId = 2
 
 export default function Home() {
@@ -176,20 +195,7 @@ export default function Home() {
 
   const handleContentChange = useCallback((content) => {
     const tabId = activeTabIdRef.current
-    const history = undoHistoryRef.current[tabId]
-    if (history) {
-      const newStack = history.stack.slice(0, history.index + 1)
-      newStack.push(content)
-      // Prevent unbounded memory growth for large files by capping the stack.
-      if (content.length > LARGE_FILE_THRESHOLD && newStack.length > MAX_UNDO_LARGE_FILE) {
-        const removed = newStack.splice(0, newStack.length - MAX_UNDO_LARGE_FILE)
-        history.savedIndex = history.savedIndex >= removed.length
-          ? history.savedIndex - removed.length
-          : -1 // saved state was trimmed away; treat file as always-modified
-      }
-      history.stack = newStack
-      history.index = newStack.length - 1
-    }
+    pushUndoEntry(undoHistoryRef, tabId, content)
     setTabs((prev) =>
       prev.map((t) => (t.id === tabId ? { ...t, content, modified: true } : t))
     )
@@ -197,19 +203,7 @@ export default function Home() {
 
   const handleView2ContentChange = useCallback((content) => {
     const tabId = view2ActiveTabIdRef.current
-    const history = undoHistoryRef.current[tabId]
-    if (history) {
-      const newStack = history.stack.slice(0, history.index + 1)
-      newStack.push(content)
-      if (content.length > LARGE_FILE_THRESHOLD && newStack.length > MAX_UNDO_LARGE_FILE) {
-        const removed = newStack.splice(0, newStack.length - MAX_UNDO_LARGE_FILE)
-        history.savedIndex = history.savedIndex >= removed.length
-          ? history.savedIndex - removed.length
-          : -1
-      }
-      history.stack = newStack
-      history.index = newStack.length - 1
-    }
+    pushUndoEntry(undoHistoryRef, tabId, content)
     setView2Tabs((prev) =>
       prev.map((t) => (t.id === tabId ? { ...t, content, modified: true } : t))
     )

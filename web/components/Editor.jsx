@@ -424,8 +424,8 @@ const Editor = forwardRef(function Editor(
 
   // Scroll-top of the textarea, tracked so we can virtualise line numbers.
   const [editorScrollTop, setEditorScrollTop] = useState(0)
-  // Measured client height of the textarea (updated on scroll & resize).
-  const editorClientHeightRef = useRef(2000)
+  // Client height of the textarea, tracked so virtual rendering adjusts on resize.
+  const [editorClientHeight, setEditorClientHeight] = useState(2000)
   // Ref-copy of isLargeFile so syncScroll (stable callback) can read it.
   const isLargeFileRef = useRef(isLargeFile)
   useEffect(() => { isLargeFileRef.current = isLargeFile }, [isLargeFile])
@@ -435,10 +435,9 @@ const Editor = forwardRef(function Editor(
   useEffect(() => {
     const ta = textareaRef.current
     if (!ta) return
-    editorClientHeightRef.current = ta.clientHeight
+    setEditorClientHeight(ta.clientHeight)
     const ro = new ResizeObserver(() => {
-      editorClientHeightRef.current = ta.clientHeight
-      if (isLargeFileRef.current) setEditorScrollTop((prev) => prev)
+      if (isLargeFileRef.current) setEditorClientHeight(ta.clientHeight)
     })
     ro.observe(ta)
     return () => ro.disconnect()
@@ -519,7 +518,6 @@ const Editor = forwardRef(function Editor(
   const syncScroll = useCallback(() => {
     const ta = textareaRef.current
     if (!ta) return
-    editorClientHeightRef.current = ta.clientHeight
     if (lineNumbersRef.current) {
       lineNumbersRef.current.scrollTop = ta.scrollTop
     }
@@ -895,9 +893,8 @@ const Editor = forwardRef(function Editor(
             // within (or close to) the current viewport.  Spacer divs above
             // and below keep the total scroll height correct so that the
             // manually-synced scrollTop from syncScroll still maps correctly.
-            const clientH = editorClientHeightRef.current
             const firstVisible = Math.max(0, Math.floor((editorScrollTop - 4) / lineHeightPx) - VIRTUAL_BUFFER)
-            const lastVisible = Math.min(lineCount - 1, Math.ceil((editorScrollTop + clientH) / lineHeightPx) + VIRTUAL_BUFFER)
+            const lastVisible = Math.min(lineCount - 1, Math.ceil((editorScrollTop + editorClientHeight) / lineHeightPx) + VIRTUAL_BUFFER)
             const items = []
             if (firstVisible > 0) {
               items.push(<div key="top" style={{ height: firstVisible * lineHeightPx }} />)
