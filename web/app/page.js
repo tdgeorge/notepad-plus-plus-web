@@ -751,7 +751,9 @@ export default function Home() {
         onSearchPrev={handleIncrementalSearchPrev}
       />
       {splitEnabled ? (
-        <SplitPane ratio={splitRatio} onRatioChange={setSplitRatio}
+        <SplitPane
+          ratio={splitRatio}
+          onRatioChange={setSplitRatio}
           left={
             <div
               className={`${styles.viewPane} ${activeView === 1 ? styles.activeViewPane : ''}`}

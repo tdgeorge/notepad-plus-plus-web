@@ -43,7 +43,12 @@ function computeFoldRegions(text) {
       const ch = line[col]
 
       if (inString) {
-        if (ch === inString && line[col - 1] !== '\\') inString = null
+        if (ch === inString) {
+          // Count preceding backslashes; odd count means the quote is escaped
+          let slashes = 0
+          while (col - 1 - slashes >= 0 && line[col - 1 - slashes] === '\\') slashes++
+          if (slashes % 2 === 0) inString = null
+        }
         continue
       }
       if (ch === '"' || ch === "'" || ch === '`') { inString = ch; continue }
@@ -151,7 +156,7 @@ function renderLinesWithFolds(code, tokenizeFn, symbolOpts, hiddenLines, foldedL
         : rawLine
     } else {
       // Plain text with optional whitespace symbols (simplified per-line)
-      lineContent = renderLineSymbols(rawLine, i, symbolOpts)
+      lineContent = renderLineSymbols(rawLine, symbolOpts)
     }
 
     return (
@@ -166,7 +171,7 @@ function renderLinesWithFolds(code, tokenizeFn, symbolOpts, hiddenLines, foldedL
 /**
  * Render a single line with whitespace/indent symbols (no newline handling).
  */
-function renderLineSymbols(line, _lineIdx, { showWhitespace, showEol, showIndent } = {}) {
+function renderLineSymbols(line, { showWhitespace, showEol, showIndent } = {}) {
   if (!showWhitespace && !showEol && !showIndent) return line
 
   let indentEnd = 0
