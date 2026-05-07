@@ -919,13 +919,17 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
   const suppressMenuToggleUntilRef = useRef(0)
   const hasClipboardWriteSupport = typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function'
   const closeMenus = useCallback(() => {
-    setOpenMenu(null)
     setOpenSubmenu(null)
+    setOpenMenu(null)
   }, [])
   const isMenuToggleSuppressed = useCallback(
     () => performance.now() < suppressMenuToggleUntilRef.current,
     []
   )
+  const openMenuItem = useCallback((menuLabel) => {
+    setOpenSubmenu(null)
+    setOpenMenu(menuLabel)
+  }, [])
 
   useEffect(() => setMounted(true), [])
 
@@ -1278,11 +1282,15 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
                   e.stopPropagation()
                   return
                 }
-                setOpenMenu(openMenu === menu.label ? null : menu.label)
+                if (openMenu === menu.label) {
+                  closeMenus()
+                  return
+                }
+                openMenuItem(menu.label)
               }}
               onMouseEnter={() => {
                 if (isMenuToggleSuppressed()) return
-                if (openMenu !== null) setOpenMenu(menu.label)
+                if (openMenu !== null) openMenuItem(menu.label)
               }}
               role="menuitem"
               aria-haspopup="true"
