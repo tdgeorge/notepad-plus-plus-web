@@ -133,6 +133,13 @@ export default function Home() {
 
   const viewState = { wordWrap, showWhitespace, showEol, showAllChars, showIndent, language, splitEnabled }
 
+  const activeTabIndex = tabs.findIndex((t) => t.id === activeTabId)
+  const fileState = {
+    hasFileHandle: Boolean(fileHandles[activeTabId]),
+    tabCount: tabs.length,
+    activeTabIndex,
+  }
+
   // ── Active editor helper ──────────────────────────────────────────────────
   // Returns the ref for whichever view is currently active.
   const getActiveEditor = useCallback(
@@ -524,6 +531,67 @@ export default function Home() {
     })
   }, [])
 
+  const handleSaveSession = useCallback(() => {
+    const session = {
+      version: 1,
+      tabs: tabsRef.current.map((t) => ({ name: t.name, content: t.content, language: t.language ?? null })),
+    }
+    const json = JSON.stringify(session, null, 2)
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'session.json'
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [])
+
+  const applySessionData = useCallback((session) => {
+    if (!(session?.version === 1 && Array.isArray(session.tabs))) return
+    const newIds = session.tabs.map(() => nextTabId++)
+    const newTabs = session.tabs.map((t, i) => ({
+      id: newIds[i],
+      name: t.name ?? `new ${newIds[i]}`,
+      content: t.content ?? '',
+      modified: false,
+      language: t.language ?? null,
+    }))
+    newTabs.forEach((t) => {
+      undoHistoryRef.current[t.id] = { stack: [t.content], index: 0, savedIndex: 0 }
+    })
+    setTabs(newTabs)
+    setActiveTabId(newIds[newIds.length - 1])
+    setFileHandles({})
+  }, [])
+
+  const handleLoadSession = useCallback(async () => {
+    if (typeof window.showOpenFilePicker === 'function') {
+      try {
+        const [handle] = await window.showOpenFilePicker({
+          types: [{ description: 'Session files', accept: { 'application/json': ['.json'] } }],
+        })
+        const file = await handle.getFile()
+        applySessionData(JSON.parse(await file.text()))
+      } catch (e) {
+        if (e.name !== 'AbortError') console.error(e)
+      }
+    } else {
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.accept = '.json'
+      input.onchange = async (e) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        try {
+          applySessionData(JSON.parse(await file.text()))
+        } catch (err) {
+          console.error(err)
+        }
+      }
+      input.click()
+    }
+  }, [applySessionData])
+
   const handlePrint = useCallback(() => {
     const isView1 = activeView === 1
     const currentTabId = isView1 ? activeTabIdRef.current : view2ActiveTabIdRef.current
@@ -666,6 +734,8 @@ export default function Home() {
         case 'closeAllToLeft': handleCloseAllToLeft(); break
         case 'closeAllToRight': handleCloseAllToRight(); break
         case 'closeAllUnchanged': handleCloseAllUnchanged(); break
+        case 'loadSession': handleLoadSession(); break
+        case 'saveSession': handleSaveSession(); break
         case 'print': handlePrint(); break
         case 'printNow': handlePrint(); break
         case 'exit': handleExit(); break
@@ -682,6 +752,7 @@ export default function Home() {
       handleSaveAs, handleSaveCopyAs, handleSaveAll, handleRename,
       handleCloseActive, handleCloseAll, handleCloseAllButActive,
       handleCloseAllToLeft, handleCloseAllToRight, handleCloseAllUnchanged,
+      handleLoadSession, handleSaveSession,
       handlePrint, handleExit, handleNextTab, handlePrevTab,
     ]
   )
@@ -1125,6 +1196,7 @@ export default function Home() {
         onLanguageAction={handleLanguageAction}
         onToolsAction={handleToolsAction}
         viewState={viewState}
+        fileState={fileState}
       />
       <Toolbar
         onNew={handleNewTab}
