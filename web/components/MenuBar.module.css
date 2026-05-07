@@ -114,6 +114,7 @@
 
 .itemLabel {
   flex: 1;
+  overflow-wrap: anywhere;
 }
 
 .shortcut {
@@ -158,6 +159,29 @@
   color: var(--chrome-text);
 }
 
+.submenuHeader {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--chrome-bg-raised);
+  border-bottom: 1px solid var(--chrome-border);
+}
+
+.submenuBackButton {
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  color: var(--chrome-text);
+  font-size: 12px;
+  text-align: left;
+}
+
+.submenuBackButton:hover {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
 /* On desktop (fine pointer / mouse), open submenus to the right side */
 @media (hover: hover) and (pointer: fine) {
   .submenuArrow::before {
@@ -167,5 +191,27 @@
   .submenuDropdown {
     top: 0;
     left: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .dropdown,
+  .submenuDropdown {
+    min-width: min(320px, calc(100vw - 16px));
+    max-width: calc(100vw - 16px);
+  }
+
+  .dropdownItem {
+    align-items: flex-start;
+    white-space: normal;
+    padding-right: 12px;
+  }
+
+  .shortcut {
+    display: none;
+  }
+
+  .submenuArrow {
+    margin-top: 3px;
   }
 }

@@ -1,8 +1,33 @@
 'use client'
 
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react'
-import { createPortal } from 'react-dom'
+import { createPortal, flushSync } from 'react-dom'
 import styles from './MenuBar.module.css'
+
+const EDIT_ACTIONS_REQUIRING_CLIPBOARD_WRITE = new Set([
+  'copy-filename',
+  'copy-all-names',
+])
+
+const EDIT_ACTIONS_REQUIRING_FILE_PATH_ACCESS = new Set([
+  'copy-filepath',
+  'copy-filedir',
+  'copy-all-paths',
+])
+
+// 400 ms safely outlasts the short tap-to-click window on mobile browsers, so
+// any immediate synthetic follow-up click on the underlying menu button is
+// ignored after a compact submenu action closes the portal.
+const MENU_TOGGLE_SUPPRESS_DURATION_MS = 400
+
+function isUnavailableEditAction(action, hasClipboardWriteSupport) {
+  if (!action) return true
+  if (EDIT_ACTIONS_REQUIRING_FILE_PATH_ACCESS.has(action)) return true
+  if (EDIT_ACTIONS_REQUIRING_CLIPBOARD_WRITE.has(action) && !hasClipboardWriteSupport) {
+    return true
+  }
+  return false
+}
 
 const MENUS = [
   {
@@ -69,7 +94,7 @@ const MENUS = [
         submenu: [
           { label: 'Date Time (short)', action: 'insert-datetime-short' },
           { label: 'Date Time (long)', action: 'insert-datetime-long' },
-          { label: 'Date Time (customized)' },
+          { label: 'Date Time (customized)', action: 'insert-datetime-custom' },
         ],
       },
       {
@@ -882,6 +907,7 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
   const [dropdownPos, setDropdownPos] = useState(null)   // { top, left } for portal dropdown
   const [dropdownLeft, setDropdownLeft] = useState(null) // clamping adjustment
   const [submenuStyle, setSubmenuStyle] = useState(null) // positional overrides for open submenu
+  const [isCompactMenuLayout, setIsCompactMenuLayout] = useState(false)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -890,8 +916,35 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
   const submenuRef = useRef(null)
   const dropdownRef = useRef(null)
   const menuButtonRefs = useRef({})
+  const suppressMenuToggleUntilRef = useRef(0)
+  const hasClipboardWriteSupport = typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function'
+  const closeMenus = useCallback(() => {
+    setOpenSubmenu(null)
+    setOpenMenu(null)
+  }, [])
+  const isMenuToggleSuppressed = useCallback(
+    () => performance.now() < suppressMenuToggleUntilRef.current,
+    []
+  )
+  const openMenuItem = useCallback((menuLabel) => {
+    setOpenSubmenu(null)
+    setOpenMenu(menuLabel)
+  }, [])
 
   useEffect(() => setMounted(true), [])
+
+  useEffect(() => {
+    const updateLayoutMode = () => {
+      setIsCompactMenuLayout(window.innerWidth <= 640)
+    }
+    updateLayoutMode()
+    window.addEventListener('resize', updateLayoutMode)
+    return () => window.removeEventListener('resize', updateLayoutMode)
+  }, [])
+
+  useEffect(() => {
+    setOpenSubmenu(null)
+  }, [openMenu])
 
   const updateScrollButtons = useCallback(() => {
     const el = scrollRef.current
@@ -994,29 +1047,34 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
       overflowY: 'auto',
       zIndex: 10000,
     })
-  }, [openSubmenu])
+  }, [openSubmenu, isCompactMenuLayout])
 
   // Batch-reset submenu position state so each new submenu is measured from its CSS default
-  const openSubmenuItem = (key) => {
+  const openSubmenuItem = useCallback((key) => {
+    if (openSubmenu !== key) {
+      setSubmenuStyle(null)
+    }
     setOpenSubmenu(key)
-    setSubmenuStyle(null)
-  }
+  }, [openSubmenu])
 
   useEffect(() => {
     const handleClick = (e) => {
       const inBar = barRef.current && barRef.current.contains(e.target)
       const inDropdown = dropdownRef.current && dropdownRef.current.contains(e.target)
       if (!inBar && !inDropdown) {
-        setOpenMenu(null)
-        setOpenSubmenu(null)
+        closeMenus()
       }
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
+  }, [closeMenus])
 
   const handleItemClick = (item, menuLabel) => {
-    if (item.separator || item.submenu || item.disabled) return
+    if (item.separator || item.submenu || isDisabledItem(item, menuLabel)) return
+    if (isCompactMenuLayout && openSubmenu) {
+      suppressMenuToggleUntilRef.current = performance.now() + MENU_TOGGLE_SUPPRESS_DURATION_MS
+    }
+    flushSync(closeMenus)
     if (item.action) {
       if (menuLabel === 'Edit') {
         onEditAction?.(item.action)
@@ -1044,8 +1102,6 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
         onFileAction?.(item.action)
       }
     }
-    setOpenMenu(null)
-    setOpenSubmenu(null)
   }
 
   const isChecked = (action) => {
@@ -1066,8 +1122,17 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
     }
   }
 
-  const isDisabledItem = (item) => {
+  const isDisabledItem = (item, menuLabel, depth = 0) => {
     if (item.disabled) return true
+    if (depth > 4) return false
+    if (item.submenu) {
+      return menuLabel === 'Edit'
+        ? item.submenu.every((subitem) => subitem.separator || isDisabledItem(subitem, menuLabel, depth + 1))
+        : false
+    }
+    if (menuLabel === 'Edit') {
+      return isUnavailableEditAction(item.action, hasClipboardWriteSupport)
+    }
     if (!item.action) return false
     switch (item.action) {
       case 'reload': return !fileState?.hasFileHandle
@@ -1086,13 +1151,13 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
       }
       const submenuKey = `${menuLabel}-${idx}`
       const checked = isChecked(item.action)
-      const disabled = isDisabledItem(item)
+      const disabled = isDisabledItem(item, menuLabel)
       if (item.submenu) {
         return (
           <li
             key={idx}
             className={`${styles.dropdownItem} ${styles.hasSubmenu}${disabled ? ` ${styles.disabledItem}` : ''}`}
-            onMouseEnter={() => !disabled && openSubmenuItem(submenuKey)}
+            onMouseEnter={() => !disabled && !isCompactMenuLayout && openSubmenuItem(submenuKey)}
             onClick={() => !disabled && (openSubmenu === submenuKey ? setOpenSubmenu(null) : openSubmenuItem(submenuKey))}
             role="menuitem"
             aria-haspopup="true"
@@ -1102,23 +1167,25 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
             <span className={styles.checkmark} aria-hidden="true" />
             <span className={styles.itemLabel}>{item.label}</span>
             <span className={styles.submenuArrow} aria-hidden="true" />
-            {!disabled && openSubmenu === submenuKey && (
+            {!isCompactMenuLayout && !disabled && openSubmenu === submenuKey && (
               <ul
                 ref={submenuRef}
                 className={styles.submenuDropdown}
                 style={submenuStyle ?? undefined}
                 role="menu"
               >
-                {item.submenu.map((subitem, subIdx) =>
-                  subitem.separator ? (
-                    <li key={subIdx} className={styles.separator} role="separator" />
-                  ) : (
+                {item.submenu.map((subitem, subIdx) => {
+                  if (subitem.separator) {
+                    return <li key={subIdx} className={styles.separator} role="separator" />
+                  }
+                  const subitemDisabled = isDisabledItem(subitem, menuLabel)
+                  return (
                     <li
                       key={subIdx}
-                      className={`${styles.dropdownItem}${subitem.disabled ? ` ${styles.disabledItem}` : ''}`}
+                      className={`${styles.dropdownItem}${subitemDisabled ? ` ${styles.disabledItem}` : ''}`}
                       onClick={(e) => { e.stopPropagation(); handleItemClick(subitem, menuLabel) }}
                       role="menuitem"
-                      aria-disabled={subitem.disabled ? 'true' : undefined}
+                      aria-disabled={subitemDisabled ? 'true' : undefined}
                     >
                       <span className={styles.checkmark} aria-hidden="true">
                         {isChecked(subitem.action) ? '✓' : ''}
@@ -1129,7 +1196,7 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
                       )}
                     </li>
                   )
-                )}
+                })}
               </ul>
             )}
           </li>
@@ -1140,7 +1207,11 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
           key={idx}
           className={`${styles.dropdownItem}${disabled ? ` ${styles.disabledItem}` : ''}`}
           onClick={() => handleItemClick(item, menuLabel)}
-          onMouseEnter={() => setOpenSubmenu(null)}
+          onMouseEnter={() => {
+            if (!isCompactMenuLayout) {
+              setOpenSubmenu(null)
+            }
+          }}
           role="menuitem"
           aria-disabled={disabled ? 'true' : undefined}
         >
@@ -1156,6 +1227,9 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
     })
 
   const activeMenu = MENUS.find((m) => m.label === openMenu)
+  const activeCompactSubmenu = isCompactMenuLayout && activeMenu && openSubmenu
+    ? activeMenu.items.find((item, idx) => item.submenu && `${activeMenu.label}-${idx}` === openSubmenu)
+    : null
 
   const portalDropdown = mounted && activeMenu && dropdownPos ? createPortal(
     <ul
@@ -1175,7 +1249,18 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
       }}
       role="menu"
     >
-      {renderItems(activeMenu.items, activeMenu.label)}
+      {activeCompactSubmenu && (
+        <li className={styles.submenuHeader} role="presentation">
+          <button
+            type="button"
+            className={styles.submenuBackButton}
+            onClick={() => setOpenSubmenu(null)}
+          >
+            ‹ {activeCompactSubmenu.label}
+          </button>
+        </li>
+      )}
+      {renderItems(activeCompactSubmenu?.submenu ?? activeMenu.items, activeMenu.label)}
     </ul>,
     document.body
   ) : null
@@ -1198,8 +1283,21 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
             <button
               ref={(el) => { menuButtonRefs.current[menu.label] = el }}
               className={`${styles.menuButton} ${openMenu === menu.label ? styles.active : ''}`}
-              onClick={() => setOpenMenu(openMenu === menu.label ? null : menu.label)}
-              onMouseEnter={() => openMenu !== null && setOpenMenu(menu.label)}
+              onClick={(e) => {
+                if (isMenuToggleSuppressed()) {
+                  e.stopPropagation()
+                  return
+                }
+                if (openMenu === menu.label) {
+                  closeMenus()
+                  return
+                }
+                openMenuItem(menu.label)
+              }}
+              onMouseEnter={() => {
+                if (isMenuToggleSuppressed()) return
+                if (openMenu !== null) openMenuItem(menu.label)
+              }}
               role="menuitem"
               aria-haspopup="true"
               aria-expanded={openMenu === menu.label}
