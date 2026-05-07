@@ -1103,6 +1103,497 @@ const Editor = forwardRef(function Editor(
       el.setSelectionRange(0, 0)
       el.focus()
     },
+
+    // ── Line Operations (additional) ──────────────────────────────────────
+    'line-remove-empty-blank': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const newText = el.value.split('\n').filter((line) => line.trim() !== '').join('\n')
+      if (newText === el.value) return
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
+      el.setSelectionRange(0, 0)
+      el.focus()
+    },
+
+    'line-remove-consecutive-dup': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const lines = el.value.split('\n')
+      const deduped = lines.filter((line, i) => i === 0 || line !== lines[i - 1])
+      const newText = deduped.join('\n')
+      if (newText === el.value) return
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
+      el.setSelectionRange(0, 0)
+      el.focus()
+    },
+
+    'line-split': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const { selectionStart, selectionEnd, value } = el
+      if (selectionStart === selectionEnd) return
+      const before = value.substring(0, selectionStart)
+      const selected = value.substring(selectionStart, selectionEnd)
+      const after = value.substring(selectionEnd)
+      const newText = before + selected.replace(/ +/g, '\n') + after
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
+      el.setSelectionRange(selectionStart, selectionStart)
+      el.focus()
+    },
+
+    'line-join': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const { selectionStart, selectionEnd, value } = el
+      if (selectionStart === selectionEnd) {
+        // Join current line with next
+        const lineEnd = value.indexOf('\n', selectionStart)
+        if (lineEnd === -1) return
+        const newText = value.substring(0, lineEnd) + ' ' + value.substring(lineEnd + 1)
+        el.value = newText
+        onChangeRef.current(newText)
+        updateLineCount(newText)
+        el.setSelectionRange(lineEnd, lineEnd)
+        el.focus()
+      } else {
+        const before = value.substring(0, selectionStart)
+        const selected = value.substring(selectionStart, selectionEnd)
+        const after = value.substring(selectionEnd)
+        const joined = selected.replace(/\r?\n/g, ' ')
+        const newText = before + joined + after
+        el.value = newText
+        onChangeRef.current(newText)
+        updateLineCount(newText)
+        el.setSelectionRange(selectionStart, selectionStart + joined.length)
+        el.focus()
+      }
+    },
+
+    'line-insert-above': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const { selectionStart, value } = el
+      const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1
+      const newText = value.substring(0, lineStart) + '\n' + value.substring(lineStart)
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
+      el.setSelectionRange(lineStart, lineStart)
+      el.focus()
+    },
+
+    'line-insert-below': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const { selectionStart, value } = el
+      const lineEnd = value.indexOf('\n', selectionStart)
+      const insertAt = lineEnd === -1 ? value.length : lineEnd
+      const newText = value.substring(0, insertAt) + '\n' + value.substring(insertAt)
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
+      el.setSelectionRange(insertAt + 1, insertAt + 1)
+      el.focus()
+    },
+
+    'line-reverse': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const newText = el.value.split('\n').reverse().join('\n')
+      if (newText === el.value) return
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
+      el.setSelectionRange(0, 0)
+      el.focus()
+    },
+
+    'line-randomize': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const lines = el.value.split('\n')
+      for (let i = lines.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [lines[i], lines[j]] = [lines[j], lines[i]]
+      }
+      const newText = lines.join('\n')
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
+      el.setSelectionRange(0, 0)
+      el.focus()
+    },
+
+    // ── Sort variants (case-insensitive / locale / int / decimal / length) ──
+    'sort-asc-ic': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const newText = el.value.split('\n').sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())).join('\n')
+      if (newText === el.value) return
+      el.value = newText; onChangeRef.current(newText); updateLineCount(newText)
+      el.setSelectionRange(0, 0); el.focus()
+    },
+
+    'sort-locale-asc': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const newText = el.value.split('\n').sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'variant' })).join('\n')
+      if (newText === el.value) return
+      el.value = newText; onChangeRef.current(newText); updateLineCount(newText)
+      el.setSelectionRange(0, 0); el.focus()
+    },
+
+    'sort-locale-desc': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const newText = el.value.split('\n').sort((a, b) => b.localeCompare(a, undefined, { sensitivity: 'variant' })).join('\n')
+      if (newText === el.value) return
+      el.value = newText; onChangeRef.current(newText); updateLineCount(newText)
+      el.setSelectionRange(0, 0); el.focus()
+    },
+
+    'sort-desc-ic': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const newText = el.value.split('\n').sort((a, b) => b.toLowerCase().localeCompare(a.toLowerCase())).join('\n')
+      if (newText === el.value) return
+      el.value = newText; onChangeRef.current(newText); updateLineCount(newText)
+      el.setSelectionRange(0, 0); el.focus()
+    },
+
+    'sort-int-asc': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const newText = el.value.split('\n').sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0)).join('\n')
+      if (newText === el.value) return
+      el.value = newText; onChangeRef.current(newText); updateLineCount(newText)
+      el.setSelectionRange(0, 0); el.focus()
+    },
+
+    'sort-int-desc': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const newText = el.value.split('\n').sort((a, b) => (parseInt(b, 10) || 0) - (parseInt(a, 10) || 0)).join('\n')
+      if (newText === el.value) return
+      el.value = newText; onChangeRef.current(newText); updateLineCount(newText)
+      el.setSelectionRange(0, 0); el.focus()
+    },
+
+    'sort-deccomma-asc': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const parse = (s) => parseFloat(s.replace(',', '.')) || 0
+      const newText = el.value.split('\n').sort((a, b) => parse(a) - parse(b)).join('\n')
+      if (newText === el.value) return
+      el.value = newText; onChangeRef.current(newText); updateLineCount(newText)
+      el.setSelectionRange(0, 0); el.focus()
+    },
+
+    'sort-deccomma-desc': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const parse = (s) => parseFloat(s.replace(',', '.')) || 0
+      const newText = el.value.split('\n').sort((a, b) => parse(b) - parse(a)).join('\n')
+      if (newText === el.value) return
+      el.value = newText; onChangeRef.current(newText); updateLineCount(newText)
+      el.setSelectionRange(0, 0); el.focus()
+    },
+
+    'sort-decdot-asc': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const newText = el.value.split('\n').sort((a, b) => (parseFloat(a) || 0) - (parseFloat(b) || 0)).join('\n')
+      if (newText === el.value) return
+      el.value = newText; onChangeRef.current(newText); updateLineCount(newText)
+      el.setSelectionRange(0, 0); el.focus()
+    },
+
+    'sort-decdot-desc': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const newText = el.value.split('\n').sort((a, b) => (parseFloat(b) || 0) - (parseFloat(a) || 0)).join('\n')
+      if (newText === el.value) return
+      el.value = newText; onChangeRef.current(newText); updateLineCount(newText)
+      el.setSelectionRange(0, 0); el.focus()
+    },
+
+    'sort-len-asc': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const newText = el.value.split('\n').sort((a, b) => a.length - b.length).join('\n')
+      if (newText === el.value) return
+      el.value = newText; onChangeRef.current(newText); updateLineCount(newText)
+      el.setSelectionRange(0, 0); el.focus()
+    },
+
+    'sort-len-desc': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const newText = el.value.split('\n').sort((a, b) => b.length - a.length).join('\n')
+      if (newText === el.value) return
+      el.value = newText; onChangeRef.current(newText); updateLineCount(newText)
+      el.setSelectionRange(0, 0); el.focus()
+    },
+
+    // ── Case Conversion ───────────────────────────────────────────────────
+    'case-upper': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const { selectionStart, selectionEnd, value } = el
+      const target = selectionStart === selectionEnd ? value : value.substring(selectionStart, selectionEnd)
+      const converted = target.toUpperCase()
+      if (selectionStart === selectionEnd) {
+        el.value = converted; onChangeRef.current(converted); updateLineCount(converted)
+        el.setSelectionRange(0, 0)
+      } else {
+        const newText = value.substring(0, selectionStart) + converted + value.substring(selectionEnd)
+        el.value = newText; onChangeRef.current(newText); updateLineCount(newText)
+        el.setSelectionRange(selectionStart, selectionStart + converted.length)
+      }
+      el.focus()
+    },
+
+    'case-lower': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const { selectionStart, selectionEnd, value } = el
+      const target = selectionStart === selectionEnd ? value : value.substring(selectionStart, selectionEnd)
+      const converted = target.toLowerCase()
+      if (selectionStart === selectionEnd) {
+        el.value = converted; onChangeRef.current(converted); updateLineCount(converted)
+        el.setSelectionRange(0, 0)
+      } else {
+        const newText = value.substring(0, selectionStart) + converted + value.substring(selectionEnd)
+        el.value = newText; onChangeRef.current(newText); updateLineCount(newText)
+        el.setSelectionRange(selectionStart, selectionStart + converted.length)
+      }
+      el.focus()
+    },
+
+    'case-proper': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const { selectionStart, selectionEnd, value } = el
+      const target = selectionStart === selectionEnd ? value : value.substring(selectionStart, selectionEnd)
+      const converted = target.replace(/\b\w/g, (c) => c.toUpperCase()).replace(/\B\w/g, (c) => c.toLowerCase())
+      if (selectionStart === selectionEnd) {
+        el.value = converted; onChangeRef.current(converted); updateLineCount(converted)
+        el.setSelectionRange(0, 0)
+      } else {
+        const newText = value.substring(0, selectionStart) + converted + value.substring(selectionEnd)
+        el.value = newText; onChangeRef.current(newText); updateLineCount(newText)
+        el.setSelectionRange(selectionStart, selectionStart + converted.length)
+      }
+      el.focus()
+    },
+
+    'case-proper-blend': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const { selectionStart, selectionEnd, value } = el
+      const target = selectionStart === selectionEnd ? value : value.substring(selectionStart, selectionEnd)
+      const converted = target.replace(/\b\w/g, (c) => c.toUpperCase())
+      if (selectionStart === selectionEnd) {
+        el.value = converted; onChangeRef.current(converted); updateLineCount(converted)
+        el.setSelectionRange(0, 0)
+      } else {
+        const newText = value.substring(0, selectionStart) + converted + value.substring(selectionEnd)
+        el.value = newText; onChangeRef.current(newText); updateLineCount(newText)
+        el.setSelectionRange(selectionStart, selectionStart + converted.length)
+      }
+      el.focus()
+    },
+
+    'case-sentence': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const { selectionStart, selectionEnd, value } = el
+      const target = selectionStart === selectionEnd ? value : value.substring(selectionStart, selectionEnd)
+      const converted = target.toLowerCase().replace(/(^\s*\w|[.!?]\s+\w)/g, (c) => c.toUpperCase())
+      if (selectionStart === selectionEnd) {
+        el.value = converted; onChangeRef.current(converted); updateLineCount(converted)
+        el.setSelectionRange(0, 0)
+      } else {
+        const newText = value.substring(0, selectionStart) + converted + value.substring(selectionEnd)
+        el.value = newText; onChangeRef.current(newText); updateLineCount(newText)
+        el.setSelectionRange(selectionStart, selectionStart + converted.length)
+      }
+      el.focus()
+    },
+
+    'case-sentence-blend': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const { selectionStart, selectionEnd, value } = el
+      const target = selectionStart === selectionEnd ? value : value.substring(selectionStart, selectionEnd)
+      const converted = target.replace(/(^\s*\w|[.!?]\s+\w)/g, (c) => c.toUpperCase())
+      if (selectionStart === selectionEnd) {
+        el.value = converted; onChangeRef.current(converted); updateLineCount(converted)
+        el.setSelectionRange(0, 0)
+      } else {
+        const newText = value.substring(0, selectionStart) + converted + value.substring(selectionEnd)
+        el.value = newText; onChangeRef.current(newText); updateLineCount(newText)
+        el.setSelectionRange(selectionStart, selectionStart + converted.length)
+      }
+      el.focus()
+    },
+
+    'case-invert': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const { selectionStart, selectionEnd, value } = el
+      const target = selectionStart === selectionEnd ? value : value.substring(selectionStart, selectionEnd)
+      const converted = target.replace(/./g, (c) => c === c.toUpperCase() ? c.toLowerCase() : c.toUpperCase())
+      if (selectionStart === selectionEnd) {
+        el.value = converted; onChangeRef.current(converted); updateLineCount(converted)
+        el.setSelectionRange(0, 0)
+      } else {
+        const newText = value.substring(0, selectionStart) + converted + value.substring(selectionEnd)
+        el.value = newText; onChangeRef.current(newText); updateLineCount(newText)
+        el.setSelectionRange(selectionStart, selectionStart + converted.length)
+      }
+      el.focus()
+    },
+
+    'case-random': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const { selectionStart, selectionEnd, value } = el
+      const target = selectionStart === selectionEnd ? value : value.substring(selectionStart, selectionEnd)
+      const converted = target.replace(/[a-zA-Z]/g, (c) => Math.random() > 0.5 ? c.toUpperCase() : c.toLowerCase())
+      if (selectionStart === selectionEnd) {
+        el.value = converted; onChangeRef.current(converted); updateLineCount(converted)
+        el.setSelectionRange(0, 0)
+      } else {
+        const newText = value.substring(0, selectionStart) + converted + value.substring(selectionEnd)
+        el.value = newText; onChangeRef.current(newText); updateLineCount(newText)
+        el.setSelectionRange(selectionStart, selectionStart + converted.length)
+      }
+      el.focus()
+    },
+
+    // ── Comment / Uncomment ───────────────────────────────────────────────
+    'comment-toggle': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const { selectionStart, selectionEnd, value } = el
+      const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1
+      const lineEndRaw = value.indexOf('\n', selectionEnd)
+      const lineEnd = lineEndRaw === -1 ? value.length : lineEndRaw
+      const chunk = value.substring(lineStart, lineEnd)
+      const lines = chunk.split('\n')
+      const allCommented = lines.every((l) => l.trimStart().startsWith('//'))
+      const newLines = allCommented
+        ? lines.map((l) => l.replace(/^(\s*)\/\/\s?/, '$1'))
+        : lines.map((l) => '//' + l)
+      const newChunk = newLines.join('\n')
+      const newText = value.substring(0, lineStart) + newChunk + value.substring(lineEnd)
+      el.value = newText; onChangeRef.current(newText); updateLineCount(newText)
+      el.setSelectionRange(selectionStart, selectionStart + (newChunk.length - chunk.length) + (selectionEnd - selectionStart))
+      el.focus()
+    },
+
+    'comment-single': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const { selectionStart, selectionEnd, value } = el
+      const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1
+      const lineEndRaw = value.indexOf('\n', selectionEnd)
+      const lineEnd = lineEndRaw === -1 ? value.length : lineEndRaw
+      const chunk = value.substring(lineStart, lineEnd)
+      const newChunk = chunk.split('\n').map((l) => '//' + l).join('\n')
+      const newText = value.substring(0, lineStart) + newChunk + value.substring(lineEnd)
+      el.value = newText; onChangeRef.current(newText); updateLineCount(newText)
+      el.setSelectionRange(selectionStart + 2, selectionEnd + 2)
+      el.focus()
+    },
+
+    'comment-uncomment': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const { selectionStart, selectionEnd, value } = el
+      const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1
+      const lineEndRaw = value.indexOf('\n', selectionEnd)
+      const lineEnd = lineEndRaw === -1 ? value.length : lineEndRaw
+      const chunk = value.substring(lineStart, lineEnd)
+      const newChunk = chunk.split('\n').map((l) => l.replace(/^(\s*)\/\/\s?/, '$1')).join('\n')
+      const newText = value.substring(0, lineStart) + newChunk + value.substring(lineEnd)
+      el.value = newText; onChangeRef.current(newText); updateLineCount(newText)
+      el.setSelectionRange(lineStart, lineStart + newChunk.length)
+      el.focus()
+    },
+
+    'comment-block': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const { selectionStart, selectionEnd, value } = el
+      const selected = value.substring(selectionStart, selectionEnd)
+      const commented = '/* ' + selected + ' */'
+      const newText = value.substring(0, selectionStart) + commented + value.substring(selectionEnd)
+      el.value = newText; onChangeRef.current(newText); updateLineCount(newText)
+      el.setSelectionRange(selectionStart, selectionStart + commented.length)
+      el.focus()
+    },
+
+    'comment-block-uncomment': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const { selectionStart, selectionEnd, value } = el
+      const selected = value.substring(selectionStart, selectionEnd)
+      const uncommented = selected.replace(/^\/\*\s?/, '').replace(/\s?\*\/$/, '')
+      const newText = value.substring(0, selectionStart) + uncommented + value.substring(selectionEnd)
+      el.value = newText; onChangeRef.current(newText); updateLineCount(newText)
+      el.setSelectionRange(selectionStart, selectionStart + uncommented.length)
+      el.focus()
+    },
+
+    // ── Tab / Space Conversions ───────────────────────────────────────────
+    'tab-to-space': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const newText = el.value.replace(/\t/g, '    ')
+      if (newText === el.value) return
+      el.value = newText; onChangeRef.current(newText); updateLineCount(newText)
+      el.focus()
+    },
+
+    'space-to-tab-all': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const newText = el.value.replace(/    /g, '\t')
+      if (newText === el.value) return
+      el.value = newText; onChangeRef.current(newText); updateLineCount(newText)
+      el.focus()
+    },
+
+    'space-to-tab-leading': () => {
+      const el = textareaRef.current
+      if (!el) return
+      const newText = el.value.split('\n').map((line) => {
+        let i = 0
+        while (i < line.length && line[i] === ' ') i++
+        const leading = line.substring(0, i).replace(/    /g, '\t')
+        return leading + line.substring(i)
+      }).join('\n')
+      if (newText === el.value) return
+      el.value = newText; onChangeRef.current(newText); updateLineCount(newText)
+      el.focus()
+    },
+
+    // ── Insert Text ───────────────────────────────────────────────────────
+    insertText: (text) => {
+      const el = textareaRef.current
+      if (!el || !text) return
+      el.focus()
+      document.execCommand('insertText', false, text)
+    },
+
   }), [indent, dedent, lineCount, lineHeightPx, updateCursor, updateLineCount, scrollToChar])
 
   const handleKeyDown = useCallback(

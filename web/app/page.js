@@ -254,12 +254,31 @@ export default function Home() {
     if (action === 'copy-filename' || action === 'copy-filepath' || action === 'copy-filedir') {
       const tab = tabsRef.current.find((t) => t.id === activeTabIdRef.current)
       const filename = tab?.name ?? ''
-      // Browsers cannot expose the full filesystem path; copy the filename for
-      // 'copy-filename' and 'copy-filepath'. Skip the clipboard write for
-      // 'copy-filedir' since no directory information is available.
       if (action !== 'copy-filedir') {
         navigator.clipboard?.writeText(filename).catch(() => {})
       }
+      return
+    }
+    if (action === 'copy-all-names') {
+      const names = tabsRef.current.map((t) => t.name).join('\n')
+      navigator.clipboard?.writeText(names).catch(() => {})
+      return
+    }
+    if (action === 'copy-all-paths') {
+      const names = tabsRef.current.map((t) => t.name).join('\n')
+      navigator.clipboard?.writeText(names).catch(() => {})
+      return
+    }
+    if (action === 'insert-datetime-short') {
+      const now = new Date()
+      const text = now.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
+      getActiveEditor()?.insertText?.(text)
+      return
+    }
+    if (action === 'insert-datetime-long') {
+      const now = new Date()
+      const text = now.toLocaleString(undefined, { dateStyle: 'full', timeStyle: 'long' })
+      getActiveEditor()?.insertText?.(text)
       return
     }
     getActiveEditor()?.[action]?.()
@@ -442,6 +461,69 @@ export default function Home() {
     handleCloseTab(activeTabIdRef.current)
   }, [handleCloseTab])
 
+  const handleCloseAll = useCallback(() => {
+    const newId = nextTabId++
+    undoHistoryRef.current = { [newId]: { stack: [''], index: 0, savedIndex: 0 } }
+    setTabs([{ id: newId, name: `new ${newId}`, content: '', modified: false }])
+    setActiveTabId(newId)
+    if (splitEnabled) {
+      setSplitEnabled(false)
+      setView2Tabs([])
+      setView2ActiveTabId(null)
+      setActiveView(1)
+    }
+  }, [splitEnabled])
+
+  const handleCloseAllButActive = useCallback(() => {
+    setTabs((prev) => {
+      const active = prev.find((t) => t.id === activeTabIdRef.current)
+      if (!active) return prev
+      const toRemove = prev.filter((t) => t.id !== active.id)
+      toRemove.forEach((t) => { delete undoHistoryRef.current[t.id] })
+      return [active]
+    })
+  }, [])
+
+  const handleCloseAllToLeft = useCallback(() => {
+    setTabs((prev) => {
+      const idx = prev.findIndex((t) => t.id === activeTabIdRef.current)
+      if (idx <= 0) return prev
+      const toRemove = prev.slice(0, idx)
+      toRemove.forEach((t) => { delete undoHistoryRef.current[t.id] })
+      return prev.slice(idx)
+    })
+  }, [])
+
+  const handleCloseAllToRight = useCallback(() => {
+    setTabs((prev) => {
+      const idx = prev.findIndex((t) => t.id === activeTabIdRef.current)
+      if (idx === -1 || idx === prev.length - 1) return prev
+      const toRemove = prev.slice(idx + 1)
+      toRemove.forEach((t) => { delete undoHistoryRef.current[t.id] })
+      return prev.slice(0, idx + 1)
+    })
+  }, [])
+
+  const handleCloseAllUnchanged = useCallback(() => {
+    setTabs((prev) => {
+      const remaining = prev.filter((t) => t.modified)
+      if (remaining.length === 0) {
+        const newId = nextTabId++
+        undoHistoryRef.current[newId] = { stack: [''], index: 0, savedIndex: 0 }
+        const toRemove = prev
+        toRemove.forEach((t) => { delete undoHistoryRef.current[t.id] })
+        setActiveTabId(newId)
+        return [{ id: newId, name: `new ${newId}`, content: '', modified: false }]
+      }
+      const toRemove = prev.filter((t) => !t.modified)
+      toRemove.forEach((t) => { delete undoHistoryRef.current[t.id] })
+      if (!remaining.find((t) => t.id === activeTabIdRef.current)) {
+        setActiveTabId(remaining[0].id)
+      }
+      return remaining
+    })
+  }, [])
+
   const handlePrint = useCallback(() => {
     const isView1 = activeView === 1
     const currentTabId = isView1 ? activeTabIdRef.current : view2ActiveTabIdRef.current
@@ -571,7 +653,6 @@ export default function Home() {
     (action) => {
       switch (action) {
         case 'new': handleNewTab(); break
-        case 'newWindow': handleNewWindow(); break
         case 'open': handleOpen(); break
         case 'reload': handleReload(); break
         case 'save': handleSave(); break
@@ -580,7 +661,13 @@ export default function Home() {
         case 'saveAll': handleSaveAll(); break
         case 'rename': handleRename(); break
         case 'closeActive': handleCloseActive(); break
+        case 'closeAll': handleCloseAll(); break
+        case 'closeAllButActive': handleCloseAllButActive(); break
+        case 'closeAllToLeft': handleCloseAllToLeft(); break
+        case 'closeAllToRight': handleCloseAllToRight(); break
+        case 'closeAllUnchanged': handleCloseAllUnchanged(); break
         case 'print': handlePrint(); break
+        case 'printNow': handlePrint(); break
         case 'exit': handleExit(); break
         case 'about': setAboutDialogOpen(true); break
         case 'styleConfigurator': setStyleConfiguratorOpen(true); break
@@ -591,9 +678,11 @@ export default function Home() {
       }
     },
     [
-      handleNewTab, handleNewWindow, handleOpen, handleReload, handleSave,
+      handleNewTab, handleOpen, handleReload, handleSave,
       handleSaveAs, handleSaveCopyAs, handleSaveAll, handleRename,
-      handleCloseActive, handlePrint, handleExit, handleNextTab, handlePrevTab,
+      handleCloseActive, handleCloseAll, handleCloseAllButActive,
+      handleCloseAllToLeft, handleCloseAllToRight, handleCloseAllUnchanged,
+      handlePrint, handleExit, handleNextTab, handlePrevTab,
     ]
   )
 
@@ -676,6 +765,27 @@ export default function Home() {
   }, [splitEnabled, activeView])
 
   const handleViewAction = useCallback((action) => {
+    // Tab navigation by index
+    if (action.startsWith('view-tab-')) {
+      const sub = action.slice('view-tab-'.length)
+      const currentTabs = activeView === 1 ? tabsRef.current : view2TabsRef.current
+      if (sub === 'first') {
+        if (activeView === 1) setActiveTabId(currentTabs[0]?.id)
+        else setView2ActiveTabId(currentTabs[0]?.id)
+        return
+      }
+      if (sub === 'last') {
+        if (activeView === 1) setActiveTabId(currentTabs[currentTabs.length - 1]?.id)
+        else setView2ActiveTabId(currentTabs[currentTabs.length - 1]?.id)
+        return
+      }
+      const n = parseInt(sub, 10)
+      if (!isNaN(n) && n >= 1 && n <= currentTabs.length) {
+        if (activeView === 1) setActiveTabId(currentTabs[n - 1].id)
+        else setView2ActiveTabId(currentTabs[n - 1].id)
+      }
+      return
+    }
     switch (action) {
       case 'word-wrap':
         setWordWrap((prev) => !prev)
@@ -728,10 +838,16 @@ export default function Home() {
       case 'unfold-all':
         getActiveEditor()?.unfoldAll()
         break
+      case 'nextTab':
+        handleNextTab()
+        break
+      case 'prevTab':
+        handlePrevTab()
+        break
       default:
         break
     }
-  }, [handleZoomIn, handleZoomOut, handleZoomReset, handleMoveToOtherView, handleCloneToOtherView, handleFocusOtherView, getActiveEditor])
+  }, [handleZoomIn, handleZoomOut, handleZoomReset, handleMoveToOtherView, handleCloneToOtherView, handleFocusOtherView, getActiveEditor, handleNextTab, handlePrevTab, activeView])
 
   const handleLanguageAction = useCallback((action) => {
     const tabId = activeTabIdRef.current
@@ -749,43 +865,38 @@ export default function Home() {
     }
   }, [])
 
-  const computeSha256 = useCallback(async (text) => {
+  const computeHash = useCallback(async (algorithm, text) => {
+    if (algorithm === 'MD5') return md5(text)
+    const algoMap = { 'SHA-1': 'SHA-1', 'SHA-256': 'SHA-256', 'SHA-512': 'SHA-512' }
     const enc = new TextEncoder()
     const data = enc.encode(text)
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+    const hashBuffer = await crypto.subtle.digest(algoMap[algorithm], data)
     const hashArray = Array.from(new Uint8Array(hashBuffer))
     return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
   }, [])
 
   const handleToolsAction = useCallback(async (action) => {
-    if (action === 'tools-random') {
-      setToolsRandomDialogOpen(true)
-      return
-    }
+    let algorithm = 'MD5'
+    if (action.startsWith('sha1-')) algorithm = 'SHA-1'
+    else if (action.startsWith('sha256-') || action.startsWith('sha-256-')) algorithm = 'SHA-256'
+    else if (action.startsWith('sha512-')) algorithm = 'SHA-512'
+
     const isFromSelection = action.endsWith('-from-selection')
-    const isFromClipboard = action.endsWith('-from-clipboard')
-    const algorithm = action.startsWith('md5') ? 'MD5' : 'SHA-256'
+    const isGenerate = action.endsWith('-generate')
 
     if (isFromSelection) {
-      const selected = editorRef.current?.getSelectedText?.() ?? ''
-      const hash = algorithm === 'MD5' ? md5(selected) : await computeSha256(selected)
-      navigator.clipboard.writeText(hash)
+      const selected = getActiveEditor()?.getSelectedText?.() ?? ''
+      const hash = await computeHash(algorithm, selected)
+      navigator.clipboard?.writeText(hash).catch(() => {})
       return
     }
 
-    let initialText = ''
-    if (isFromClipboard) {
-      try {
-        initialText = await navigator.clipboard.readText()
-      } catch (_) {
-        initialText = ''
-      }
+    if (isGenerate) {
+      setToolsHashAlgorithm(algorithm)
+      setToolsHashInitialText('')
+      setToolsHashDialogOpen(true)
     }
-
-    setToolsHashAlgorithm(algorithm)
-    setToolsHashInitialText(initialText)
-    setToolsHashDialogOpen(true)
-  }, [computeSha256])
+  }, [computeHash, getActiveEditor])
 
   // Search handlers
   const handleFindNext = useCallback((term, options) => {
@@ -896,6 +1007,9 @@ export default function Home() {
       } else if (ctrl && !e.shiftKey && !e.altKey && key === 'p') {
         e.preventDefault()
         handlePrint()
+      } else if (ctrl && !e.shiftKey && !e.altKey && key === 'w') {
+        e.preventDefault()
+        handleCloseActive()
       } else if (e.altKey && e.code === 'KeyW') {
         e.preventDefault()
         setWordWrap((prev) => !prev)
@@ -917,7 +1031,7 @@ export default function Home() {
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [handleNewTab, handleNewWindow, handleOpen, handleSave, handleSaveAs, handleSaveAll, handlePrint, handleNextTab, handlePrevTab])
+  }, [handleNewTab, handleNewWindow, handleOpen, handleSave, handleSaveAs, handleSaveAll, handlePrint, handleCloseActive, handleNextTab, handlePrevTab])
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -1017,6 +1131,9 @@ export default function Home() {
         onOpen={handleOpen}
         onSave={handleSave}
         onSaveAll={handleSaveAll}
+        onClose={handleCloseActive}
+        onCloseAll={handleCloseAll}
+        onPrint={handlePrint}
         onUndo={handleUndo}
         onRedo={handleRedo}
         onCut={handleCut}
@@ -1026,7 +1143,15 @@ export default function Home() {
         onReplace={() => { setFindDialogMode('replace'); setFindDialogOpen(true) }}
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
-        onZoomReset={handleZoomReset}
+        onWordWrap={() => setWordWrap((prev) => !prev)}
+        onShowAllChars={() => setShowAllChars((prev) => {
+          const next = !prev
+          setShowWhitespace(next)
+          setShowEol(next)
+          return next
+        })}
+        onShowIndent={() => setShowIndent((prev) => !prev)}
+        viewState={viewState}
       />
       <IncrementalSearch
         isOpen={incrementalSearchOpen}
