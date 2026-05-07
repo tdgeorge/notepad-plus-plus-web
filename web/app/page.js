@@ -983,7 +983,9 @@ export default function Home() {
         const blob = new Blob([tab.content], { type: mimeType })
         const url = URL.createObjectURL(blob)
         window.open(url, '_blank', 'noopener,noreferrer')
-        setTimeout(() => URL.revokeObjectURL(url), 60_000)
+        // Revoke the object URL after a generous delay; the actual lifecycle is tied to
+        // the document so this just frees the browser's internal reference entry.
+        setTimeout(() => URL.revokeObjectURL(url), 300_000)
         break
       }
       case 'show-whitespace':
@@ -1041,7 +1043,8 @@ export default function Home() {
         const tabContent = tab?.content ?? ''
         const lines = tabContent.split('\n').length
         const chars = tabContent.length
-        const words = tabContent.trim() ? tabContent.trim().split(/\s+/).length : 0
+        const trimmed = tabContent.trim()
+        const words = trimmed ? trimmed.split(/\s+/).length : 0
         window.alert(`File: ${tab?.name ?? '(untitled)'}\n\nLines: ${lines}\nWords: ${words}\nCharacters: ${chars}`)
         break
       }
