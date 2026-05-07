@@ -948,45 +948,52 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
     setDropdownLeft(adjust !== 0 ? adjust : null)
   }, [openMenu, dropdownPos])
 
-  // Clamp submenu to viewport edges (horizontal) and flip it upward when near the bottom
+  // Position the submenu at fixed viewport coordinates.
+  //
+  // Using position:fixed (instead of position:absolute relative to the trigger
+  // <li>) is essential now that the parent dropdown has overflow-y:auto — CSS
+  // spec §10.6.4 says a non-visible overflow box clips its absolutely-positioned
+  // descendants.  By switching to fixed we escape that clipping so the submenu
+  // is always fully visible even when the user has scrolled the dropdown.
+  //
+  // getBoundingClientRect() is called after the submenu first renders at its
+  // CSS-default position (absolute), giving us the correct viewport coordinates
+  // to transplant into fixed space.
   useLayoutEffect(() => {
     if (!submenuRef.current) {
       setSubmenuStyle(null)
       return
     }
-    const isDesktop = window.matchMedia('(hover: hover) and (pointer: fine)').matches // mirrors CSS media query in MenuBar.module.css
+    // Viewport rect of the submenu as rendered by CSS defaults:
+    //   desktop  → top: 0;   left: 100%  (opens right of trigger)
+    //   mobile   → top: 100%; left: 0    (opens below trigger)
     const rect = submenuRef.current.getBoundingClientRect()
-    const s = {}
 
-    // Horizontal clamping
-    if (isDesktop) {
-      // CSS default: top: 0, left: 100% (opens to the right of the parent item)
-      // If it overflows the right viewport edge, flip it to open leftward instead
-      if (rect.right > window.innerWidth) {
-        s.left = 'auto'
-        s.right = '100%'
-      }
-    } else {
-      // Mobile/touch: submenu opens downward; clamp its left offset to stay in viewport
-      let left = 0
-      if (rect.right > window.innerWidth) {
-        left -= (rect.right - window.innerWidth)
-      }
-      if (rect.left + left < 0) {
-        left = -rect.left
-      }
-      if (left !== 0) s.left = left
+    let top = rect.top
+    let left = rect.left
+
+    // Horizontal: if right edge overflows, shift left enough to stay in view
+    if (rect.right > window.innerWidth) {
+      left -= rect.right - window.innerWidth
+    }
+    if (left < 0) left = 0
+
+    // Vertical: if not enough space below, push the submenu upward
+    const spaceBelow = window.innerHeight - top - 8
+    if (spaceBelow < rect.height) {
+      top = Math.max(8, top - (rect.height - spaceBelow))
     }
 
-    // Vertical flip: if the submenu overflows the bottom, open it upward
-    if (rect.bottom > window.innerHeight - 8) {
-      s.top = 'auto'
-      // desktop: bottom:0 aligns submenu bottom with parent item bottom
-      // mobile:  bottom:'100%' places submenu above the parent item
-      s.bottom = isDesktop ? 0 : '100%'
-    }
-
-    setSubmenuStyle(Object.keys(s).length > 0 ? s : null)
+    setSubmenuStyle({
+      position: 'fixed',
+      top,
+      left,
+      bottom: 'auto',
+      right: 'auto',
+      maxHeight: `${window.innerHeight - top - 8}px`,
+      overflowY: 'auto',
+      zIndex: 10000,
+    })
   }, [openSubmenu])
 
   // Batch-reset submenu position state so each new submenu is measured from its CSS default
@@ -1142,7 +1149,12 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
         position: 'fixed',
         top: dropdownPos.top,
         left: dropdownPos.left + (dropdownLeft ?? 0),
-        maxHeight: `calc(100vh - ${dropdownPos.top}px - 8px)`,
+        // Use window.innerHeight so the cap reflects the *actual* visible viewport
+        // height. 100vh is unreliable on iOS Safari when the address bar is
+        // visible and can be ~100 px taller than the usable area, which lets the
+        // menu extend below the fold without ever overflowing its maxHeight,
+        // causing overflow-y: auto to never activate.
+        maxHeight: `${window.innerHeight - dropdownPos.top - 8}px`,
         overflowY: 'auto',
       }}
       role="menu"
