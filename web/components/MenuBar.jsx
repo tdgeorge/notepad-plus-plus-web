@@ -15,6 +15,9 @@ const EDIT_ACTIONS_REQUIRING_FILE_PATH_ACCESS = new Set([
   'copy-all-paths',
 ])
 
+// Keep this longer than a single tap/click dispatch so any immediate synthetic
+// follow-up click on the underlying menu button is ignored after a compact
+// submenu action closes the portal.
 const MENU_TOGGLE_SUPPRESS_DURATION_MS = 400
 
 function isUnavailableEditAction(action, hasClipboardWriteSupport) {
@@ -1268,7 +1271,6 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
               className={`${styles.menuButton} ${openMenu === menu.label ? styles.active : ''}`}
               onClick={(e) => {
                 if (performance.now() < suppressMenuToggleUntilRef.current) {
-                  e.preventDefault()
                   e.stopPropagation()
                   return
                 }
