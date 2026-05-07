@@ -293,7 +293,10 @@ export default function Home() {
       return
     }
     if (action === 'insert-datetime-custom') {
-      getActiveEditor()?.insertText?.(new Date().toLocaleString())
+      const now = new Date()
+      const pad = (value) => String(value).padStart(2, '0')
+      const text = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
+      getActiveEditor()?.insertText?.(text)
       return
     }
     getActiveEditor()?.[action]?.()
