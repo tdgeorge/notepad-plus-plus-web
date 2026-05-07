@@ -12,8 +12,24 @@ const MENUS = [
       { label: 'New Window', shortcut: 'Ctrl+Shift+N', action: 'newWindow' },
       { separator: true },
       { label: 'Open...', shortcut: 'Ctrl+O', action: 'open' },
-      { label: 'Open Containing Folder' },
-      { label: 'Open Folder as Workspace' },
+      {
+        label: 'Open Containing Folder',
+        submenu: [
+          { label: 'Explorer', disabled: true },
+          { label: 'cmd', disabled: true },
+          { label: 'Default Program', disabled: true },
+        ],
+      },
+      { label: 'Open Folder as Workspace', disabled: true },
+      { separator: true },
+      { label: 'Close', shortcut: 'Ctrl+W', action: 'close' },
+      { label: 'Close All', shortcut: 'Ctrl+Shift+W', action: 'closeAll' },
+      { label: 'Close All but Active', action: 'closeAllButActive' },
+      { label: 'Close All to the Left', action: 'closeAllToLeft' },
+      { label: 'Close All to the Right', action: 'closeAllToRight' },
+      { separator: true },
+      { label: 'Load Session...', action: 'loadSession' },
+      { label: 'Save Session...', action: 'saveSession' },
       { separator: true },
       { label: 'Reload from Disk', shortcut: 'Ctrl+R', action: 'reload' },
       { separator: true },
@@ -23,7 +39,8 @@ const MENUS = [
       { label: 'Save All', shortcut: 'Ctrl+Shift+S', action: 'saveAll' },
       { separator: true },
       { label: 'Rename...', action: 'rename' },
-      { label: 'Move to Recycle Bin', action: 'closeActive' },
+      { label: 'Move to Recycle Bin', disabled: true },
+      { label: 'Delete from Disk', disabled: true },
       { separator: true },
       { label: 'Print...', shortcut: 'Ctrl+P', action: 'print' },
       { separator: true },
@@ -313,7 +330,7 @@ const MENUS = [
   },
 ]
 
-export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSearchAction, onLanguageAction, onToolsAction, viewState }) {
+export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSearchAction, onLanguageAction, onToolsAction, viewState, fileState }) {
   const [openMenu, setOpenMenu] = useState(null)
   const [openSubmenu, setOpenSubmenu] = useState(null)
   const [dropdownPos, setDropdownPos] = useState(null)   // { top, left } for portal dropdown
@@ -484,6 +501,18 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
     }
   }
 
+  const isDisabledItem = (item) => {
+    if (item.disabled) return true
+    if (!item.action) return false
+    switch (item.action) {
+      case 'reload': return !fileState?.hasFileHandle
+      case 'closeAllToLeft': return fileState?.activeTabIndex === 0
+      case 'closeAllToRight':
+        return (fileState?.activeTabIndex ?? -1) >= (fileState?.tabCount ?? 0) - 1
+      default: return false
+    }
+  }
+
   const renderItems = (items, menuLabel) =>
     items.map((item, idx) => {
       if (item.separator) {
@@ -491,21 +520,23 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
       }
       const submenuKey = `${menuLabel}-${idx}`
       const checked = isChecked(item.action)
+      const disabled = isDisabledItem(item)
       if (item.submenu) {
         return (
           <li
             key={idx}
-            className={`${styles.dropdownItem} ${styles.hasSubmenu}`}
-            onMouseEnter={() => openSubmenuItem(submenuKey)}
-            onClick={() => openSubmenuItem(submenuKey)}
+            className={`${styles.dropdownItem} ${styles.hasSubmenu}${disabled ? ` ${styles.disabled}` : ''}`}
+            onMouseEnter={() => !disabled && openSubmenuItem(submenuKey)}
+            onClick={() => !disabled && openSubmenuItem(submenuKey)}
             role="menuitem"
             aria-haspopup="true"
-            aria-expanded={openSubmenu === submenuKey}
+            aria-expanded={!disabled && openSubmenu === submenuKey}
+            aria-disabled={disabled || undefined}
           >
             <span className={styles.checkmark} aria-hidden="true" />
             <span className={styles.itemLabel}>{item.label}</span>
             <span className={styles.submenuArrow} aria-hidden="true" />
-            {openSubmenu === submenuKey && (
+            {!disabled && openSubmenu === submenuKey && (
               <ul
                 ref={submenuRef}
                 className={styles.submenuDropdown}
@@ -524,9 +555,10 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
                   ) : (
                     <li
                       key={subIdx}
-                      className={styles.dropdownItem}
-                      onClick={(e) => { e.stopPropagation(); handleItemClick(subitem, menuLabel) }}
+                      className={`${styles.dropdownItem}${subitem.disabled ? ` ${styles.disabled}` : ''}`}
+                      onClick={(e) => { e.stopPropagation(); if (!subitem.disabled) handleItemClick(subitem, menuLabel) }}
                       role="menuitem"
+                      aria-disabled={subitem.disabled || undefined}
                     >
                       <span className={styles.checkmark} aria-hidden="true">
                         {isChecked(subitem.action) ? '✓' : ''}
@@ -546,10 +578,11 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
       return (
         <li
           key={idx}
-          className={styles.dropdownItem}
-          onClick={() => handleItemClick(item, menuLabel)}
+          className={`${styles.dropdownItem}${disabled ? ` ${styles.disabled}` : ''}`}
+          onClick={() => !disabled && handleItemClick(item, menuLabel)}
           onMouseEnter={() => setOpenSubmenu(null)}
           role="menuitem"
+          aria-disabled={disabled || undefined}
         >
           <span className={styles.checkmark} aria-hidden="true">
             {checked ? '✓' : ''}

@@ -98,6 +98,16 @@
   color: var(--accent-text);
 }
 
+.dropdownItem.disabled {
+  color: var(--chrome-text-muted);
+  cursor: default;
+  pointer-events: none;
+}
+
+.dropdownItem.disabled .shortcut {
+  color: var(--chrome-text-muted);
+}
+
 .checkmark {
   display: inline-block;
   width: 20px;

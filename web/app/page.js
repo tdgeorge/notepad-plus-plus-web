@@ -133,6 +133,13 @@ export default function Home() {
 
   const viewState = { wordWrap, showWhitespace, showEol, showAllChars, showIndent, language, splitEnabled }
 
+  const activeTabIndex = tabs.findIndex((t) => t.id === activeTabId)
+  const fileState = {
+    hasFileHandle: Boolean(fileHandles[activeTabId]),
+    tabCount: tabs.length,
+    activeTabIndex,
+  }
+
   // ── Active editor helper ──────────────────────────────────────────────────
   // Returns the ref for whichever view is currently active.
   const getActiveEditor = useCallback(
@@ -442,6 +449,124 @@ export default function Home() {
     handleCloseTab(activeTabIdRef.current)
   }, [handleCloseTab])
 
+  const handleCloseAll = useCallback(() => {
+    const id = nextTabId++
+    undoHistoryRef.current = { [id]: { stack: [''], index: 0, savedIndex: 0 } }
+    setTabs([{ id, name: `new ${id}`, content: '', modified: false, language: null }])
+    setActiveTabId(id)
+    setFileHandles({})
+  }, [])
+
+  const handleCloseAllButActive = useCallback(() => {
+    const activeId = activeTabIdRef.current
+    setTabs((prev) => {
+      const activeTab = prev.find((t) => t.id === activeId)
+      if (!activeTab) return prev
+      const toRemove = prev.filter((t) => t.id !== activeId)
+      toRemove.forEach((t) => { delete undoHistoryRef.current[t.id] })
+      setFileHandles((fh) => {
+        const next = { ...fh }
+        toRemove.forEach((t) => { delete next[t.id] })
+        return next
+      })
+      return [activeTab]
+    })
+  }, [])
+
+  const handleCloseAllToLeft = useCallback(() => {
+    const activeId = activeTabIdRef.current
+    setTabs((prev) => {
+      const idx = prev.findIndex((t) => t.id === activeId)
+      if (idx <= 0) return prev
+      const toRemove = prev.slice(0, idx)
+      toRemove.forEach((t) => { delete undoHistoryRef.current[t.id] })
+      setFileHandles((fh) => {
+        const next = { ...fh }
+        toRemove.forEach((t) => { delete next[t.id] })
+        return next
+      })
+      return prev.slice(idx)
+    })
+  }, [])
+
+  const handleCloseAllToRight = useCallback(() => {
+    const activeId = activeTabIdRef.current
+    setTabs((prev) => {
+      const idx = prev.findIndex((t) => t.id === activeId)
+      if (idx === -1 || idx >= prev.length - 1) return prev
+      const toRemove = prev.slice(idx + 1)
+      toRemove.forEach((t) => { delete undoHistoryRef.current[t.id] })
+      setFileHandles((fh) => {
+        const next = { ...fh }
+        toRemove.forEach((t) => { delete next[t.id] })
+        return next
+      })
+      return prev.slice(0, idx + 1)
+    })
+  }, [])
+
+  const handleSaveSession = useCallback(() => {
+    const session = {
+      version: 1,
+      tabs: tabsRef.current.map((t) => ({ name: t.name, content: t.content, language: t.language ?? null })),
+    }
+    const json = JSON.stringify(session, null, 2)
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'session.json'
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [])
+
+  const applySessionData = useCallback((session) => {
+    if (!(session?.version === 1 && Array.isArray(session.tabs))) return
+    const newIds = session.tabs.map(() => nextTabId++)
+    const newTabs = session.tabs.map((t, i) => ({
+      id: newIds[i],
+      name: t.name ?? `new ${newIds[i]}`,
+      content: t.content ?? '',
+      modified: false,
+      language: t.language ?? null,
+    }))
+    newTabs.forEach((t) => {
+      undoHistoryRef.current[t.id] = { stack: [t.content], index: 0, savedIndex: 0 }
+    })
+    setTabs(newTabs)
+    setActiveTabId(newIds[newIds.length - 1])
+    setFileHandles({})
+  }, [])
+
+  const handleLoadSession = useCallback(async () => {
+    if (typeof window.showOpenFilePicker === 'function') {
+      try {
+        const [handle] = await window.showOpenFilePicker({
+          types: [{ description: 'Session files', accept: { 'application/json': ['.json'] } }],
+        })
+        const file = await handle.getFile()
+        const text = await file.text()
+        applySessionData(JSON.parse(text))
+      } catch (e) {
+        if (e.name !== 'AbortError') console.error(e)
+      }
+    } else {
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.accept = '.json'
+      input.onchange = async (e) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        try {
+          applySessionData(JSON.parse(await file.text()))
+        } catch (err) {
+          console.error(err)
+        }
+      }
+      input.click()
+    }
+  }, [applySessionData])
+
   const handlePrint = useCallback(() => {
     const isView1 = activeView === 1
     const currentTabId = isView1 ? activeTabIdRef.current : view2ActiveTabIdRef.current
@@ -579,7 +704,14 @@ export default function Home() {
         case 'saveCopyAs': handleSaveCopyAs(); break
         case 'saveAll': handleSaveAll(); break
         case 'rename': handleRename(); break
+        case 'close': handleCloseActive(); break
         case 'closeActive': handleCloseActive(); break
+        case 'closeAll': handleCloseAll(); break
+        case 'closeAllButActive': handleCloseAllButActive(); break
+        case 'closeAllToLeft': handleCloseAllToLeft(); break
+        case 'closeAllToRight': handleCloseAllToRight(); break
+        case 'loadSession': handleLoadSession(); break
+        case 'saveSession': handleSaveSession(); break
         case 'print': handlePrint(); break
         case 'exit': handleExit(); break
         case 'about': setAboutDialogOpen(true); break
@@ -593,7 +725,10 @@ export default function Home() {
     [
       handleNewTab, handleNewWindow, handleOpen, handleReload, handleSave,
       handleSaveAs, handleSaveCopyAs, handleSaveAll, handleRename,
-      handleCloseActive, handlePrint, handleExit, handleNextTab, handlePrevTab,
+      handleCloseActive, handleCloseAll, handleCloseAllButActive,
+      handleCloseAllToLeft, handleCloseAllToRight,
+      handleLoadSession, handleSaveSession,
+      handlePrint, handleExit, handleNextTab, handlePrevTab,
     ]
   )
 
@@ -896,6 +1031,15 @@ export default function Home() {
       } else if (ctrl && !e.shiftKey && !e.altKey && key === 'p') {
         e.preventDefault()
         handlePrint()
+      } else if (ctrl && !e.shiftKey && !e.altKey && key === 'w') {
+        e.preventDefault()
+        handleCloseActive()
+      } else if (ctrl && e.shiftKey && !e.altKey && key === 'w') {
+        e.preventDefault()
+        handleCloseAll()
+      } else if (ctrl && !e.shiftKey && !e.altKey && key === 'r') {
+        e.preventDefault()
+        handleReload()
       } else if (e.altKey && e.code === 'KeyW') {
         e.preventDefault()
         setWordWrap((prev) => !prev)
@@ -917,7 +1061,7 @@ export default function Home() {
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [handleNewTab, handleNewWindow, handleOpen, handleSave, handleSaveAs, handleSaveAll, handlePrint, handleNextTab, handlePrevTab])
+  }, [handleNewTab, handleNewWindow, handleOpen, handleSave, handleSaveAs, handleSaveAll, handlePrint, handleNextTab, handlePrevTab, handleCloseActive, handleCloseAll, handleReload])
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -1011,6 +1155,7 @@ export default function Home() {
         onLanguageAction={handleLanguageAction}
         onToolsAction={handleToolsAction}
         viewState={viewState}
+        fileState={fileState}
       />
       <Toolbar
         onNew={handleNewTab}
