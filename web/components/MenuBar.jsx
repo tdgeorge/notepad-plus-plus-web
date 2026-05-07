@@ -1087,11 +1087,12 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
     }
   }
 
-  const isDisabledItem = (item, menuLabel) => {
+  const isDisabledItem = (item, menuLabel, depth = 0) => {
     if (item.disabled) return true
+    if (depth > 4) return false
     if (item.submenu) {
       return menuLabel === 'Edit'
-        ? item.submenu.every((subitem) => subitem.separator || isDisabledItem(subitem, menuLabel))
+        ? item.submenu.every((subitem) => subitem.separator || isDisabledItem(subitem, menuLabel, depth + 1))
         : false
     }
     if (menuLabel === 'Edit') {

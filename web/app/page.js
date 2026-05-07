@@ -48,6 +48,11 @@ function pushUndoEntry(undoHistoryRef, tabId, content) {
   history.index = newStack.length - 1
 }
 
+function formatCustomDateTime(value) {
+  const pad = (part) => String(part).padStart(2, '0')
+  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())} ${pad(value.getHours())}:${pad(value.getMinutes())}:${pad(value.getSeconds())}`
+}
+
 let nextTabId = 2
 
 export default function Home() {
@@ -293,10 +298,7 @@ export default function Home() {
       return
     }
     if (action === 'insert-datetime-custom') {
-      const now = new Date()
-      const pad = (value) => String(value).padStart(2, '0')
-      const text = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
-      getActiveEditor()?.insertText?.(text)
+      getActiveEditor()?.insertText?.(formatCustomDateTime(new Date()))
       return
     }
     getActiveEditor()?.[action]?.()
