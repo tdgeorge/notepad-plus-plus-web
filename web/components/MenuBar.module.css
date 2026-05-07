@@ -152,6 +152,8 @@
   padding: 2px 0;
   box-shadow: var(--dialog-shadow);
   z-index: 300;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
 }
 
 /* On desktop (fine pointer / mouse), open submenus to the right side */

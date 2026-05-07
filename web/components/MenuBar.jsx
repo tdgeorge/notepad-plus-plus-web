@@ -881,8 +881,7 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
   const [openSubmenu, setOpenSubmenu] = useState(null)
   const [dropdownPos, setDropdownPos] = useState(null)   // { top, left } for portal dropdown
   const [dropdownLeft, setDropdownLeft] = useState(null) // clamping adjustment
-  const [submenuLeft, setSubmenuLeft] = useState(null)
-  const [submenuFlipped, setSubmenuFlipped] = useState(false) // desktop: flip to left side
+  const [submenuStyle, setSubmenuStyle] = useState(null) // positional overrides for open submenu
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -949,19 +948,24 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
     setDropdownLeft(adjust !== 0 ? adjust : null)
   }, [openMenu, dropdownPos])
 
-  // Clamp submenu to viewport edges
+  // Clamp submenu to viewport edges (horizontal) and flip it upward when near the bottom
   useLayoutEffect(() => {
     if (!submenuRef.current) {
-      setSubmenuLeft(null)
-      setSubmenuFlipped(false)
+      setSubmenuStyle(null)
       return
     }
     const isDesktop = window.matchMedia('(hover: hover) and (pointer: fine)').matches // mirrors CSS media query in MenuBar.module.css
     const rect = submenuRef.current.getBoundingClientRect()
+    const s = {}
+
+    // Horizontal clamping
     if (isDesktop) {
       // CSS default: top: 0, left: 100% (opens to the right of the parent item)
       // If it overflows the right viewport edge, flip it to open leftward instead
-      setSubmenuFlipped(rect.right > window.innerWidth)
+      if (rect.right > window.innerWidth) {
+        s.left = 'auto'
+        s.right = '100%'
+      }
     } else {
       // Mobile/touch: submenu opens downward; clamp its left offset to stay in viewport
       let left = 0
@@ -971,15 +975,24 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
       if (rect.left + left < 0) {
         left = -rect.left
       }
-      setSubmenuLeft(left !== 0 ? left : null)
+      if (left !== 0) s.left = left
     }
+
+    // Vertical flip: if the submenu overflows the bottom, open it upward
+    if (rect.bottom > window.innerHeight - 8) {
+      s.top = 'auto'
+      // desktop: bottom:0 aligns submenu bottom with parent item bottom
+      // mobile:  bottom:'100%' places submenu above the parent item
+      s.bottom = isDesktop ? 0 : '100%'
+    }
+
+    setSubmenuStyle(Object.keys(s).length > 0 ? s : null)
   }, [openSubmenu])
 
   // Batch-reset submenu position state so each new submenu is measured from its CSS default
   const openSubmenuItem = (key) => {
     setOpenSubmenu(key)
-    setSubmenuFlipped(false)
-    setSubmenuLeft(null)
+    setSubmenuStyle(null)
   }
 
   useEffect(() => {
@@ -1059,7 +1072,7 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
             key={idx}
             className={`${styles.dropdownItem} ${styles.hasSubmenu}`}
             onMouseEnter={() => openSubmenuItem(submenuKey)}
-            onClick={() => openSubmenuItem(submenuKey)}
+            onClick={() => openSubmenu === submenuKey ? setOpenSubmenu(null) : openSubmenuItem(submenuKey)}
             role="menuitem"
             aria-haspopup="true"
             aria-expanded={openSubmenu === submenuKey}
@@ -1071,13 +1084,7 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
               <ul
                 ref={submenuRef}
                 className={styles.submenuDropdown}
-                style={
-                  submenuFlipped
-                    ? { left: 'auto', right: '100%' }
-                    : submenuLeft != null
-                    ? { left: submenuLeft }
-                    : undefined
-                }
+                style={submenuStyle ?? undefined}
                 role="menu"
               >
                 {item.submenu.map((subitem, subIdx) =>
@@ -1135,6 +1142,8 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
         position: 'fixed',
         top: dropdownPos.top,
         left: dropdownPos.left + (dropdownLeft ?? 0),
+        maxHeight: `calc(100vh - ${dropdownPos.top}px - 8px)`,
+        overflowY: 'auto',
       }}
       role="menu"
     >
