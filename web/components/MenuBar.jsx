@@ -15,9 +15,9 @@ const EDIT_ACTIONS_REQUIRING_FILE_PATH_ACCESS = new Set([
   'copy-all-paths',
 ])
 
-// Keep this longer than a single tap/click dispatch so any immediate synthetic
-// follow-up click on the underlying menu button is ignored after a compact
-// submenu action closes the portal.
+// 400 ms safely outlasts the short tap-to-click window on mobile browsers, so
+// any immediate synthetic follow-up click on the underlying menu button is
+// ignored after a compact submenu action closes the portal.
 const MENU_TOGGLE_SUPPRESS_DURATION_MS = 400
 
 function isUnavailableEditAction(action, hasClipboardWriteSupport) {
