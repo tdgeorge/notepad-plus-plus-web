@@ -1205,7 +1205,11 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
           key={idx}
           className={`${styles.dropdownItem}${disabled ? ` ${styles.disabledItem}` : ''}`}
           onClick={() => handleItemClick(item, menuLabel)}
-          onMouseEnter={() => setOpenSubmenu(null)}
+          onMouseEnter={() => {
+            if (!isCompactMenuLayout) {
+              setOpenSubmenu(null)
+            }
+          }}
           role="menuitem"
           aria-disabled={disabled ? 'true' : undefined}
         >
