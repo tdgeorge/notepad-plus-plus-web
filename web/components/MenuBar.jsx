@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react'
-import { createPortal } from 'react-dom'
+import { createPortal, flushSync } from 'react-dom'
 import styles from './MenuBar.module.css'
 
 const EDIT_ACTIONS_REQUIRING_CLIPBOARD_WRITE = new Set([
@@ -912,6 +912,10 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
   const dropdownRef = useRef(null)
   const menuButtonRefs = useRef({})
   const hasClipboardWriteSupport = typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function'
+  const closeMenus = useCallback(() => {
+    setOpenMenu(null)
+    setOpenSubmenu(null)
+  }, [])
 
   useEffect(() => setMounted(true), [])
 
@@ -1042,16 +1046,16 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
       const inBar = barRef.current && barRef.current.contains(e.target)
       const inDropdown = dropdownRef.current && dropdownRef.current.contains(e.target)
       if (!inBar && !inDropdown) {
-        setOpenMenu(null)
-        setOpenSubmenu(null)
+        closeMenus()
       }
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
+  }, [closeMenus])
 
   const handleItemClick = (item, menuLabel) => {
     if (item.separator || item.submenu || isDisabledItem(item, menuLabel)) return
+    flushSync(closeMenus)
     if (item.action) {
       if (menuLabel === 'Edit') {
         onEditAction?.(item.action)
@@ -1079,8 +1083,6 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
         onFileAction?.(item.action)
       }
     }
-    setOpenMenu(null)
-    setOpenSubmenu(null)
   }
 
   const isChecked = (action) => {
