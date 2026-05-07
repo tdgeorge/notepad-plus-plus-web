@@ -922,6 +922,10 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
     setOpenMenu(null)
     setOpenSubmenu(null)
   }, [])
+  const isMenuToggleSuppressed = useCallback(
+    () => performance.now() < suppressMenuToggleUntilRef.current,
+    []
+  )
 
   useEffect(() => setMounted(true), [])
 
@@ -1270,13 +1274,16 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
               ref={(el) => { menuButtonRefs.current[menu.label] = el }}
               className={`${styles.menuButton} ${openMenu === menu.label ? styles.active : ''}`}
               onClick={(e) => {
-                if (performance.now() < suppressMenuToggleUntilRef.current) {
+                if (isMenuToggleSuppressed()) {
                   e.stopPropagation()
                   return
                 }
                 setOpenMenu(openMenu === menu.label ? null : menu.label)
               }}
-              onMouseEnter={() => openMenu !== null && setOpenMenu(menu.label)}
+              onMouseEnter={() => {
+                if (isMenuToggleSuppressed()) return
+                if (openMenu !== null) setOpenMenu(menu.label)
+              }}
               role="menuitem"
               aria-haspopup="true"
               aria-expanded={openMenu === menu.label}
