@@ -159,10 +159,6 @@
   color: var(--chrome-text);
 }
 
-.compactSubmenuDropdown {
-  width: auto;
-}
-
 .submenuHeader {
   position: sticky;
   top: 0;

@@ -924,6 +924,10 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
     return () => window.removeEventListener('resize', updateLayoutMode)
   }, [])
 
+  useEffect(() => {
+    setOpenSubmenu(null)
+  }, [openMenu])
+
   const updateScrollButtons = useCallback(() => {
     const el = scrollRef.current
     if (!el) return
@@ -993,19 +997,6 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
   useLayoutEffect(() => {
     if (!submenuRef.current) {
       setSubmenuStyle(null)
-      return
-    }
-    if (isCompactMenuLayout) {
-      setSubmenuStyle({
-        position: 'fixed',
-        top: 8,
-        left: 8,
-        right: 8,
-        bottom: 8,
-        maxHeight: 'none',
-        overflowY: 'auto',
-        zIndex: 10000,
-      })
       return
     }
     // Viewport rect of the submenu as rendered by CSS defaults:
@@ -1145,7 +1136,7 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
           <li
             key={idx}
             className={`${styles.dropdownItem} ${styles.hasSubmenu}${disabled ? ` ${styles.disabledItem}` : ''}`}
-            onMouseEnter={() => !disabled && openSubmenuItem(submenuKey)}
+            onMouseEnter={() => !disabled && !isCompactMenuLayout && openSubmenuItem(submenuKey)}
             onClick={() => !disabled && (openSubmenu === submenuKey ? setOpenSubmenu(null) : openSubmenuItem(submenuKey))}
             role="menuitem"
             aria-haspopup="true"
@@ -1155,27 +1146,13 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
             <span className={styles.checkmark} aria-hidden="true" />
             <span className={styles.itemLabel}>{item.label}</span>
             <span className={styles.submenuArrow} aria-hidden="true" />
-            {!disabled && openSubmenu === submenuKey && (
+            {!isCompactMenuLayout && !disabled && openSubmenu === submenuKey && (
               <ul
                 ref={submenuRef}
-                className={`${styles.submenuDropdown}${isCompactMenuLayout ? ` ${styles.compactSubmenuDropdown}` : ''}`}
+                className={styles.submenuDropdown}
                 style={submenuStyle ?? undefined}
                 role="menu"
               >
-                {isCompactMenuLayout && (
-                  <li className={styles.submenuHeader} role="presentation">
-                    <button
-                      type="button"
-                      className={styles.submenuBackButton}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setOpenSubmenu(null)
-                      }}
-                    >
-                      ‹ {item.label}
-                    </button>
-                  </li>
-                )}
                 {item.submenu.map((subitem, subIdx) => {
                   if (subitem.separator) {
                     return <li key={subIdx} className={styles.separator} role="separator" />
@@ -1225,6 +1202,9 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
     })
 
   const activeMenu = MENUS.find((m) => m.label === openMenu)
+  const activeCompactSubmenu = isCompactMenuLayout && activeMenu && openSubmenu
+    ? activeMenu.items.find((item, idx) => item.submenu && `${activeMenu.label}-${idx}` === openSubmenu)
+    : null
 
   const portalDropdown = mounted && activeMenu && dropdownPos ? createPortal(
     <ul
@@ -1244,7 +1224,18 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
       }}
       role="menu"
     >
-      {renderItems(activeMenu.items, activeMenu.label)}
+      {activeCompactSubmenu && (
+        <li className={styles.submenuHeader} role="presentation">
+          <button
+            type="button"
+            className={styles.submenuBackButton}
+            onClick={() => setOpenSubmenu(null)}
+          >
+            ‹ {activeCompactSubmenu.label}
+          </button>
+        </li>
+      )}
+      {renderItems(activeCompactSubmenu?.submenu ?? activeMenu.items, activeMenu.label)}
     </ul>,
     document.body
   ) : null
