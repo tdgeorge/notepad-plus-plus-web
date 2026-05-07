@@ -4,6 +4,17 @@ import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react
 import { createPortal } from 'react-dom'
 import styles from './MenuBar.module.css'
 
+const EDIT_ACTIONS_REQUIRING_CLIPBOARD_WRITE = new Set([
+  'copy-filename',
+  'copy-all-names',
+])
+
+const EDIT_ACTIONS_REQUIRING_FILE_PATH_ACCESS = new Set([
+  'copy-filepath',
+  'copy-filedir',
+  'copy-all-paths',
+])
+
 const MENUS = [
   {
     label: 'File',
@@ -69,7 +80,7 @@ const MENUS = [
         submenu: [
           { label: 'Date Time (short)', action: 'insert-datetime-short' },
           { label: 'Date Time (long)', action: 'insert-datetime-long' },
-          { label: 'Date Time (customized)' },
+          { label: 'Date Time (customized)', action: 'insert-datetime-custom' },
         ],
       },
       {
@@ -1016,7 +1027,7 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
   }, [])
 
   const handleItemClick = (item, menuLabel) => {
-    if (item.separator || item.submenu || item.disabled) return
+    if (item.separator || item.submenu || isDisabledItem(item, menuLabel)) return
     if (item.action) {
       if (menuLabel === 'Edit') {
         onEditAction?.(item.action)
@@ -1066,8 +1077,20 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
     }
   }
 
-  const isDisabledItem = (item) => {
+  const isDisabledItem = (item, menuLabel) => {
     if (item.disabled) return true
+    if (item.submenu) {
+      return menuLabel === 'Edit'
+        ? item.submenu.every((subitem) => subitem.separator || isDisabledItem(subitem, menuLabel))
+        : false
+    }
+    if (menuLabel === 'Edit') {
+      if (!item.action) return true
+      if (EDIT_ACTIONS_REQUIRING_FILE_PATH_ACCESS.has(item.action)) return true
+      if (EDIT_ACTIONS_REQUIRING_CLIPBOARD_WRITE.has(item.action)) {
+        return !(typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function')
+      }
+    }
     if (!item.action) return false
     switch (item.action) {
       case 'reload': return !fileState?.hasFileHandle
@@ -1086,7 +1109,7 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
       }
       const submenuKey = `${menuLabel}-${idx}`
       const checked = isChecked(item.action)
-      const disabled = isDisabledItem(item)
+      const disabled = isDisabledItem(item, menuLabel)
       if (item.submenu) {
         return (
           <li
@@ -1109,16 +1132,18 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
                 style={submenuStyle ?? undefined}
                 role="menu"
               >
-                {item.submenu.map((subitem, subIdx) =>
-                  subitem.separator ? (
-                    <li key={subIdx} className={styles.separator} role="separator" />
-                  ) : (
+                {item.submenu.map((subitem, subIdx) => {
+                  if (subitem.separator) {
+                    return <li key={subIdx} className={styles.separator} role="separator" />
+                  }
+                  const subitemDisabled = isDisabledItem(subitem, menuLabel)
+                  return (
                     <li
                       key={subIdx}
-                      className={`${styles.dropdownItem}${subitem.disabled ? ` ${styles.disabledItem}` : ''}`}
+                      className={`${styles.dropdownItem}${subitemDisabled ? ` ${styles.disabledItem}` : ''}`}
                       onClick={(e) => { e.stopPropagation(); handleItemClick(subitem, menuLabel) }}
                       role="menuitem"
-                      aria-disabled={subitem.disabled ? 'true' : undefined}
+                      aria-disabled={subitemDisabled ? 'true' : undefined}
                     >
                       <span className={styles.checkmark} aria-hidden="true">
                         {isChecked(subitem.action) ? '✓' : ''}
@@ -1129,7 +1154,7 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
                       )}
                     </li>
                   )
-                )}
+                })}
               </ul>
             )}
           </li>

@@ -147,6 +147,17 @@ export default function Home() {
     [activeView]
   )
 
+  const getActiveTabRecord = useCallback(() => {
+    const currentTabId = activeView === 1 ? activeTabIdRef.current : view2ActiveTabIdRef.current
+    const currentTabs = activeView === 1 ? tabsRef.current : view2TabsRef.current
+    return currentTabs.find((tab) => tab.id === currentTabId) ?? null
+  }, [activeView])
+
+  const getAllOpenTabs = useCallback(
+    () => [...tabsRef.current, ...view2TabsRef.current],
+    []
+  )
+
   const handleNewTab = useCallback(() => {
     const id = nextTabId++
     const name = `new ${id}`
@@ -259,21 +270,19 @@ export default function Home() {
 
   const handleEditAction = useCallback((action) => {
     if (action === 'copy-filename' || action === 'copy-filepath' || action === 'copy-filedir') {
-      const tab = tabsRef.current.find((t) => t.id === activeTabIdRef.current)
-      const filename = tab?.name ?? ''
-      if (action !== 'copy-filedir') {
+      const tab = getActiveTabRecord()
+      if (action === 'copy-filename') {
+        const filename = tab?.name ?? ''
         navigator.clipboard?.writeText(filename).catch(() => {})
       }
       return
     }
     if (action === 'copy-all-names') {
-      const names = tabsRef.current.map((t) => t.name).join('\n')
+      const names = getAllOpenTabs().map((t) => t.name).join('\n')
       navigator.clipboard?.writeText(names).catch(() => {})
       return
     }
     if (action === 'copy-all-paths') {
-      const names = tabsRef.current.map((t) => t.name).join('\n')
-      navigator.clipboard?.writeText(names).catch(() => {})
       return
     }
     if (action === 'insert-datetime-short') {
@@ -288,8 +297,12 @@ export default function Home() {
       getActiveEditor()?.insertText?.(text)
       return
     }
+    if (action === 'insert-datetime-custom') {
+      getActiveEditor()?.insertText?.(new Date().toLocaleString())
+      return
+    }
     getActiveEditor()?.[action]?.()
-  }, [getActiveEditor])
+  }, [getActiveEditor, getActiveTabRecord, getAllOpenTabs])
 
   const downloadFile = useCallback((name, content) => {
     const blob = new Blob([content], { type: 'text/plain' })
