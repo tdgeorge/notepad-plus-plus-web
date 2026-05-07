@@ -15,6 +15,15 @@ const EDIT_ACTIONS_REQUIRING_FILE_PATH_ACCESS = new Set([
   'copy-all-paths',
 ])
 
+function isUnavailableEditAction(action, hasClipboardWriteSupport) {
+  if (!action) return true
+  if (EDIT_ACTIONS_REQUIRING_FILE_PATH_ACCESS.has(action)) return true
+  if (EDIT_ACTIONS_REQUIRING_CLIPBOARD_WRITE.has(action) && !hasClipboardWriteSupport) {
+    return true
+  }
+  return false
+}
+
 const MENUS = [
   {
     label: 'File',
@@ -1078,6 +1087,7 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
   }
 
   const isDisabledItem = (item, menuLabel) => {
+    const hasClipboardWriteSupport = typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function'
     if (item.disabled) return true
     if (item.submenu) {
       return menuLabel === 'Edit'
@@ -1085,11 +1095,7 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
         : false
     }
     if (menuLabel === 'Edit') {
-      if (!item.action) return true
-      if (EDIT_ACTIONS_REQUIRING_FILE_PATH_ACCESS.has(item.action)) return true
-      if (EDIT_ACTIONS_REQUIRING_CLIPBOARD_WRITE.has(item.action)) {
-        return !(typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function')
-      }
+      return isUnavailableEditAction(item.action, hasClipboardWriteSupport)
     }
     if (!item.action) return false
     switch (item.action) {

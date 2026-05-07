@@ -269,20 +269,19 @@ export default function Home() {
   const handlePaste = useCallback(() => getActiveEditor()?.paste(), [getActiveEditor])
 
   const handleEditAction = useCallback((action) => {
-    if (action === 'copy-filename' || action === 'copy-filepath' || action === 'copy-filedir') {
+    if (action === 'copy-filepath' || action === 'copy-filedir' || action === 'copy-all-paths') {
+      // Browser file APIs intentionally do not expose absolute paths.
+      return
+    }
+    if (action === 'copy-filename') {
       const tab = getActiveTabRecord()
-      if (action === 'copy-filename') {
-        const filename = tab?.name ?? ''
-        navigator.clipboard?.writeText(filename).catch(() => {})
-      }
+      const filename = tab?.name ?? ''
+      navigator.clipboard?.writeText(filename).catch(() => {})
       return
     }
     if (action === 'copy-all-names') {
       const names = getAllOpenTabs().map((t) => t.name).join('\n')
       navigator.clipboard?.writeText(names).catch(() => {})
-      return
-    }
-    if (action === 'copy-all-paths') {
       return
     }
     if (action === 'insert-datetime-short') {
