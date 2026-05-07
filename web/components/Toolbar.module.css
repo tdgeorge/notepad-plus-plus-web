@@ -1,13 +1,52 @@
+.toolbarWrapper {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  background: var(--chrome-bg);
+  border-bottom: 1px solid var(--chrome-border);
+  height: 30px;
+  flex-shrink: 0;
+  position: relative;
+}
+
 .toolbar {
   display: flex;
   flex-direction: row;
   align-items: center;
-  background: var(--chrome-bg);
-  border-bottom: 1px solid var(--chrome-border);
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   padding: 2px 2px;
-  height: 30px;
-  flex-shrink: 0;
   gap: 1px;
+}
+
+.toolbar::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollBtn {
+  background: var(--chrome-bg);
+  border: none;
+  border-left: 1px solid var(--chrome-border);
+  padding: 0 6px;
+  height: 100%;
+  font-size: 14px;
+  color: var(--chrome-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+}
+
+.scrollBtn:first-child {
+  border-left: none;
+  border-right: 1px solid var(--chrome-border);
+}
+
+.scrollBtn:hover {
+  background: var(--chrome-hover);
 }
 
 .button {
