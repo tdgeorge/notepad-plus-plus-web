@@ -902,6 +902,7 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
   const [dropdownPos, setDropdownPos] = useState(null)   // { top, left } for portal dropdown
   const [dropdownLeft, setDropdownLeft] = useState(null) // clamping adjustment
   const [submenuStyle, setSubmenuStyle] = useState(null) // positional overrides for open submenu
+  const [isCompactMenuLayout, setIsCompactMenuLayout] = useState(false)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -913,6 +914,15 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
   const hasClipboardWriteSupport = typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function'
 
   useEffect(() => setMounted(true), [])
+
+  useEffect(() => {
+    const updateLayoutMode = () => {
+      setIsCompactMenuLayout(window.innerWidth <= 640)
+    }
+    updateLayoutMode()
+    window.addEventListener('resize', updateLayoutMode)
+    return () => window.removeEventListener('resize', updateLayoutMode)
+  }, [])
 
   const updateScrollButtons = useCallback(() => {
     const el = scrollRef.current
@@ -985,6 +995,19 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
       setSubmenuStyle(null)
       return
     }
+    if (isCompactMenuLayout) {
+      setSubmenuStyle({
+        position: 'fixed',
+        top: 8,
+        left: 8,
+        right: 8,
+        bottom: 8,
+        maxHeight: 'none',
+        overflowY: 'auto',
+        zIndex: 10000,
+      })
+      return
+    }
     // Viewport rect of the submenu as rendered by CSS defaults:
     //   desktop  → top: 0;   left: 100%  (opens right of trigger)
     //   mobile   → top: 100%; left: 0    (opens below trigger)
@@ -1015,7 +1038,7 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
       overflowY: 'auto',
       zIndex: 10000,
     })
-  }, [openSubmenu])
+  }, [openSubmenu, isCompactMenuLayout])
 
   // Batch-reset submenu position state so each new submenu is measured from its CSS default
   const openSubmenuItem = (key) => {
@@ -1135,10 +1158,24 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
             {!disabled && openSubmenu === submenuKey && (
               <ul
                 ref={submenuRef}
-                className={styles.submenuDropdown}
+                className={`${styles.submenuDropdown}${isCompactMenuLayout ? ` ${styles.compactSubmenuDropdown}` : ''}`}
                 style={submenuStyle ?? undefined}
                 role="menu"
               >
+                {isCompactMenuLayout && (
+                  <li className={styles.submenuHeader} role="presentation">
+                    <button
+                      type="button"
+                      className={styles.submenuBackButton}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setOpenSubmenu(null)
+                      }}
+                    >
+                      ‹ {item.label}
+                    </button>
+                  </li>
+                )}
                 {item.submenu.map((subitem, subIdx) => {
                   if (subitem.separator) {
                     return <li key={subIdx} className={styles.separator} role="separator" />
