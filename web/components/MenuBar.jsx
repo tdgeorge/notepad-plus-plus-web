@@ -1050,10 +1050,12 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
   }, [openSubmenu, isCompactMenuLayout])
 
   // Batch-reset submenu position state so each new submenu is measured from its CSS default
-  const openSubmenuItem = (key) => {
+  const openSubmenuItem = useCallback((key) => {
+    if (openSubmenu !== key) {
+      setSubmenuStyle(null)
+    }
     setOpenSubmenu(key)
-    setSubmenuStyle(null)
-  }
+  }, [openSubmenu])
 
   useEffect(() => {
     const handleClick = (e) => {
