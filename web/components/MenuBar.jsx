@@ -911,6 +911,7 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
   const submenuRef = useRef(null)
   const dropdownRef = useRef(null)
   const menuButtonRefs = useRef({})
+  const suppressMenuToggleUntilRef = useRef(0)
   const hasClipboardWriteSupport = typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function'
   const closeMenus = useCallback(() => {
     setOpenMenu(null)
@@ -1055,6 +1056,9 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
 
   const handleItemClick = (item, menuLabel) => {
     if (item.separator || item.submenu || isDisabledItem(item, menuLabel)) return
+    if (isCompactMenuLayout && openSubmenu) {
+      suppressMenuToggleUntilRef.current = performance.now() + 400
+    }
     flushSync(closeMenus)
     if (item.action) {
       if (menuLabel === 'Edit') {
@@ -1260,7 +1264,14 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
             <button
               ref={(el) => { menuButtonRefs.current[menu.label] = el }}
               className={`${styles.menuButton} ${openMenu === menu.label ? styles.active : ''}`}
-              onClick={() => setOpenMenu(openMenu === menu.label ? null : menu.label)}
+              onClick={(e) => {
+                if (performance.now() < suppressMenuToggleUntilRef.current) {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  return
+                }
+                setOpenMenu(openMenu === menu.label ? null : menu.label)
+              }}
               onMouseEnter={() => openMenu !== null && setOpenMenu(menu.label)}
               role="menuitem"
               aria-haspopup="true"
