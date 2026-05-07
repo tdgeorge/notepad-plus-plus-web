@@ -15,6 +15,8 @@ const EDIT_ACTIONS_REQUIRING_FILE_PATH_ACCESS = new Set([
   'copy-all-paths',
 ])
 
+const MENU_TOGGLE_SUPPRESS_DURATION_MS = 400
+
 function isUnavailableEditAction(action, hasClipboardWriteSupport) {
   if (!action) return true
   if (EDIT_ACTIONS_REQUIRING_FILE_PATH_ACCESS.has(action)) return true
@@ -1057,7 +1059,7 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
   const handleItemClick = (item, menuLabel) => {
     if (item.separator || item.submenu || isDisabledItem(item, menuLabel)) return
     if (isCompactMenuLayout && openSubmenu) {
-      suppressMenuToggleUntilRef.current = performance.now() + 400
+      suppressMenuToggleUntilRef.current = performance.now() + MENU_TOGGLE_SUPPRESS_DURATION_MS
     }
     flushSync(closeMenus)
     if (item.action) {
