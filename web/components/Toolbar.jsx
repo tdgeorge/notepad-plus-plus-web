@@ -55,8 +55,10 @@ export default function Toolbar({
     }
   }, [updateScrollButtons])
 
-  const handleScrollLeft = () => scrollRef.current?.scrollBy({ left: -120, behavior: 'smooth' })
-  const handleScrollRight = () => scrollRef.current?.scrollBy({ left: 120, behavior: 'smooth' })
+  const SCROLL_DISTANCE = 120
+
+  const handleScrollLeft = () => scrollRef.current?.scrollBy({ left: -SCROLL_DISTANCE, behavior: 'smooth' })
+  const handleScrollRight = () => scrollRef.current?.scrollBy({ left: SCROLL_DISTANCE, behavior: 'smooth' })
 
   return (
     <div className={styles.toolbarWrapper}>
