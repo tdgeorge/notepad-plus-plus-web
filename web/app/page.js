@@ -86,6 +86,10 @@ export default function Home() {
   const [showEol, setShowEol] = useState(false)
   const [showAllChars, setShowAllChars] = useState(false)
   const [showIndent, setShowIndent] = useState(false)
+  const [distractionFree, setDistractionFree] = useState(false)
+  const [syncScrollV, setSyncScrollV] = useState(false)
+  const [syncScrollH, setSyncScrollH] = useState(false)
+  const [textDirection, setTextDirection] = useState('ltr')
 
   // Search state
   const [findDialogOpen, setFindDialogOpen] = useState(false)
@@ -102,6 +106,8 @@ export default function Home() {
   const [windowsDialogOpen, setWindowsDialogOpen] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const searchStateRef = useRef({ term: '', options: { matchCase: false, wholeWord: false, wrapAround: true } })
+  // Guard flag prevents the two editors from triggering each other's scroll endlessly.
+  const syncScrollingRef = useRef(false)
 
   // Load persisted theme on mount and apply it
   useEffect(() => {
@@ -136,7 +142,7 @@ export default function Home() {
   // Language is stored per-tab (set at file-open time or overridden via Language menu).
   const language = activeTab?.language ?? null
 
-  const viewState = { wordWrap, showWhitespace, showEol, showAllChars, showIndent, language, splitEnabled }
+  const viewState = { wordWrap, showWhitespace, showEol, showAllChars, showIndent, language, splitEnabled, distractionFree, syncScrollV, syncScrollH, textDirection }
 
   const activeTabIndex = tabs.findIndex((t) => t.id === activeTabId)
   const fileState = {
@@ -848,11 +854,34 @@ export default function Home() {
     }
   }, [splitEnabled, activeView])
 
+  const handleEditor1Scroll = useCallback((scrollTop, scrollLeft) => {
+    if (!splitEnabled || syncScrollingRef.current) return
+    if (!syncScrollV && !syncScrollH) return
+    syncScrollingRef.current = true
+    secondEditorRef.current?.setScrollPosition(
+      syncScrollV ? scrollTop : null,
+      syncScrollH ? scrollLeft : null
+    )
+    requestAnimationFrame(() => { syncScrollingRef.current = false })
+  }, [splitEnabled, syncScrollV, syncScrollH])
+
+  const handleEditor2Scroll = useCallback((scrollTop, scrollLeft) => {
+    if (!splitEnabled || syncScrollingRef.current) return
+    if (!syncScrollV && !syncScrollH) return
+    syncScrollingRef.current = true
+    editorRef.current?.setScrollPosition(
+      syncScrollV ? scrollTop : null,
+      syncScrollH ? scrollLeft : null
+    )
+    requestAnimationFrame(() => { syncScrollingRef.current = false })
+  }, [splitEnabled, syncScrollV, syncScrollH])
+
   const handleViewAction = useCallback((action) => {
-    // Tab navigation by index
+    // Tab navigation/management by sub-action
     if (action.startsWith('view-tab-')) {
       const sub = action.slice('view-tab-'.length)
       const currentTabs = activeView === 1 ? tabsRef.current : view2TabsRef.current
+      const currentActiveId = activeView === 1 ? activeTabIdRef.current : view2ActiveTabIdRef.current
       if (sub === 'first') {
         if (activeView === 1) setActiveTabId(currentTabs[0]?.id)
         else setView2ActiveTabId(currentTabs[0]?.id)
@@ -861,6 +890,58 @@ export default function Home() {
       if (sub === 'last') {
         if (activeView === 1) setActiveTabId(currentTabs[currentTabs.length - 1]?.id)
         else setView2ActiveTabId(currentTabs[currentTabs.length - 1]?.id)
+        return
+      }
+      if (sub === 'move-start') {
+        const setT = activeView === 1 ? setTabs : setView2Tabs
+        setT((prev) => {
+          const idx = prev.findIndex((t) => t.id === currentActiveId)
+          if (idx <= 0) return prev
+          const tab = prev[idx]
+          return [tab, ...prev.slice(0, idx), ...prev.slice(idx + 1)]
+        })
+        return
+      }
+      if (sub === 'move-end') {
+        const setT = activeView === 1 ? setTabs : setView2Tabs
+        setT((prev) => {
+          const idx = prev.findIndex((t) => t.id === currentActiveId)
+          if (idx === -1 || idx === prev.length - 1) return prev
+          const tab = prev[idx]
+          return [...prev.slice(0, idx), ...prev.slice(idx + 1), tab]
+        })
+        return
+      }
+      if (sub === 'move-forward') {
+        const setT = activeView === 1 ? setTabs : setView2Tabs
+        setT((prev) => {
+          const idx = prev.findIndex((t) => t.id === currentActiveId)
+          if (idx === -1 || idx >= prev.length - 1) return prev
+          const next = [...prev]
+          ;[next[idx], next[idx + 1]] = [next[idx + 1], next[idx]]
+          return next
+        })
+        return
+      }
+      if (sub === 'move-backward') {
+        const setT = activeView === 1 ? setTabs : setView2Tabs
+        setT((prev) => {
+          const idx = prev.findIndex((t) => t.id === currentActiveId)
+          if (idx <= 0) return prev
+          const next = [...prev]
+          ;[next[idx - 1], next[idx]] = [next[idx], next[idx - 1]]
+          return next
+        })
+        return
+      }
+      if (sub.startsWith('color-')) {
+        const colorPart = sub.slice('color-'.length)
+        const colorNum = colorPart === 'remove' ? null : parseInt(colorPart, 10)
+        if (activeView === 1) {
+          setTabs((prev) => prev.map((t) => t.id === currentActiveId ? { ...t, color: colorNum } : t))
+        } else {
+          setView2Tabs((prev) => prev.map((t) => t.id === currentActiveId ? { ...t, color: colorNum } : t))
+        }
         return
       }
       const n = parseInt(sub, 10)
@@ -890,6 +971,23 @@ export default function Home() {
           document.exitFullscreen?.()
         }
         break
+      case 'distraction-free':
+        setDistractionFree((prev) => !prev)
+        break
+      case 'view-in-browser': {
+        const tab = getActiveTabRecord()
+        if (!tab) break
+        const ext = tab.name.split('.').pop().toLowerCase()
+        const htmlExts = new Set(['html', 'htm', 'xhtml', 'svg'])
+        const mimeType = htmlExts.has(ext) ? 'text/html' : 'text/plain'
+        const blob = new Blob([tab.content], { type: mimeType })
+        const url = URL.createObjectURL(blob)
+        window.open(url, '_blank', 'noopener,noreferrer')
+        // Revoke the object URL after a generous delay; the actual lifecycle is tied to
+        // the document so this just frees the browser's internal reference entry.
+        setTimeout(() => URL.revokeObjectURL(url), 300_000)
+        break
+      }
       case 'show-whitespace':
         setShowWhitespace((prev) => !prev)
         break
@@ -922,6 +1020,34 @@ export default function Home() {
       case 'unfold-all':
         getActiveEditor()?.unfoldAll()
         break
+      case 'hide-lines':
+        getActiveEditor()?.hideLines()
+        break
+      case 'document-list':
+        setWindowsDialogOpen(true)
+        break
+      case 'sync-scroll-v':
+        setSyncScrollV((prev) => !prev)
+        break
+      case 'sync-scroll-h':
+        setSyncScrollH((prev) => !prev)
+        break
+      case 'text-dir-rtl':
+        setTextDirection('rtl')
+        break
+      case 'text-dir-ltr':
+        setTextDirection('ltr')
+        break
+      case 'summary': {
+        const tab = getActiveTabRecord()
+        const tabContent = tab?.content ?? ''
+        const lines = tabContent.split('\n').length
+        const chars = tabContent.length
+        const trimmed = tabContent.trim()
+        const words = trimmed ? trimmed.split(/\s+/).length : 0
+        window.alert(`File: ${tab?.name ?? '(untitled)'}\n\nLines: ${lines}\nWords: ${words}\nCharacters: ${chars}`)
+        break
+      }
       case 'nextTab':
         handleNextTab()
         break
@@ -931,7 +1057,7 @@ export default function Home() {
       default:
         break
     }
-  }, [handleZoomIn, handleZoomOut, handleZoomReset, handleMoveToOtherView, handleCloneToOtherView, handleFocusOtherView, getActiveEditor, handleNextTab, handlePrevTab, activeView])
+  }, [handleZoomIn, handleZoomOut, handleZoomReset, handleMoveToOtherView, handleCloneToOtherView, handleFocusOtherView, getActiveEditor, getActiveTabRecord, handleNextTab, handlePrevTab, activeView])
 
   const handleLanguageAction = useCallback((action) => {
     const tabId = activeTabIdRef.current
@@ -1097,6 +1223,15 @@ export default function Home() {
       } else if (e.altKey && e.code === 'KeyW') {
         e.preventDefault()
         setWordWrap((prev) => !prev)
+      } else if (e.altKey && !e.shiftKey && e.code === 'KeyH') {
+        e.preventDefault()
+        getActiveEditor()?.hideLines()
+      } else if (e.altKey && !e.shiftKey && e.key === '0') {
+        e.preventDefault()
+        getActiveEditor()?.foldAll()
+      } else if (e.altKey && e.shiftKey && e.key === '0') {
+        e.preventDefault()
+        getActiveEditor()?.unfoldAll()
       } else if (e.key === 'F11') {
         e.preventDefault()
         if (!document.fullscreenElement) {
@@ -1115,7 +1250,7 @@ export default function Home() {
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [handleNewTab, handleNewWindow, handleOpen, handleSave, handleSaveAs, handleSaveAll, handlePrint, handleCloseActive, handleNextTab, handlePrevTab])
+  }, [handleNewTab, handleNewWindow, handleOpen, handleSave, handleSaveAs, handleSaveAll, handlePrint, handleCloseActive, handleNextTab, handlePrevTab, getActiveEditor])
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -1181,7 +1316,7 @@ export default function Home() {
   }, [getActiveEditor])
 
   // ── Common editor props builder ───────────────────────────────────────────
-  const commonEditorProps = { wordWrap, fontSize, showWhitespace, showEol, showIndent, onUndo: handleUndo, onRedo: handleRedo }
+  const commonEditorProps = { wordWrap, fontSize, showWhitespace, showEol, showIndent, onUndo: handleUndo, onRedo: handleRedo, textDirection }
 
   const view2ActiveTab = view2Tabs.find((t) => t.id === view2ActiveTabId)
   const displayCursorPos = activeView === 1 ? cursorPos : view2CursorPos
@@ -1211,33 +1346,35 @@ export default function Home() {
         viewState={viewState}
         fileState={fileState}
       />
-      <Toolbar
-        onNew={handleNewTab}
-        onOpen={handleOpen}
-        onSave={handleSave}
-        onSaveAll={handleSaveAll}
-        onClose={handleCloseActive}
-        onCloseAll={handleCloseAll}
-        onPrint={handlePrint}
-        onUndo={handleUndo}
-        onRedo={handleRedo}
-        onCut={handleCut}
-        onCopy={handleCopy}
-        onPaste={handlePaste}
-        onFind={() => { setFindDialogMode('find'); setFindDialogOpen(true) }}
-        onReplace={() => { setFindDialogMode('replace'); setFindDialogOpen(true) }}
-        onZoomIn={handleZoomIn}
-        onZoomOut={handleZoomOut}
-        onWordWrap={() => setWordWrap((prev) => !prev)}
-        onShowAllChars={() => setShowAllChars((prev) => {
-          const next = !prev
-          setShowWhitespace(next)
-          setShowEol(next)
-          return next
-        })}
-        onShowIndent={() => setShowIndent((prev) => !prev)}
-        viewState={viewState}
-      />
+      {!distractionFree && (
+        <Toolbar
+          onNew={handleNewTab}
+          onOpen={handleOpen}
+          onSave={handleSave}
+          onSaveAll={handleSaveAll}
+          onClose={handleCloseActive}
+          onCloseAll={handleCloseAll}
+          onPrint={handlePrint}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          onCut={handleCut}
+          onCopy={handleCopy}
+          onPaste={handlePaste}
+          onFind={() => { setFindDialogMode('find'); setFindDialogOpen(true) }}
+          onReplace={() => { setFindDialogMode('replace'); setFindDialogOpen(true) }}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onWordWrap={() => setWordWrap((prev) => !prev)}
+          onShowAllChars={() => setShowAllChars((prev) => {
+            const next = !prev
+            setShowWhitespace(next)
+            setShowEol(next)
+            return next
+          })}
+          onShowIndent={() => setShowIndent((prev) => !prev)}
+          viewState={viewState}
+        />
+      )}
       <IncrementalSearch
         isOpen={incrementalSearchOpen}
         onClose={() => { setIncrementalSearchOpen(false); getActiveEditor()?.focus() }}
@@ -1254,18 +1391,21 @@ export default function Home() {
               className={`${styles.viewPane} ${activeView === 1 ? styles.activeViewPane : ''}`}
               onFocus={() => setActiveView(1)}
             >
-              <TabBar
-                tabs={tabs}
-                activeTabId={activeTabId}
-                onSelect={setActiveTabId}
-                onClose={handleCloseTab}
-              />
+              {!distractionFree && (
+                <TabBar
+                  tabs={tabs}
+                  activeTabId={activeTabId}
+                  onSelect={setActiveTabId}
+                  onClose={handleCloseTab}
+                />
+              )}
               <Editor
                 key={activeTabId}
                 ref={editorRef}
                 content={activeTab?.content ?? ''}
                 onChange={handleContentChange}
                 onCursorChange={setCursorPos}
+                onEditorScroll={handleEditor1Scroll}
                 {...commonEditorProps}
                 language={language}
               />
@@ -1276,18 +1416,21 @@ export default function Home() {
               className={`${styles.viewPane} ${activeView === 2 ? styles.activeViewPane : ''}`}
               onFocus={() => setActiveView(2)}
             >
-              <TabBar
-                tabs={view2Tabs}
-                activeTabId={view2ActiveTabId}
-                onSelect={setView2ActiveTabId}
-                onClose={handleCloseView2Tab}
-              />
+              {!distractionFree && (
+                <TabBar
+                  tabs={view2Tabs}
+                  activeTabId={view2ActiveTabId}
+                  onSelect={setView2ActiveTabId}
+                  onClose={handleCloseView2Tab}
+                />
+              )}
               <Editor
                 key={view2ActiveTabId ?? 'view2-empty'}
                 ref={secondEditorRef}
                 content={view2ActiveTab?.content ?? ''}
                 onChange={handleView2ContentChange}
                 onCursorChange={setView2CursorPos}
+                onEditorScroll={handleEditor2Scroll}
                 {...commonEditorProps}
                 language={view2ActiveTab?.language ?? null}
               />
@@ -1296,12 +1439,14 @@ export default function Home() {
         />
       ) : (
         <>
-          <TabBar
-            tabs={tabs}
-            activeTabId={activeTabId}
-            onSelect={setActiveTabId}
-            onClose={handleCloseTab}
-          />
+          {!distractionFree && (
+            <TabBar
+              tabs={tabs}
+              activeTabId={activeTabId}
+              onSelect={setActiveTabId}
+              onClose={handleCloseTab}
+            />
+          )}
           <Editor
             key={activeTabId}
             ref={editorRef}
@@ -1313,7 +1458,9 @@ export default function Home() {
           />
         </>
       )}
-      <StatusBar cursorPos={displayCursorPos} eol="Windows (CR LF)" encoding="UTF-8" language={displayLanguage} isLargeFile={displayIsLargeFile} />
+      {!distractionFree && (
+        <StatusBar cursorPos={displayCursorPos} eol="Windows (CR LF)" encoding="UTF-8" language={displayLanguage} isLargeFile={displayIsLargeFile} />
+      )}
       <FindDialog
         isOpen={findDialogOpen}
         mode={findDialogMode}

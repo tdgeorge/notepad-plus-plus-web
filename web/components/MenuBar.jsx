@@ -392,18 +392,18 @@ const MENUS = [
   {
     label: 'View',
     items: [
-      { label: 'Always on Top' },
+      { label: 'Always on Top', disabled: true },
       { label: 'Toggle Full Screen Mode', shortcut: 'F11', action: 'fullscreen' },
-      { label: 'Post-It' },
-      { label: 'Distraction Free Mode' },
+      { label: 'Post-It', disabled: true },
+      { label: 'Distraction Free Mode', action: 'distraction-free' },
       { separator: true },
       {
         label: 'View Current File in',
         submenu: [
-          { label: 'Firefox' },
-          { label: 'Chrome' },
-          { label: 'Edge' },
-          { label: 'IE' },
+          { label: 'Firefox', action: 'view-in-browser' },
+          { label: 'Chrome', action: 'view-in-browser' },
+          { label: 'Edge', action: 'view-in-browser' },
+          { label: 'IE', action: 'view-in-browser' },
         ],
       },
       { separator: true },
@@ -412,12 +412,12 @@ const MENUS = [
         submenu: [
           { label: 'Show Space and Tab', action: 'show-whitespace' },
           { label: 'Show End of Line', action: 'show-eol' },
-          { label: 'Show Non-Printing Characters' },
-          { label: 'Show Control Characters & Unicode EOL' },
+          { label: 'Show Non-Printing Characters', disabled: true },
+          { label: 'Show Control Characters & Unicode EOL', disabled: true },
           { label: 'Show All Characters', action: 'show-all-chars' },
           { separator: true },
           { label: 'Show Indent Guide', action: 'show-indent' },
-          { label: 'Show Wrap Symbol' },
+          { label: 'Show Wrap Symbol', disabled: true },
         ],
       },
       {
@@ -427,7 +427,7 @@ const MENUS = [
           { label: 'Zoom Out (Ctrl+Mouse Wheel Down)', action: 'zoom-out' },
           { label: 'Restore Default Zoom', action: 'zoom-reset' },
           { separator: true },
-          { label: 'Synchronize Across Views' },
+          { label: 'Synchronize Across Views', disabled: true },
         ],
       },
       {
@@ -435,8 +435,8 @@ const MENUS = [
         submenu: [
           { label: 'Move to Other View', action: 'move-to-other-view' },
           { label: 'Clone to Other View', action: 'clone-to-other-view' },
-          { label: 'Move to New Instance' },
-          { label: 'Open in New Instance' },
+          { label: 'Move to New Instance', disabled: true },
+          { label: 'Open in New Instance', disabled: true },
         ],
       },
       {
@@ -457,17 +457,17 @@ const MENUS = [
           { label: 'Next Tab', shortcut: 'Ctrl+Tab', action: 'nextTab' },
           { label: 'Previous Tab', shortcut: 'Ctrl+Shift+Tab', action: 'prevTab' },
           { separator: true },
-          { label: 'Move to Start' },
-          { label: 'Move to End' },
-          { label: 'Move Tab Forward' },
-          { label: 'Move Tab Backward' },
+          { label: 'Move to Start', action: 'view-tab-move-start' },
+          { label: 'Move to End', action: 'view-tab-move-end' },
+          { label: 'Move Tab Forward', action: 'view-tab-move-forward' },
+          { label: 'Move Tab Backward', action: 'view-tab-move-backward' },
           { separator: true },
-          { label: 'Apply Color 1' },
-          { label: 'Apply Color 2' },
-          { label: 'Apply Color 3' },
-          { label: 'Apply Color 4' },
-          { label: 'Apply Color 5' },
-          { label: 'Remove Color' },
+          { label: 'Apply Color 1', action: 'view-tab-color-1' },
+          { label: 'Apply Color 2', action: 'view-tab-color-2' },
+          { label: 'Apply Color 3', action: 'view-tab-color-3' },
+          { label: 'Apply Color 4', action: 'view-tab-color-4' },
+          { label: 'Apply Color 5', action: 'view-tab-color-5' },
+          { label: 'Remove Color', action: 'view-tab-color-remove' },
         ],
       },
       { label: 'Word Wrap', shortcut: 'Alt+W', action: 'word-wrap' },
@@ -476,20 +476,20 @@ const MENUS = [
       { separator: true },
       { label: 'Fold All', shortcut: 'Alt+0', action: 'fold-all' },
       { label: 'Unfold All', shortcut: 'Alt+Shift+0', action: 'unfold-all' },
-      { label: 'Fold Current Level' },
-      { label: 'Unfold Current Level' },
+      { label: 'Fold Current Level', disabled: true },
+      { label: 'Unfold Current Level', disabled: true },
       {
         label: 'Fold Level',
         submenu: [
-          { label: '1' }, { label: '2' }, { label: '3' }, { label: '4' },
-          { label: '5' }, { label: '6' }, { label: '7' }, { label: '8' },
+          { label: '1', disabled: true }, { label: '2', disabled: true }, { label: '3', disabled: true }, { label: '4', disabled: true },
+          { label: '5', disabled: true }, { label: '6', disabled: true }, { label: '7', disabled: true }, { label: '8', disabled: true },
         ],
       },
       {
         label: 'Unfold Level',
         submenu: [
-          { label: '1' }, { label: '2' }, { label: '3' }, { label: '4' },
-          { label: '5' }, { label: '6' }, { label: '7' }, { label: '8' },
+          { label: '1', disabled: true }, { label: '2', disabled: true }, { label: '3', disabled: true }, { label: '4', disabled: true },
+          { label: '5', disabled: true }, { label: '6', disabled: true }, { label: '7', disabled: true }, { label: '8', disabled: true },
         ],
       },
       { separator: true },
@@ -498,23 +498,23 @@ const MENUS = [
       {
         label: 'Project Panels',
         submenu: [
-          { label: 'Project Panel 1' },
-          { label: 'Project Panel 2' },
-          { label: 'Project Panel 3' },
+          { label: 'Project Panel 1', disabled: true },
+          { label: 'Project Panel 2', disabled: true },
+          { label: 'Project Panel 3', disabled: true },
         ],
       },
-      { label: 'Folder as Workspace' },
-      { label: 'Document Map' },
-      { label: 'Document List' },
-      { label: 'Function List' },
+      { label: 'Folder as Workspace', disabled: true },
+      { label: 'Document Map', disabled: true },
+      { label: 'Document List', action: 'document-list' },
+      { label: 'Function List', disabled: true },
       { separator: true },
-      { label: 'Synchronize Vertical Scrolling' },
-      { label: 'Synchronize Horizontal Scrolling' },
+      { label: 'Synchronize Vertical Scrolling', action: 'sync-scroll-v' },
+      { label: 'Synchronize Horizontal Scrolling', action: 'sync-scroll-h' },
       { separator: true },
-      { label: 'Text Direction RTL' },
-      { label: 'Text Direction LTR' },
+      { label: 'Text Direction RTL', action: 'text-dir-rtl' },
+      { label: 'Text Direction LTR', action: 'text-dir-ltr' },
       { separator: true },
-      { label: 'Monitoring (tail -f)' },
+      { label: 'Monitoring (tail -f)', disabled: true },
     ],
   },
   {
@@ -1120,6 +1120,11 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
       case 'show-eol': return viewState.showEol
       case 'show-all-chars': return viewState.showAllChars
       case 'show-indent': return viewState.showIndent
+      case 'distraction-free': return viewState.distractionFree
+      case 'sync-scroll-v': return viewState.syncScrollV
+      case 'sync-scroll-h': return viewState.syncScrollH
+      case 'text-dir-rtl': return viewState.textDirection === 'rtl'
+      case 'text-dir-ltr': return viewState.textDirection === 'ltr'
       case 'lang-plain-text': return viewState.language == null
       default:
         if (action.startsWith('lang-')) {

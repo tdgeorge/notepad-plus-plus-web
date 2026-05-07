@@ -404,7 +404,7 @@ function renderSymbols(text, { showWhitespace, showEol, showIndent }) {
 }
 
 const Editor = forwardRef(function Editor(
-  { content, onChange, onCursorChange, wordWrap, fontSize, showWhitespace, showEol, showIndent, language, onUndo, onRedo },
+  { content, onChange, onCursorChange, wordWrap, fontSize, showWhitespace, showEol, showIndent, language, onUndo, onRedo, textDirection, onEditorScroll },
   ref
 ) {
   const textareaRef = useRef(null)
@@ -417,6 +417,8 @@ const Editor = forwardRef(function Editor(
   useEffect(() => { onUndoRef.current = onUndo }, [onUndo])
   const onRedoRef = useRef(onRedo)
   useEffect(() => { onRedoRef.current = onRedo }, [onRedo])
+  const onEditorScrollRef = useRef(onEditorScroll)
+  useEffect(() => { onEditorScrollRef.current = onEditorScroll }, [onEditorScroll])
 
   // ── Large-file mode ───────────────────────────────────────────────────────
   // Skip every expensive O(n) operation when the file exceeds the threshold.
@@ -462,6 +464,15 @@ const Editor = forwardRef(function Editor(
   const foldRegionsRef = useRef(foldRegions)
   useEffect(() => { foldRegionsRef.current = foldRegions }, [foldRegions])
 
+  // ── Manually hidden lines (via Hide Lines action) ─────────────────────────
+  const [manualHiddenLines, setManualHiddenLines] = useState(new Set())
+  const allHiddenLines = useMemo(() => {
+    if (manualHiddenLines.size === 0) return hiddenLines
+    const merged = new Set(hiddenLines)
+    for (const l of manualHiddenLines) merged.add(l)
+    return merged
+  }, [hiddenLines, manualHiddenLines])
+
   const toggleFold = useCallback((startLine) => {
     setFoldedLines((prev) => {
       const next = new Set(prev)
@@ -488,12 +499,12 @@ const Editor = forwardRef(function Editor(
   // millions of React nodes and makes the UI unresponsive.
   const mirrorContent = useMemo(() => {
     if (isLargeFile) return null
-    const hasFolds = foldedLines.size > 0
+    const hasFolds = foldedLines.size > 0 || manualHiddenLines.size > 0
     if (hasFolds) {
       return renderLinesWithFolds(
         content, tokenizeFn,
         { showWhitespace, showEol, showIndent },
-        hiddenLines, foldedLines
+        allHiddenLines, foldedLines
       )
     }
     if (tokenizeFn) {
@@ -503,12 +514,12 @@ const Editor = forwardRef(function Editor(
       return renderSymbols(content, { showWhitespace, showEol, showIndent })
     }
     return null
-  }, [isLargeFile, content, tokenizeFn, showWhitespace, showEol, showIndent, foldedLines, hiddenLines, showSymbols])
+  }, [isLargeFile, content, tokenizeFn, showWhitespace, showEol, showIndent, foldedLines, allHiddenLines, manualHiddenLines, showSymbols])
 
   // The mirror <pre> is shown when syntax highlighting is active, any
-  // whitespace / EOL / indent guide symbol is enabled, or folds are present.
+  // whitespace / EOL / indent guide symbol is enabled, or folds/hidden lines are present.
   // Never shown for large files (textarea renders plain text natively).
-  const showMirror = !isLargeFile && (showSymbols || !!tokenizeFn || foldedLines.size > 0)
+  const showMirror = !isLargeFile && (showSymbols || !!tokenizeFn || foldedLines.size > 0 || manualHiddenLines.size > 0)
 
   const updateLineCount = useCallback((text) => {
     const lines = text.split('\n').length
@@ -528,6 +539,7 @@ const Editor = forwardRef(function Editor(
     if (isLargeFileRef.current) {
       setEditorScrollTop(ta.scrollTop)
     }
+    onEditorScrollRef.current?.(ta.scrollTop, ta.scrollLeft)
   }, [])
 
   const updateCursor = useCallback(() => {
@@ -857,6 +869,39 @@ const Editor = forwardRef(function Editor(
 
     unfoldAll() {
       setFoldedLines(new Set())
+      setManualHiddenLines(new Set())
+    },
+
+    // ── Hide Lines ────────────────────────────────────────────────────────
+    hideLines() {
+      const ta = textareaRef.current
+      if (!ta) return
+      setManualHiddenLines((prev) => {
+        if (prev.size > 0) return new Set()
+        const start = ta.selectionStart
+        const end = ta.selectionEnd
+        const text = ta.value
+        const startLine = text.substring(0, start).split('\n').length - 1
+        const endLine = text.substring(0, end).split('\n').length - 1
+        const next = new Set()
+        for (let i = startLine; i <= endLine; i++) next.add(i)
+        return next
+      })
+    },
+
+    // ── Scroll position ───────────────────────────────────────────────────
+    setScrollPosition(top, left) {
+      const ta = textareaRef.current
+      if (!ta) return
+      if (top !== null && top !== undefined) {
+        ta.scrollTop = top
+        if (lineNumbersRef.current) lineNumbersRef.current.scrollTop = top
+        if (mirrorRef.current) mirrorRef.current.scrollTop = top
+      }
+      if (left !== null && left !== undefined) {
+        ta.scrollLeft = left
+        if (mirrorRef.current) mirrorRef.current.scrollLeft = left
+      }
     },
 
     // ── EOL Conversion ────────────────────────────────────────────────────
@@ -1643,7 +1688,7 @@ const Editor = forwardRef(function Editor(
             }
             return items
           })() : Array.from({ length: lineCount }, (_, i) => {
-            if (hiddenLines.has(i)) {
+            if (allHiddenLines.has(i)) {
               return <div key={i} className={styles.lineNumberHidden} aria-hidden="true" />
             }
             const region = foldableMap.get(i)
@@ -1674,6 +1719,7 @@ const Editor = forwardRef(function Editor(
               ref={mirrorRef}
               className={styles.mirror}
               aria-hidden="true"
+              dir={textDirection ?? 'ltr'}
               style={{ whiteSpace: wordWrap ? 'pre-wrap' : 'pre' }}
             >
               {mirrorContent}
@@ -1692,6 +1738,7 @@ const Editor = forwardRef(function Editor(
             autoComplete="off"
             autoCorrect="off"
             autoCapitalize="off"
+            dir={textDirection ?? 'ltr'}
             aria-label="Text editor"
             aria-multiline="true"
             style={{
