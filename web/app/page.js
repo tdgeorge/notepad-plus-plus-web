@@ -269,10 +269,6 @@ export default function Home() {
   const handlePaste = useCallback(() => getActiveEditor()?.paste(), [getActiveEditor])
 
   const handleEditAction = useCallback((action) => {
-    if (action === 'copy-filepath' || action === 'copy-filedir' || action === 'copy-all-paths') {
-      // Browser file APIs intentionally do not expose absolute paths.
-      return
-    }
     if (action === 'copy-filename') {
       const tab = getActiveTabRecord()
       const filename = tab?.name ?? ''

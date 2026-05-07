@@ -910,6 +910,7 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
   const submenuRef = useRef(null)
   const dropdownRef = useRef(null)
   const menuButtonRefs = useRef({})
+  const hasClipboardWriteSupport = typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function'
 
   useEffect(() => setMounted(true), [])
 
@@ -1087,7 +1088,6 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
   }
 
   const isDisabledItem = (item, menuLabel) => {
-    const hasClipboardWriteSupport = typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function'
     if (item.disabled) return true
     if (item.submenu) {
       return menuLabel === 'Edit'
