@@ -98,14 +98,9 @@
   color: var(--accent-text);
 }
 
-.dropdownItem.disabled {
-  color: var(--chrome-text-muted);
-  cursor: default;
+.disabledItem {
+  opacity: 0.45;
   pointer-events: none;
-}
-
-.dropdownItem.disabled .shortcut {
-  color: var(--chrome-text-muted);
 }
 
 .checkmark {
@@ -157,6 +152,8 @@
   padding: 2px 0;
   box-shadow: var(--dialog-shadow);
   z-index: 300;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
 }
 
 /* On desktop (fine pointer / mouse), open submenus to the right side */
