@@ -791,19 +791,19 @@ const MENUS = [
   {
     label: 'Settings',
     items: [
-      { label: 'Preferences...', shortcut: 'Ctrl+Alt+P' },
+      { label: 'Preferences...', shortcut: 'Ctrl+Alt+P', disabled: true },
       { label: 'Style Configurator...', action: 'styleConfigurator' },
-      { label: 'Shortcut Mapper...' },
+      { label: 'Shortcut Mapper...', disabled: true },
       { separator: true },
       {
         label: 'Import',
         submenu: [
-          { label: 'Import plugin(s)...' },
-          { label: 'Import style theme(s)...' },
+          { label: 'Import plugin(s)...', disabled: true },
+          { label: 'Import style theme(s)...', disabled: true },
         ],
       },
       { separator: true },
-      { label: 'Edit Popup ContextMenu' },
+      { label: 'Edit Popup ContextMenu', disabled: true },
     ],
   },
   {
@@ -813,7 +813,7 @@ const MENUS = [
         label: 'MD5',
         submenu: [
           { label: 'Generate...', action: 'md5-generate' },
-          { label: 'Generate from files...' },
+          { label: 'Generate from files...', disabled: true },
           { label: 'Generate from selection into clipboard', action: 'md5-from-selection' },
         ],
       },
@@ -821,7 +821,7 @@ const MENUS = [
         label: 'SHA-1',
         submenu: [
           { label: 'Generate...', action: 'sha1-generate' },
-          { label: 'Generate from files...' },
+          { label: 'Generate from files...', disabled: true },
           { label: 'Generate from selection into clipboard', action: 'sha1-from-selection' },
         ],
       },
@@ -829,7 +829,7 @@ const MENUS = [
         label: 'SHA-256',
         submenu: [
           { label: 'Generate...', action: 'sha256-generate' },
-          { label: 'Generate from files...' },
+          { label: 'Generate from files...', disabled: true },
           { label: 'Generate from selection into clipboard', action: 'sha256-from-selection' },
         ],
       },
@@ -837,7 +837,7 @@ const MENUS = [
         label: 'SHA-512',
         submenu: [
           { label: 'Generate...', action: 'sha512-generate' },
-          { label: 'Generate from files...' },
+          { label: 'Generate from files...', disabled: true },
           { label: 'Generate from selection into clipboard', action: 'sha512-from-selection' },
         ],
       },
@@ -846,25 +846,25 @@ const MENUS = [
   {
     label: 'Macro',
     items: [
-      { label: 'Start Recording' },
-      { label: 'Stop Recording' },
-      { label: 'Playback', shortcut: 'Ctrl+Shift+P' },
-      { label: 'Save Current Recorded Macro...' },
-      { label: 'Run a Macro Multiple Times...' },
+      { label: 'Start Recording', disabled: true },
+      { label: 'Stop Recording', disabled: true },
+      { label: 'Playback', shortcut: 'Ctrl+Shift+P', disabled: true },
+      { label: 'Save Current Recorded Macro...', disabled: true },
+      { label: 'Run a Macro Multiple Times...', disabled: true },
     ],
   },
   {
     label: 'Run',
     items: [
-      { label: 'Run...', shortcut: 'F5' },
+      { label: 'Run...', shortcut: 'F5', disabled: true },
     ],
   },
   {
     label: 'Plugins',
     items: [
-      { label: 'Plugins Admin...' },
+      { label: 'Plugins Admin...', disabled: true },
       { separator: true },
-      { label: 'Open Plugins Folder...' },
+      { label: 'Open Plugins Folder...', disabled: true },
     ],
   },
   {
@@ -873,16 +873,16 @@ const MENUS = [
       {
         label: 'Sort By',
         submenu: [
-          { label: 'Name A to Z' },
-          { label: 'Name Z to A' },
-          { label: 'Path A to Z' },
-          { label: 'Path Z to A' },
-          { label: 'Type A to Z' },
-          { label: 'Type Z to A' },
-          { label: 'Content Length Ascending' },
-          { label: 'Content Length Descending' },
-          { label: 'Modified Time Ascending' },
-          { label: 'Modified Time Descending' },
+          { label: 'Name A to Z', action: 'sort-tabs-name-asc' },
+          { label: 'Name Z to A', action: 'sort-tabs-name-desc' },
+          { label: 'Path A to Z', disabled: true },
+          { label: 'Path Z to A', disabled: true },
+          { label: 'Type A to Z', action: 'sort-tabs-type-asc' },
+          { label: 'Type Z to A', action: 'sort-tabs-type-desc' },
+          { label: 'Content Length Ascending', action: 'sort-tabs-length-asc' },
+          { label: 'Content Length Descending', action: 'sort-tabs-length-desc' },
+          { label: 'Modified Time Ascending', disabled: true },
+          { label: 'Modified Time Descending', disabled: true },
         ],
       },
       { label: 'Windows...', action: 'windows' },
@@ -893,17 +893,17 @@ const MENUS = [
   {
     label: '?',
     items: [
-      { label: 'Command Line Arguments...' },
+      { label: 'Command Line Arguments...', disabled: true },
       { separator: true },
       { label: 'Notepad++ Home', action: 'npp-home' },
       { label: 'Notepad++ Project Page', action: 'npp-project' },
       { label: 'Notepad++ Online User Manual', action: 'npp-docs' },
       { label: 'Notepad++ Community (Forum)', action: 'npp-forum' },
       { separator: true },
-      { label: 'Update Notepad++' },
-      { label: 'Set Updater Proxy...' },
+      { label: 'Update Notepad++', disabled: true },
+      { label: 'Set Updater Proxy...', disabled: true },
       { separator: true },
-      { label: 'Debug Info...' },
+      { label: 'Debug Info...', action: 'debug-info' },
       { label: 'About Notepad++ Web...', action: 'about' },
     ],
   },
