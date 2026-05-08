@@ -1409,6 +1409,8 @@ export default function Home() {
           onReplace={() => { setFindDialogMode('replace'); setFindDialogOpen(true) }}
           onZoomIn={handleZoomIn}
           onZoomOut={handleZoomOut}
+          onSyncScrollV={() => setSyncScrollV((prev) => !prev)}
+          onSyncScrollH={() => setSyncScrollH((prev) => !prev)}
           onWordWrap={() => setWordWrap((prev) => !prev)}
           onShowAllChars={() => setShowAllChars((prev) => {
             const next = !prev
