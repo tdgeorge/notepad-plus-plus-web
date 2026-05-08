@@ -686,6 +686,43 @@ export default function Home() {
     }
   }, [activeView])
 
+  const handleSortTabsBy = useCallback((sortBy) => {
+    const [field, dir] = sortBy.split('-')
+    const isDesc = dir === 'desc'
+    const getKey = (tab) => {
+      switch (field) {
+        case 'name': return tab.name.toLowerCase()
+        case 'type': {
+          const dotIdx = tab.name.lastIndexOf('.')
+          return dotIdx >= 0 ? tab.name.slice(dotIdx + 1).toLowerCase() : ''
+        }
+        case 'length': return tab.content.length
+        default: return tab.name.toLowerCase()
+      }
+    }
+    const isNumeric = field === 'length'
+    const sortFn = (a, b) => {
+      const ka = getKey(a)
+      const kb = getKey(b)
+      if (isNumeric) return isDesc ? kb - ka : ka - kb
+      return isDesc ? kb.localeCompare(ka) : ka.localeCompare(kb)
+    }
+    if (activeView === 1) {
+      setTabs((prev) => [...prev].sort(sortFn))
+    } else {
+      setView2Tabs((prev) => [...prev].sort(sortFn))
+    }
+  }, [activeView])
+
+  const handleDebugInfo = useCallback(() => {
+    const lines = [
+      'Notepad++ Web',
+      `URL: ${window.location.href}`,
+      `User Agent: ${navigator.userAgent}`,
+    ]
+    window.alert(lines.join('\n'))
+  }, [])
+
   const handleWindowsActivate = useCallback((tabId, view) => {
     if (view === 2) {
       setActiveView(2)
@@ -763,6 +800,13 @@ export default function Home() {
         case 'windows': setWindowsDialogOpen(true); break
         case 'nextTab': handleNextTab(); break
         case 'prevTab': handlePrevTab(); break
+        case 'sort-tabs-name-asc': handleSortTabsBy('name-asc'); break
+        case 'sort-tabs-name-desc': handleSortTabsBy('name-desc'); break
+        case 'sort-tabs-type-asc': handleSortTabsBy('type-asc'); break
+        case 'sort-tabs-type-desc': handleSortTabsBy('type-desc'); break
+        case 'sort-tabs-length-asc': handleSortTabsBy('length-asc'); break
+        case 'sort-tabs-length-desc': handleSortTabsBy('length-desc'); break
+        case 'debug-info': handleDebugInfo(); break
         default: break
       }
     },
@@ -773,6 +817,7 @@ export default function Home() {
       handleCloseAllToLeft, handleCloseAllToRight, handleCloseAllUnchanged,
       handleLoadSession, handleSaveSession,
       handlePrint, handleExit, handleNextTab, handlePrevTab,
+      handleSortTabsBy, handleDebugInfo,
     ]
   )
 
