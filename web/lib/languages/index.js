@@ -174,7 +174,6 @@ const EXTENSION_MAP = {
   cob: 'cobol',
   cpy: 'cobol',
   copy: 'cobol',
-  lst: 'cobol',
   // Fortran
   f: 'fortran',
   for: 'fortran',
@@ -185,7 +184,6 @@ const EXTENSION_MAP = {
   // Haskell
   hs: 'haskell',
   lhs: 'haskell',
-  las: 'haskell',
   // Nim
   nim: 'nim',
   // R
