@@ -780,12 +780,12 @@ const MENUS = [
       {
         label: 'User Defined Language',
         submenu: [
-          { label: 'Define your language...' },
-          { label: 'Open User Defined Language folder...' },
-          { label: 'Notepad++ User Defined Languages Collection' },
+          { label: 'Define your language...', disabled: true },
+          { label: 'Open User Defined Language folder...', disabled: true },
+          { label: 'Notepad++ User Defined Languages Collection', disabled: true },
         ],
       },
-      { label: 'User-Defined' },
+      { label: 'User-Defined', disabled: true },
     ],
   },
   {
