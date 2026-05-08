@@ -44,6 +44,13 @@ import { tokenize as tokenizePerl } from './perl'
 import { tokenize as tokenizeCoffeeScript } from './coffeescript'
 import { tokenize as tokenizeSwift } from './swift'
 import { tokenize as tokenizeGDScript } from './gdscript'
+import { tokenize as tokenizeCobol } from './cobol'
+import { tokenize as tokenizeFortran } from './fortran'
+import { tokenize as tokenizeHaskell } from './haskell'
+import { tokenize as tokenizeNim } from './nim'
+import { tokenize as tokenizeR } from './r'
+import { tokenize as tokenizeToml } from './toml'
+import { createTokenizer } from './generic'
 
 /** Map of file extension (lower-case, without dot) → language identifier */
 const EXTENSION_MAP = {
@@ -160,6 +167,27 @@ const EXTENSION_MAP = {
   d: 'd',
   // Go
   go: 'go',
+  // COBOL
+  cbl: 'cobol',
+  cob: 'cobol',
+  cpy: 'cobol',
+  copy: 'cobol',
+  // Fortran
+  f: 'fortran',
+  for: 'fortran',
+  f90: 'fortran',
+  f95: 'fortran',
+  f2k: 'fortran',
+  f23: 'fortran',
+  // Haskell
+  hs: 'haskell',
+  lhs: 'haskell',
+  // Nim
+  nim: 'nim',
+  // R
+  r: 'r',
+  // TOML
+  toml: 'toml',
   // Perl
   pl: 'perl',
   pm: 'perl',
@@ -174,6 +202,12 @@ const EXTENSION_MAP = {
 }
 
 /** Map of language identifier → tokenizer function */
+const tokenizeFallback = createTokenizer({})
+const tokenizeFallbackHash = createTokenizer({ commentLine: '#' })
+const tokenizeFallbackSemicolon = createTokenizer({ commentLine: ';' })
+const tokenizeFallbackPercent = createTokenizer({ commentLine: '%' })
+const tokenizeFallbackDashDash = createTokenizer({ commentLine: '--' })
+
 export const TOKENIZERS = {
   javascript: tokenizeJS,
   typescript: tokenizeTS,
@@ -208,6 +242,68 @@ export const TOKENIZERS = {
   coffeescript: tokenizeCoffeeScript,
   swift: tokenizeSwift,
   gdscript: tokenizeGDScript,
+  cobol: tokenizeCobol,
+  fortran: tokenizeFortran,
+  fortran77: tokenizeFortran,
+  haskell: tokenizeHaskell,
+  nim: tokenizeNim,
+  r: tokenizeR,
+  toml: tokenizeToml,
+  flash: tokenizeJS,
+  asn1: tokenizeFallback,
+  avs: tokenizeFallbackHash,
+  baanc: tokenizeFallback,
+  blitzbasic: tokenizeVB,
+  caml: tokenizeFallback,
+  cmake: tokenizeFallbackHash,
+  csound: tokenizeFallbackSemicolon,
+  diff: tokenizeFallback,
+  erlang: tokenizeFallbackPercent,
+  errorlist: tokenizeFallback,
+  escript: tokenizeFallbackPercent,
+  forth: tokenizeFallback,
+  freebasic: tokenizeVB,
+  gui4cli: tokenizeBatch,
+  hollywood: tokenizeFallback,
+  ini: tokenizeFallbackSemicolon,
+  inno: tokenizeVB,
+  ihex: tokenizeFallback,
+  json5: tokenizeJSON,
+  jsp: tokenizeHTML,
+  kix: tokenizeBatch,
+  latex: tokenizeFallbackPercent,
+  lisp: tokenizeFallbackSemicolon,
+  matlab: tokenizeFallbackPercent,
+  mssql: tokenizeSQL,
+  mmixal: tokenizeASM,
+  ascii: tokenizeFallback,
+  nncrontab: tokenizeFallbackHash,
+  nsis: tokenizeFallbackSemicolon,
+  objc: tokenizeCPP,
+  oscript: tokenizeFallback,
+  pascal: tokenizeVB,
+  ps: tokenizeFallbackPercent,
+  props: tokenizeFallbackHash,
+  purebasic: tokenizeVB,
+  raku: tokenizePerl,
+  rebol: tokenizeFallbackSemicolon,
+  registry: tokenizeFallbackSemicolon,
+  rc: tokenizeCPP,
+  sas: tokenizeFallbackSemicolon,
+  scheme: tokenizeFallbackSemicolon,
+  smalltalk: tokenizeFallback,
+  spice: tokenizeFallbackSemicolon,
+  srec: tokenizeFallback,
+  tcl: tokenizeFallbackHash,
+  tehex: tokenizeFallback,
+  tex: tokenizeFallbackPercent,
+  txt2tags: tokenizeMarkdown,
+  visualprolog: tokenizeFallback,
+  vhdl: tokenizeFallbackDashDash,
+  verilog: tokenizeFallback,
+  // Legacy aliases from existing menu actions/state
+  au3: tokenizeAutoIt,
+  golang: tokenizeGo,
 }
 
 /**
