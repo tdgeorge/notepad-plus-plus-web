@@ -895,10 +895,10 @@ const MENUS = [
     items: [
       { label: 'Command Line Arguments...', disabled: true },
       { separator: true },
-      { label: 'Notepad++ Home', action: 'npp-home' },
-      { label: 'Notepad++ Project Page', action: 'npp-project' },
-      { label: 'Notepad++ Online User Manual', action: 'npp-docs' },
-      { label: 'Notepad++ Community (Forum)', action: 'npp-forum' },
+      { label: 'Notepad++ Web Home', action: 'npp-home' },
+      { label: 'Notepad++ Web Project Page', action: 'npp-project' },
+      { label: 'Notepad++ Web README', action: 'npp-docs' },
+      { label: 'Notepad++ Web Issues', action: 'npp-forum' },
       { separator: true },
       { label: 'Update Notepad++', disabled: true },
       { label: 'Set Updater Proxy...', disabled: true },
@@ -1096,13 +1096,13 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
         onToolsAction?.(item.action)
       } else if (menuLabel === '?') {
         if (item.action === 'npp-home') {
-          window.open('https://notepad-plus-plus.org/', '_blank', 'noopener,noreferrer')
+          window.open('https://github.com/tdgeorge/notepad-plus-plus-web', '_blank', 'noopener,noreferrer')
         } else if (item.action === 'npp-project') {
-          window.open('https://github.com/notepad-plus-plus/notepad-plus-plus', '_blank', 'noopener,noreferrer')
+          window.open('https://github.com/tdgeorge/notepad-plus-plus-web', '_blank', 'noopener,noreferrer')
         } else if (item.action === 'npp-docs') {
-          window.open('https://npp-user-manual.org/', '_blank', 'noopener,noreferrer')
+          window.open('https://github.com/tdgeorge/notepad-plus-plus-web/blob/main/README.md', '_blank', 'noopener,noreferrer')
         } else if (item.action === 'npp-forum') {
-          window.open('https://community.notepad-plus-plus.org/', '_blank', 'noopener,noreferrer')
+          window.open('https://github.com/tdgeorge/notepad-plus-plus-web/issues', '_blank', 'noopener,noreferrer')
         } else {
           onFileAction?.(item.action)
         }
