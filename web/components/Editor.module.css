@@ -17,8 +17,8 @@
 .lineNumbers {
   background: var(--editor-gutter-bg);
   border-right: 1px solid var(--editor-gutter-border);
-  padding: 4px 6px 4px 20px;
-  text-align: right;
+  padding: 4px 20px 4px 6px;
+  text-align: left;
   color: var(--editor-gutter-fg);
   min-width: 58px;
   overflow: hidden;
@@ -31,6 +31,11 @@
   line-height: inherit;
 }
 
+.lineNumberCurrent {
+  background: var(--editor-current-line, #e8f2ff);
+  color: var(--editor-gutter-fg-current, var(--editor-gutter-fg));
+}
+
 .lineNumberHidden {
   height: 0;
   overflow: hidden;
@@ -39,7 +44,7 @@
 /* ── Fold gutter buttons ──────────────────────────────────────────────────── */
 .foldBtn {
   position: absolute;
-  left: -16px;
+  right: -16px;
   top: 50%;
   transform: translateY(-50%);
   display: flex;
@@ -68,6 +73,16 @@
   flex: 1;
   position: relative;
   overflow: hidden;
+  background: var(--editor-bg);
+}
+
+.currentLineHighlight {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  background: var(--editor-current-line, #e8f2ff);
+  z-index: 0;
 }
 
 .mirror {
@@ -81,11 +96,12 @@
   font-family: inherit;
   font-size: inherit;
   line-height: inherit;
-  background: var(--editor-bg);
+  background: transparent;
   color: var(--editor-fg);
   tab-size: 4;
   white-space: pre;
   word-break: normal;
+  z-index: 1;
 }
 
 .textarea {
@@ -103,6 +119,7 @@
   tab-size: 4;
   white-space: pre;
   overflow: auto;
+  z-index: 2;
 }
 
 .textarea::selection {
