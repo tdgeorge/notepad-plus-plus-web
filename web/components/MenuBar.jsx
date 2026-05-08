@@ -1100,7 +1100,7 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
         } else if (item.action === 'npp-project') {
           window.open('https://github.com/tdgeorge/notepad-plus-plus-web', '_blank', 'noopener,noreferrer')
         } else if (item.action === 'npp-docs') {
-          window.open('https://github.com/tdgeorge/notepad-plus-plus-web/blob/main/README.md', '_blank', 'noopener,noreferrer')
+          window.open('https://github.com/tdgeorge/notepad-plus-plus-web/blob/webapp-main/README.md', '_blank', 'noopener,noreferrer')
         } else if (item.action === 'npp-forum') {
           window.open('https://github.com/tdgeorge/notepad-plus-plus-web/issues', '_blank', 'noopener,noreferrer')
         } else {
