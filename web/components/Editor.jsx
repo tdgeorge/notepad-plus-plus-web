@@ -411,6 +411,7 @@ const Editor = forwardRef(function Editor(
   const lineNumbersRef = useRef(null)
   const mirrorRef = useRef(null)
   const [lineCount, setLineCount] = useState(1)
+  const [currentLineIndex, setCurrentLineIndex] = useState(0)
   const onChangeRef = useRef(onChange)
   useEffect(() => { onChangeRef.current = onChange }, [onChange])
   const onUndoRef = useRef(onUndo)
@@ -472,6 +473,16 @@ const Editor = forwardRef(function Editor(
     for (const l of manualHiddenLines) merged.add(l)
     return merged
   }, [hiddenLines, manualHiddenLines])
+
+  // Compute the visual (rendered) row index of the current line, accounting for
+  // hidden/folded lines above it (each hidden line contributes 0 height).
+  const currentLineVisualIndex = useMemo(() => {
+    let visual = currentLineIndex
+    for (const hiddenLine of allHiddenLines) {
+      if (hiddenLine < currentLineIndex) visual--
+    }
+    return visual
+  }, [currentLineIndex, allHiddenLines])
 
   const toggleFold = useCallback((startLine) => {
     setFoldedLines((prev) => {
@@ -544,7 +555,7 @@ const Editor = forwardRef(function Editor(
 
   const updateCursor = useCallback(() => {
     const el = textareaRef.current
-    if (!el || !onCursorChange) return
+    if (!el) return
     const pos = el.selectionStart
     const selEnd = el.selectionEnd
     const textBefore = el.value.substring(0, pos)
@@ -552,7 +563,8 @@ const Editor = forwardRef(function Editor(
     const line = lines.length
     const col = lines[lines.length - 1].length + 1
     const sel = Math.abs(selEnd - pos)
-    onCursorChange({ line, col, sel })
+    setCurrentLineIndex(line - 1)
+    if (onCursorChange) onCursorChange({ line, col, sel })
   }, [onCursorChange])
 
   const handleChange = useCallback(
@@ -1681,7 +1693,7 @@ const Editor = forwardRef(function Editor(
               items.push(<div key="top" style={{ height: firstVisible * lineHeightPx }} />)
             }
             for (let i = firstVisible; i <= lastVisible; i++) {
-              items.push(<div key={i} className={styles.lineNumber}>{i + 1}</div>)
+              items.push(<div key={i} className={`${styles.lineNumber}${i === currentLineIndex ? ` ${styles.lineNumberCurrent}` : ''}`}>{i + 1}</div>)
             }
             if (lastVisible < lineCount - 1) {
               items.push(<div key="bot" style={{ height: (lineCount - 1 - lastVisible) * lineHeightPx }} />)
@@ -1696,7 +1708,7 @@ const Editor = forwardRef(function Editor(
             return (
               <div
                 key={i}
-                className={styles.lineNumber}
+                className={`${styles.lineNumber}${i === currentLineIndex ? ` ${styles.lineNumberCurrent}` : ''}`}
               >
                 {region && (
                   <button
@@ -1714,6 +1726,16 @@ const Editor = forwardRef(function Editor(
           })}
         </div>
         <div className={styles.textareaWrapper}>
+          {!isLargeFile && !allHiddenLines.has(currentLineIndex) && (
+            <div
+              className={styles.currentLineHighlight}
+              aria-hidden="true"
+              style={{
+                top: `calc(4px + ${currentLineVisualIndex * lineHeightPx}px)`,
+                height: `${lineHeightPx}px`,
+              }}
+            />
+          )}
           {showMirror && (
             <pre
               ref={mirrorRef}
