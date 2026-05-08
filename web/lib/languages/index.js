@@ -44,6 +44,12 @@ import { tokenize as tokenizePerl } from './perl'
 import { tokenize as tokenizeCoffeeScript } from './coffeescript'
 import { tokenize as tokenizeSwift } from './swift'
 import { tokenize as tokenizeGDScript } from './gdscript'
+import { tokenize as tokenizeCobol } from './cobol'
+import { tokenize as tokenizeFortran } from './fortran'
+import { tokenize as tokenizeHaskell } from './haskell'
+import { tokenize as tokenizeNim } from './nim'
+import { tokenize as tokenizeR } from './r'
+import { tokenize as tokenizeToml } from './toml'
 
 /** Map of file extension (lower-case, without dot) → language identifier */
 const EXTENSION_MAP = {
@@ -160,6 +166,34 @@ const EXTENSION_MAP = {
   d: 'd',
   // Go
   go: 'go',
+  // COBOL
+  cbl: 'cobol',
+  cbd: 'cobol',
+  cdb: 'cobol',
+  cdc: 'cobol',
+  cob: 'cobol',
+  cpy: 'cobol',
+  copy: 'cobol',
+  lst: 'cobol',
+  // Fortran
+  f: 'fortran',
+  for: 'fortran',
+  f90: 'fortran',
+  f95: 'fortran',
+  f2k: 'fortran',
+  f23: 'fortran',
+  // Haskell
+  hs: 'haskell',
+  lhs: 'haskell',
+  las: 'haskell',
+  // Nim
+  nim: 'nim',
+  // R
+  r: 'r',
+  s: 'r',
+  splus: 'r',
+  // TOML
+  toml: 'toml',
   // Perl
   pl: 'perl',
   pm: 'perl',
@@ -208,6 +242,16 @@ export const TOKENIZERS = {
   coffeescript: tokenizeCoffeeScript,
   swift: tokenizeSwift,
   gdscript: tokenizeGDScript,
+  cobol: tokenizeCobol,
+  fortran: tokenizeFortran,
+  fortran77: tokenizeFortran,
+  haskell: tokenizeHaskell,
+  nim: tokenizeNim,
+  r: tokenizeR,
+  toml: tokenizeToml,
+  // Legacy aliases from existing menu actions/state
+  au3: tokenizeAutoIt,
+  golang: tokenizeGo,
 }
 
 /**

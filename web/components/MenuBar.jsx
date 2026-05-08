@@ -597,7 +597,7 @@ const MENUS = [
           { label: 'ASN.1', action: 'lang-asn1' },
           { label: 'ASP', action: 'lang-asp' },
           { label: 'Assembly', action: 'lang-asm' },
-          { label: 'AutoIt', action: 'lang-au3' },
+          { label: 'AutoIt', action: 'lang-autoit' },
           { label: 'AviSynth', action: 'lang-avs' },
         ],
       },
@@ -651,7 +651,7 @@ const MENUS = [
         label: 'G',
         submenu: [
           { label: 'GDScript', action: 'lang-gdscript' },
-          { label: 'Go', action: 'lang-golang' },
+          { label: 'Go', action: 'lang-go' },
           { label: 'Gui4Cli', action: 'lang-gui4cli' },
         ],
       },
