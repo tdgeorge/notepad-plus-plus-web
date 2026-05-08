@@ -50,6 +50,7 @@ import { tokenize as tokenizeHaskell } from './haskell'
 import { tokenize as tokenizeNim } from './nim'
 import { tokenize as tokenizeR } from './r'
 import { tokenize as tokenizeToml } from './toml'
+import { createTokenizer } from './generic'
 
 /** Map of file extension (lower-case, without dot) → language identifier */
 const EXTENSION_MAP = {
@@ -201,6 +202,12 @@ const EXTENSION_MAP = {
 }
 
 /** Map of language identifier → tokenizer function */
+const tokenizeFallback = createTokenizer({})
+const tokenizeFallbackHash = createTokenizer({ commentLine: '#' })
+const tokenizeFallbackSemicolon = createTokenizer({ commentLine: ';' })
+const tokenizeFallbackPercent = createTokenizer({ commentLine: '%' })
+const tokenizeFallbackDashDash = createTokenizer({ commentLine: '--' })
+
 export const TOKENIZERS = {
   javascript: tokenizeJS,
   typescript: tokenizeTS,
@@ -242,6 +249,58 @@ export const TOKENIZERS = {
   nim: tokenizeNim,
   r: tokenizeR,
   toml: tokenizeToml,
+  flash: tokenizeJS,
+  asn1: tokenizeFallback,
+  avs: tokenizeFallbackHash,
+  baanc: tokenizeFallback,
+  blitzbasic: tokenizeVB,
+  caml: tokenizeFallback,
+  cmake: tokenizeFallbackHash,
+  csound: tokenizeFallbackSemicolon,
+  diff: tokenizeFallback,
+  erlang: tokenizeFallbackPercent,
+  errorlist: tokenizeFallback,
+  escript: tokenizeFallbackPercent,
+  forth: tokenizeFallback,
+  freebasic: tokenizeVB,
+  gui4cli: tokenizeBatch,
+  hollywood: tokenizeFallback,
+  ini: tokenizeFallbackSemicolon,
+  inno: tokenizeVB,
+  ihex: tokenizeFallback,
+  json5: tokenizeJSON,
+  jsp: tokenizeHTML,
+  kix: tokenizeBatch,
+  latex: tokenizeFallbackPercent,
+  lisp: tokenizeFallbackSemicolon,
+  matlab: tokenizeFallbackPercent,
+  mssql: tokenizeSQL,
+  mmixal: tokenizeASM,
+  ascii: tokenizeFallback,
+  nncrontab: tokenizeFallbackHash,
+  nsis: tokenizeFallbackSemicolon,
+  objc: tokenizeCPP,
+  oscript: tokenizeFallback,
+  pascal: tokenizeVB,
+  ps: tokenizeFallbackPercent,
+  props: tokenizeFallbackHash,
+  purebasic: tokenizeVB,
+  raku: tokenizePerl,
+  rebol: tokenizeFallbackSemicolon,
+  registry: tokenizeFallbackSemicolon,
+  rc: tokenizeCPP,
+  sas: tokenizeFallbackSemicolon,
+  scheme: tokenizeFallbackSemicolon,
+  smalltalk: tokenizeFallback,
+  spice: tokenizeFallbackSemicolon,
+  srec: tokenizeFallback,
+  tcl: tokenizeFallbackHash,
+  tehex: tokenizeFallback,
+  tex: tokenizeFallbackPercent,
+  txt2tags: tokenizeMarkdown,
+  visualprolog: tokenizeFallback,
+  vhdl: tokenizeFallbackDashDash,
+  verilog: tokenizeFallback,
   // Legacy aliases from existing menu actions/state
   au3: tokenizeAutoIt,
   golang: tokenizeGo,
