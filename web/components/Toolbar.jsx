@@ -27,6 +27,7 @@ export default function Toolbar({
   onUndo, onRedo, onCut, onCopy, onPaste,
   onFind, onReplace,
   onZoomIn, onZoomOut,
+  onSyncScrollV, onSyncScrollH,
   onWordWrap, onShowAllChars, onShowIndent,
   viewState,
 }) {
@@ -187,13 +188,23 @@ export default function Toolbar({
 
         <ToolbarSep />
 
-        <ToolbarButton title="Synchronize Vertical Scrolling">
+        <ToolbarButton
+          title="Synchronize Vertical Scrolling"
+          onClick={onSyncScrollV}
+          active={viewState?.syncScrollV}
+          disabled={!viewState?.splitEnabled}
+        >
           <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
             <path d="M11.5 2a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM9.05 3a2.5 2.5 0 0 1 4.9 0H16v1h-2.05a2.5 2.5 0 0 1-4.9 0H0V3h9.05zM4.5 7a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM2.05 8a2.5 2.5 0 0 1 4.9 0H16v1H6.95a2.5 2.5 0 0 1-4.9 0H0V8h2.05zM11.5 12a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm-2.45 1a2.5 2.5 0 0 1 4.9 0H16v1h-2.05a2.5 2.5 0 0 1-4.9 0H0v-1h9.05z" />
           </svg>
         </ToolbarButton>
 
-        <ToolbarButton title="Synchronize Horizontal Scrolling">
+        <ToolbarButton
+          title="Synchronize Horizontal Scrolling"
+          onClick={onSyncScrollH}
+          active={viewState?.syncScrollH}
+          disabled={!viewState?.splitEnabled}
+        >
           <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
             <path d="M3 8a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm0-4a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zm10 1a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm0-1a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM8 5.5a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5z" />
           </svg>
