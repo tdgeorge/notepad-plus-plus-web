@@ -716,7 +716,7 @@ export default function Home() {
 
   const handleDebugInfo = useCallback(() => {
     const lines = [
-      'Notepad++ Web',
+      'glitch.txt',
       `URL: ${window.location.href}`,
       `User Agent: ${navigator.userAgent}`,
     ]

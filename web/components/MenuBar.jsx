@@ -256,7 +256,7 @@ const MENUS = [
       { label: 'Clipboard History' },
       { separator: true },
       {
-        label: 'Read-Only in Notepad++',
+        label: 'Read-Only in glitch.txt',
         submenu: [
           { label: 'Read-Only on Current Document' },
           { label: 'Read-Only for All Documents' },
@@ -895,16 +895,16 @@ const MENUS = [
     items: [
       { label: 'Command Line Arguments...', disabled: true },
       { separator: true },
-      { label: 'Notepad++ Web Home', action: 'npp-home' },
-      { label: 'Notepad++ Web Project Page', action: 'npp-project' },
-      { label: 'Notepad++ Web README', action: 'npp-docs' },
-      { label: 'Notepad++ Web Issues', action: 'npp-forum' },
+      { label: 'glitch.txt Home', action: 'npp-home' },
+      { label: 'glitch.txt Project Page', action: 'npp-project' },
+      { label: 'glitch.txt README', action: 'npp-docs' },
+      { label: 'glitch.txt Issues', action: 'npp-forum' },
       { separator: true },
-      { label: 'Update Notepad++', disabled: true },
+      { label: 'Update glitch.txt', disabled: true },
       { label: 'Set Updater Proxy...', disabled: true },
       { separator: true },
       { label: 'Debug Info...', action: 'debug-info' },
-      { label: 'About Notepad++ Web...', action: 'about' },
+      { label: 'About glitch.txt...', action: 'about' },
     ],
   },
 ]
