@@ -168,9 +168,6 @@ const EXTENSION_MAP = {
   go: 'go',
   // COBOL
   cbl: 'cobol',
-  cbd: 'cobol',
-  cdb: 'cobol',
-  cdc: 'cobol',
   cob: 'cobol',
   cpy: 'cobol',
   copy: 'cobol',
@@ -189,7 +186,6 @@ const EXTENSION_MAP = {
   // R
   r: 'r',
   s: 'r',
-  splus: 'r',
   // TOML
   toml: 'toml',
   // Perl
