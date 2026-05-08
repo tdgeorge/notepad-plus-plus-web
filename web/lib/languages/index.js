@@ -185,7 +185,6 @@ const EXTENSION_MAP = {
   nim: 'nim',
   // R
   r: 'r',
-  s: 'r',
   // TOML
   toml: 'toml',
   // Perl
