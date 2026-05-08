@@ -6,7 +6,7 @@ Notepad++ Web is a browser-based text editor inspired by the Notepad++ experienc
 
 ## Version
 
-Current MVP target version: **1.0.0**
+Current MVP target version: **1.2.0**
 
 ## Quick start
 
