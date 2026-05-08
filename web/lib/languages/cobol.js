@@ -9,5 +9,6 @@ export const tokenize = createTokenizer({
   keywords: COBOL_KEYWORDS,
   typeWords: COBOL_TYPES,
   builtins: COBOL_BUILTINS,
+  commentLine: '*>',
   caseInsensitive: true,
 })
