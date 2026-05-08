@@ -37,6 +37,13 @@ const LANG_LABELS = {
   coffeescript: 'CoffeeScript',
   swift: 'Swift',
   gdscript: 'GDScript',
+  cobol: 'COBOL',
+  fortran: 'Fortran',
+  fortran77: 'Fortran (fixed form)',
+  haskell: 'Haskell',
+  nim: 'Nim',
+  r: 'R',
+  toml: 'TOML',
 }
 
 export default function StatusBar({ cursorPos, eol, encoding, language, isLargeFile }) {
