@@ -687,27 +687,25 @@ export default function Home() {
   }, [activeView])
 
   const handleSortTabsBy = useCallback((sortBy) => {
+    const [field, dir] = sortBy.split('-')
+    const isDesc = dir === 'desc'
     const getKey = (tab) => {
-      switch (sortBy) {
-        case 'name-asc':
-        case 'name-desc': return tab.name.toLowerCase()
-        case 'type-asc':
-        case 'type-desc': {
+      switch (field) {
+        case 'name': return tab.name.toLowerCase()
+        case 'type': {
           const dotIdx = tab.name.lastIndexOf('.')
           return dotIdx >= 0 ? tab.name.slice(dotIdx + 1).toLowerCase() : ''
         }
-        case 'length-asc':
-        case 'length-desc': return tab.content.length
+        case 'length': return tab.content.length
         default: return tab.name.toLowerCase()
       }
     }
-    const isDesc = sortBy.endsWith('-desc')
-    const isNumeric = sortBy.startsWith('length-')
+    const isNumeric = field === 'length'
     const sortFn = (a, b) => {
       const ka = getKey(a)
       const kb = getKey(b)
       if (isNumeric) return isDesc ? kb - ka : ka - kb
-      return isDesc ? String(kb).localeCompare(String(ka)) : String(ka).localeCompare(String(kb))
+      return isDesc ? kb.localeCompare(ka) : ka.localeCompare(kb)
     }
     if (activeView === 1) {
       setTabs((prev) => [...prev].sort(sortFn))
