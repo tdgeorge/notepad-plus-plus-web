@@ -69,7 +69,8 @@ export function buildMacroTextStep(before, after, selectionMeta = {}) {
               text: minimalChange.text,
             }
           }
-        } else {
+        }
+        if (selectionStart !== selectionEnd) {
           return {
             action: 'replace-range',
             start: selectionStart,
