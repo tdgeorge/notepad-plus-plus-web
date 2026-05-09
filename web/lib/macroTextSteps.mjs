@@ -70,15 +70,11 @@ export function buildMacroTextStep(before, after, selectionMeta = {}) {
             }
           }
         } else {
-          const minimalChange = getMinimalChange()
-          if (minimalChange
-            && (minimalChange.start !== selectionStart || minimalChange.end !== selectionEnd)) {
-            return {
-              action: 'replace-range',
-              start: selectionStart,
-              end: selectionEnd,
-              text: insertedText,
-            }
+          return {
+            action: 'replace-range',
+            start: selectionStart,
+            end: selectionEnd,
+            text: insertedText,
           }
         }
         return { action: 'replace-selection', text: insertedText }

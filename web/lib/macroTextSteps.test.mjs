@@ -72,12 +72,12 @@ test('buildMacroTextStep records forward deletion for caret-only delete', () => 
   assert.deepEqual(step, { action: 'delete-forward' })
 })
 
-test('buildMacroTextStep records selected range replacement', () => {
+test('buildMacroTextStep records selected range replacement as explicit range', () => {
   const step = buildMacroTextStep('hello world', 'hello there', {
     beforeSelectionStart: 6,
     beforeSelectionEnd: 11,
   })
-  assert.deepEqual(step, { action: 'replace-selection', text: 'there' })
+  assert.deepEqual(step, { action: 'replace-range', start: 6, end: 11, text: 'there' })
 })
 
 test('buildMacroTextStep falls back to relative replacement for complex edits', () => {
