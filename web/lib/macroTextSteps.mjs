@@ -21,6 +21,7 @@ export function getTextChange(before, after) {
 
 export function buildMacroTextStep(before, after, selectionMeta = {}) {
   if (typeof before !== 'string' || typeof after !== 'string') return null
+  // Imperative editor edits call onChange(newText) without selectionMeta; guard against null.
   if (selectionMeta == null) return null
 
   const hasSelectionMeta = Number.isFinite(selectionMeta.beforeSelectionStart)

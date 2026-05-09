@@ -1730,15 +1730,8 @@ const Editor = forwardRef(function Editor(
     insertText: (text) => {
       const el = textareaRef.current
       if (!el || !text) return
-      const start = el.selectionStart
-      const end = el.selectionEnd
-      const inserted = typeof text === 'string' ? text : ''
-      const newText = el.value.substring(0, start) + inserted + el.value.substring(end)
-      el.value = newText
-      onChangeRef.current(newText)
-      updateLineCount(newText)
-      const nextCursor = start + inserted.length
-      el.setSelectionRange(nextCursor, nextCursor)
+      el.focus()
+      document.execCommand('insertText', false, text)
       updateCursor()
     },
 
@@ -1750,27 +1743,18 @@ const Editor = forwardRef(function Editor(
       const safeEndRaw = Number.isFinite(end) ? Math.floor(end) : safeStart
       const safeEnd = Math.max(safeStart, Math.min(len, safeEndRaw))
       const inserted = typeof text === 'string' ? text : ''
-      const newText = el.value.substring(0, safeStart) + inserted + el.value.substring(safeEnd)
-      el.value = newText
-      onChangeRef.current(newText)
-      updateLineCount(newText)
-      const nextCursor = safeStart + inserted.length
-      el.setSelectionRange(nextCursor, nextCursor)
+      el.focus()
+      el.setSelectionRange(safeStart, safeEnd)
+      document.execCommand('insertText', false, inserted)
       updateCursor()
     },
 
     replaceSelection: (text = '') => {
       const el = textareaRef.current
       if (!el) return
-      const start = el.selectionStart
-      const end = el.selectionEnd
       const inserted = typeof text === 'string' ? text : ''
-      const newText = el.value.substring(0, start) + inserted + el.value.substring(end)
-      el.value = newText
-      onChangeRef.current(newText)
-      updateLineCount(newText)
-      const nextCursor = start + inserted.length
-      el.setSelectionRange(nextCursor, nextCursor)
+      el.focus()
+      document.execCommand('insertText', false, inserted)
       updateCursor()
     },
 
@@ -1780,21 +1764,15 @@ const Editor = forwardRef(function Editor(
       const start = el.selectionStart
       const end = el.selectionEnd
       if (start !== end) {
-        const newText = el.value.substring(0, start) + el.value.substring(end)
-        el.value = newText
-        onChangeRef.current(newText)
-        updateLineCount(newText)
-        el.setSelectionRange(start, start)
+        el.focus()
+        document.execCommand('insertText', false, '')
         updateCursor()
         return
       }
       if (start <= 0) return
-      const newText = el.value.substring(0, start - 1) + el.value.substring(start)
-      el.value = newText
-      onChangeRef.current(newText)
-      updateLineCount(newText)
-      const nextCursor = start - 1
-      el.setSelectionRange(nextCursor, nextCursor)
+      el.focus()
+      el.setSelectionRange(start - 1, start)
+      document.execCommand('insertText', false, '')
       updateCursor()
     },
 
@@ -1804,20 +1782,15 @@ const Editor = forwardRef(function Editor(
       const start = el.selectionStart
       const end = el.selectionEnd
       if (start !== end) {
-        const newText = el.value.substring(0, start) + el.value.substring(end)
-        el.value = newText
-        onChangeRef.current(newText)
-        updateLineCount(newText)
-        el.setSelectionRange(start, start)
+        el.focus()
+        document.execCommand('insertText', false, '')
         updateCursor()
         return
       }
       if (start >= el.value.length) return
-      const newText = el.value.substring(0, start) + el.value.substring(start + 1)
-      el.value = newText
-      onChangeRef.current(newText)
-      updateLineCount(newText)
-      el.setSelectionRange(start, start)
+      el.focus()
+      el.setSelectionRange(start, start + 1)
+      document.execCommand('insertText', false, '')
       updateCursor()
     },
 
@@ -1831,12 +1804,9 @@ const Editor = forwardRef(function Editor(
       const start = Math.max(0, Math.min(len, base + safeStartOffset))
       const end = Math.max(start, Math.min(len, base + safeEndOffset))
       const inserted = typeof text === 'string' ? text : ''
-      const newText = el.value.substring(0, start) + inserted + el.value.substring(end)
-      el.value = newText
-      onChangeRef.current(newText)
-      updateLineCount(newText)
-      const nextCursor = start + inserted.length
-      el.setSelectionRange(nextCursor, nextCursor)
+      el.focus()
+      el.setSelectionRange(start, end)
+      document.execCommand('insertText', false, inserted)
       updateCursor()
     },
 
