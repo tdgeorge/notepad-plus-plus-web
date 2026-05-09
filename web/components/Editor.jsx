@@ -518,6 +518,7 @@ const Editor = forwardRef(function Editor(
   const { lineHeightPx, paddingTopPx } = textareaMetrics
   const showSymbols = showWhitespace || showEol || showIndent
   const useMeasuredCurrentLineTop = !isLargeFile && allHiddenLines.size === 0
+  const currentLineTopPx = (useMeasuredCurrentLineTop ? measuredCurrentLineTop : (paddingTopPx + currentLineVisualIndex * lineHeightPx)) - editorScrollTop
 
   // ── Mirror content ────────────────────────────────────────────────────────
   const tokenizeFn = language ? TOKENIZERS[language] : null
@@ -1763,6 +1764,7 @@ const Editor = forwardRef(function Editor(
               style={{ whiteSpace: wordWrap ? 'pre-wrap' : 'pre' }}
             >
               {content.slice(0, currentLineStartOffset)}
+              {/* Zero-width content keeps the marker in-flow at the exact start of the current line for offset measurement. */}
               <span ref={lineMeasureMarkerRef} className={styles.lineMeasureMarker}>{'\u200b'}</span>
             </div>
           )}
@@ -1771,7 +1773,7 @@ const Editor = forwardRef(function Editor(
               className={styles.currentLineHighlight}
               aria-hidden="true"
               style={{
-                top: `${(useMeasuredCurrentLineTop ? measuredCurrentLineTop : (paddingTopPx + currentLineVisualIndex * lineHeightPx)) - editorScrollTop}px`,
+                top: `${currentLineTopPx}px`,
                 height: `${lineHeightPx}px`,
               }}
             />
