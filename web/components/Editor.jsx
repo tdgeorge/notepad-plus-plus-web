@@ -613,7 +613,7 @@ const Editor = forwardRef(function Editor(
     [onChange, updateLineCount]
   )
 
-  const handleBeforeInput = useCallback(() => {
+  const captureSelectionSnapshot = useCallback(() => {
     const el = textareaRef.current
     if (!el) return
     pendingSelectionRef.current = {
@@ -621,6 +621,10 @@ const Editor = forwardRef(function Editor(
       end: el.selectionEnd,
     }
   }, [])
+
+  const handleBeforeInput = useCallback(() => {
+    captureSelectionSnapshot()
+  }, [captureSelectionSnapshot])
 
   const handleKeyUp = useCallback(
     () => {
@@ -1771,13 +1775,7 @@ const Editor = forwardRef(function Editor(
 
   const handleKeyDown = useCallback(
     (e) => {
-      const el = textareaRef.current
-      if (el) {
-        pendingSelectionRef.current = {
-          start: el.selectionStart,
-          end: el.selectionEnd,
-        }
-      }
+      captureSelectionSnapshot()
       if (e.key === 'Tab') {
         e.preventDefault()
         if (e.shiftKey) {
@@ -1793,7 +1791,7 @@ const Editor = forwardRef(function Editor(
         onRedoRef.current?.()
       }
     },
-    [indent, dedent]
+    [captureSelectionSnapshot, indent, dedent]
   )
 
   return (
