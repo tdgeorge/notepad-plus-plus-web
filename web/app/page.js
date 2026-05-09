@@ -111,17 +111,20 @@ export default function Home() {
   const [isDragOver, setIsDragOver] = useState(false)
   const [isRecordingMacro, setIsRecordingMacro] = useState(false)
   const [currentMacroSteps, setCurrentMacroSteps] = useState([])
+  const [hasStoppedRecordingMacro, setHasStoppedRecordingMacro] = useState(false)
   const [savedMacros, setSavedMacros] = useState([])
   const searchStateRef = useRef({ term: '', options: { matchCase: false, wholeWord: false, wrapAround: true } })
   // Guard flag prevents the two editors from triggering each other's scroll endlessly.
   const syncScrollingRef = useRef(false)
   const isRecordingMacroRef = useRef(isRecordingMacro)
   const currentMacroStepsRef = useRef(currentMacroSteps)
+  const hasStoppedRecordingMacroRef = useRef(hasStoppedRecordingMacro)
   const savedMacrosRef = useRef(savedMacros)
   const isPlayingBackMacroRef = useRef(false)
 
   useEffect(() => { isRecordingMacroRef.current = isRecordingMacro }, [isRecordingMacro])
   useEffect(() => { currentMacroStepsRef.current = currentMacroSteps }, [currentMacroSteps])
+  useEffect(() => { hasStoppedRecordingMacroRef.current = hasStoppedRecordingMacro }, [hasStoppedRecordingMacro])
   useEffect(() => { savedMacrosRef.current = savedMacros }, [savedMacros])
 
   // Load persisted theme on mount and apply it
@@ -191,8 +194,8 @@ export default function Home() {
   }
   const macroState = {
     isRecording: isRecordingMacro,
-    hasCurrentMacro: currentMacroSteps.length > 0,
-    hasRunnableMacro: currentMacroSteps.length > 0 || savedMacros.length > 0,
+    hasCurrentMacro: hasStoppedRecordingMacro || currentMacroSteps.length > 0,
+    hasRunnableMacro: hasStoppedRecordingMacro || currentMacroSteps.length > 0 || savedMacros.length > 0,
   }
   // ── Active editor helper ──────────────────────────────────────────────────
   // Returns the ref for whichever view is currently active.
@@ -1350,18 +1353,21 @@ export default function Home() {
       case 'macro-start-recording':
         if (isRecordingMacroRef.current) return
         setCurrentMacroSteps([])
+        setHasStoppedRecordingMacro(false)
         setIsRecordingMacro(true)
         break
       case 'macro-stop-recording':
         if (!isRecordingMacroRef.current) return
         setIsRecordingMacro(false)
+        setHasStoppedRecordingMacro(true)
         break
       case 'macro-playback':
         playbackMacro(currentMacroStepsRef.current, 1)
         break
       case 'macro-save-current': {
         const steps = currentMacroStepsRef.current
-        if (steps.length === 0 || isRecordingMacroRef.current) return
+        const hasRecordableMacro = hasStoppedRecordingMacroRef.current || steps.length > 0
+        if (!hasRecordableMacro || isRecordingMacroRef.current) return
         const defaultName = `Recorded Macro ${savedMacrosRef.current.length + 1}`
         const name = window.prompt('Save macro as:', defaultName)
         const trimmedName = name?.trim()
@@ -1372,7 +1378,7 @@ export default function Home() {
       case 'macro-run-multiple': {
         if (isRecordingMacroRef.current) return
         const runnable = []
-        if (currentMacroStepsRef.current.length > 0) {
+        if (hasStoppedRecordingMacroRef.current || currentMacroStepsRef.current.length > 0) {
           runnable.push({ name: 'Current recorded macro', steps: currentMacroStepsRef.current })
         }
         runnable.push(...savedMacrosRef.current)
