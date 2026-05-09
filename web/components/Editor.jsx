@@ -623,9 +623,11 @@ const Editor = forwardRef(function Editor(
   const captureSelectionSnapshot = useCallback(() => {
     const el = textareaRef.current
     if (!el) return
+    const start = Number.isFinite(el.selectionStart) ? el.selectionStart : 0
+    const end = Number.isFinite(el.selectionEnd) ? el.selectionEnd : start
     pendingSelectionRef.current = {
-      start: el.selectionStart,
-      end: el.selectionEnd,
+      start,
+      end,
     }
   }, [])
 
@@ -1721,7 +1723,7 @@ const Editor = forwardRef(function Editor(
       const safeEnd = Math.max(safeStart, Math.min(len, safeEndRaw))
       el.focus()
       el.setSelectionRange(safeStart, safeEnd)
-      document.execCommand('insertText', false, typeof text === 'string' ? text : '')
+      applyInputText(el, text)
     },
 
     replaceSelection: (text = '') => {
@@ -1736,14 +1738,13 @@ const Editor = forwardRef(function Editor(
       const start = el.selectionStart
       const end = el.selectionEnd
       if (start !== end) {
-        el.focus()
-        document.execCommand('insertText', false, '')
+        applyInputText(el, '')
         return
       }
       if (start <= 0) return
       el.focus()
       el.setSelectionRange(start - 1, start)
-      document.execCommand('insertText', false, '')
+      applyInputText(el, '')
     },
 
     deleteForward: () => {
@@ -1752,14 +1753,13 @@ const Editor = forwardRef(function Editor(
       const start = el.selectionStart
       const end = el.selectionEnd
       if (start !== end) {
-        el.focus()
-        document.execCommand('insertText', false, '')
+        applyInputText(el, '')
         return
       }
       if (start >= el.value.length) return
       el.focus()
       el.setSelectionRange(start, start + 1)
-      document.execCommand('insertText', false, '')
+      applyInputText(el, '')
     },
 
     replaceRelative: (startOffset, endOffset, text = '') => {
@@ -1768,12 +1768,12 @@ const Editor = forwardRef(function Editor(
       const base = el.selectionStart
       const len = el.value.length
       const safeStartOffset = Number.isFinite(startOffset) ? Math.floor(startOffset) : 0
-      const safeEndOffset = Number.isFinite(endOffset) ? Math.floor(endOffset) : safeStartOffset
+      const safeEndOffset = Number.isFinite(endOffset) ? Math.floor(endOffset) : 0
       const start = Math.max(0, Math.min(len, base + safeStartOffset))
       const end = Math.max(start, Math.min(len, base + safeEndOffset))
       el.focus()
       el.setSelectionRange(start, end)
-      document.execCommand('insertText', false, typeof text === 'string' ? text : '')
+      applyInputText(el, text)
     },
 
   }), [indent, dedent, lineCount, lineHeightPx, updateCursor, updateLineCount, scrollToChar])
