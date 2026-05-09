@@ -25,6 +25,8 @@ const MIN_FONT_SIZE = 6
 const MAX_FONT_SIZE = 32
 const INITIAL_TAB_NAME = 'new 1'
 const INITIAL_TAB = { id: 1, name: INITIAL_TAB_NAME, content: '', modified: false }
+const AUTOSAVE_STORAGE_KEY = 'nppw-autosave-backup'
+const AUTOSAVE_INTERVAL_MS = 30_000
 
 // Cap the undo stack for large files to avoid unbounded memory growth.
 // Each entry stores a full copy of the document content.
@@ -135,6 +137,64 @@ export default function Home() {
 
   const fileHandlesRef = useRef(fileHandles)
   useEffect(() => { fileHandlesRef.current = fileHandles }, [fileHandles])
+
+  useEffect(() => {
+    if (typeof localStorage === 'undefined') return
+    try {
+      const raw = localStorage.getItem(AUTOSAVE_STORAGE_KEY)
+      if (!raw) return
+      const backup = JSON.parse(raw)
+      if (!(backup?.version === 1 && Array.isArray(backup.tabs) && backup.tabs.length > 0)) return
+      const newIds = backup.tabs.map(() => nextTabId++)
+      const restoredTabs = backup.tabs.map((tab, index) => ({
+        id: newIds[index],
+        name: tab.name ?? `new ${newIds[index]}`,
+        content: tab.content ?? '',
+        modified: true,
+        language: tab.language ?? null,
+      }))
+      undoHistoryRef.current = {}
+      restoredTabs.forEach((tab) => {
+        undoHistoryRef.current[tab.id] = { stack: [tab.content], index: 0, savedIndex: -1 }
+      })
+      setTabs(restoredTabs)
+      setActiveTabId(newIds[newIds.length - 1])
+      setFileHandles({})
+      setSplitEnabled(false)
+      setView2Tabs([])
+      setView2ActiveTabId(null)
+      setActiveView(1)
+    } catch (error) {
+      console.error(error)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof localStorage === 'undefined') return undefined
+    const saveAutosaveBackup = () => {
+      try {
+        const unsavedTabs = [...tabsRef.current, ...view2TabsRef.current]
+          .filter((tab) => tab.modified)
+          .map((tab) => ({ name: tab.name, content: tab.content, language: tab.language ?? null }))
+        if (unsavedTabs.length === 0) {
+          localStorage.removeItem(AUTOSAVE_STORAGE_KEY)
+          return
+        }
+        localStorage.setItem(
+          AUTOSAVE_STORAGE_KEY,
+          JSON.stringify({ version: 1, updatedAt: Date.now(), tabs: unsavedTabs })
+        )
+      } catch (error) {
+        console.error(error)
+      }
+    }
+    const intervalId = setInterval(saveAutosaveBackup, AUTOSAVE_INTERVAL_MS)
+    window.addEventListener('beforeunload', saveAutosaveBackup)
+    return () => {
+      clearInterval(intervalId)
+      window.removeEventListener('beforeunload', saveAutosaveBackup)
+    }
+  }, [])
 
   const activeTab = tabs.find((t) => t.id === activeTabId)
   const lineCount = useMemo(
