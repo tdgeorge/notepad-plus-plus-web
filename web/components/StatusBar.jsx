@@ -110,6 +110,7 @@ export default function StatusBar({ cursorPos, eol, encoding, language, isLargeF
         <span>Sel : {sel} | 0</span>
       </div>
       <div className={styles.divider} />
+      <div className={styles.rowBreak} />
       <div className={styles.section}>
         <span>{eol}</span>
       </div>
