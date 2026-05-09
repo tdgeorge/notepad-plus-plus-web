@@ -1,6 +1,7 @@
 .statusBar {
   display: flex;
   flex-direction: row;
+  flex-wrap: wrap;
   align-items: center;
   background: var(--status-bar-bg, linear-gradient(180deg, #d9d1c4 0%, #cec6b8 100%));
   border-top: 1px solid var(--chrome-border);
@@ -32,4 +33,20 @@
   width: 1px;
   height: 14px;
   background: var(--chrome-separator);
+}
+
+.rowBreak {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .statusBar {
+    height: 42px;
+  }
+
+  .rowBreak {
+    display: block;
+    flex-basis: 100%;
+    height: 0;
+  }
 }
