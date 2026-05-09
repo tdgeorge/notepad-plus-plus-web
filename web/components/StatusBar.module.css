@@ -2,9 +2,10 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  background: var(--chrome-bg);
+  background: var(--status-bar-bg, linear-gradient(180deg, #d9d1c4 0%, #cec6b8 100%));
   border-top: 1px solid var(--chrome-border);
-  height: 22px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  height: 21px;
   flex-shrink: 0;
   padding: 0 4px;
   font-size: 11px;
@@ -30,5 +31,5 @@
 .divider {
   width: 1px;
   height: 14px;
-  background: var(--chrome-border);
+  background: var(--chrome-separator);
 }

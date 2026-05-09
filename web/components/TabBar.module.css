@@ -2,9 +2,10 @@
   display: flex;
   flex-direction: row;
   align-items: flex-end;
-  background: var(--tab-bar-bg);
+  background: var(--tab-bar-shell-bg, linear-gradient(180deg, #cdc6ba 0%, var(--tab-bar-bg) 100%));
   border-bottom: 1px solid var(--chrome-border);
-  height: 26px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  height: 28px;
   flex-shrink: 0;
   overflow-x: auto;
   overflow-y: hidden;
@@ -26,9 +27,9 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  height: 22px;
+  height: 23px;
   padding: 0 6px 0 10px;
-  background: var(--tab-inactive-bg);
+  background: var(--tab-bg, linear-gradient(180deg, #ebe4d7 0%, var(--tab-inactive-bg) 100%));
   border: 1px solid var(--chrome-border);
   border-bottom: none;
   cursor: pointer;
@@ -49,7 +50,8 @@
   background: var(--tab-active-bg);
   color: var(--tab-active-text);
   border-color: var(--chrome-border);
-  height: 24px;
+  box-shadow: inset 0 2px 0 #dfa34f;
+  height: 26px;
   padding-top: 0;
 }
 
@@ -70,15 +72,15 @@
   border-radius: var(--ui-radius);
   font-size: 14px;
   line-height: 1;
-  color: var(--chrome-text-subtle);
+  color: var(--tab-close-color, var(--chrome-text-subtle));
   padding: 0;
   flex-shrink: 0;
 }
 
 .closeButton:hover {
-  background: #c42b1c;
-  border-color: #c42b1c;
-  color: #fff;
+  background: #d36b5a;
+  border-color: #b45b4a;
+  color: #fff7f3;
 }
 
 .tabFill {

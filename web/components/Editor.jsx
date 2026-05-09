@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, useCallback, useState, useMemo, forwardRef, useImperativeHandle, Fragment } from 'react'
+import { useRef, useEffect, useCallback, useState, useMemo, forwardRef, useImperativeHandle, Fragment, useLayoutEffect } from 'react'
 import styles from './Editor.module.css'
 import { TOKENIZERS } from '../lib/languages/index'
 import { TOKEN } from '../lib/languages/javascript'
@@ -13,6 +13,7 @@ const TAB_SIZE = 4
 const LARGE_FILE_THRESHOLD = 100_000
 // Extra lines rendered above/below the visible viewport during virtual scrolling
 const VIRTUAL_BUFFER = 20
+const LINE_HEIGHT_RATIO = 1.5
 
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -410,8 +411,11 @@ const Editor = forwardRef(function Editor(
   const textareaRef = useRef(null)
   const lineNumbersRef = useRef(null)
   const mirrorRef = useRef(null)
+  const lineMeasureMarkerRef = useRef(null)
   const [lineCount, setLineCount] = useState(1)
   const [currentLineIndex, setCurrentLineIndex] = useState(0)
+  const [currentLineStartOffset, setCurrentLineStartOffset] = useState(0)
+  const [measuredCurrentLineTop, setMeasuredCurrentLineTop] = useState(4)
   const onChangeRef = useRef(onChange)
   useEffect(() => { onChangeRef.current = onChange }, [onChange])
   const onUndoRef = useRef(onUndo)
@@ -429,22 +433,36 @@ const Editor = forwardRef(function Editor(
   const [editorScrollTop, setEditorScrollTop] = useState(0)
   // Client height of the textarea, tracked so virtual rendering adjusts on resize.
   const [editorClientHeight, setEditorClientHeight] = useState(2000)
-  // Ref-copy of isLargeFile so syncScroll (stable callback) can read it.
-  const isLargeFileRef = useRef(isLargeFile)
-  useEffect(() => { isLargeFileRef.current = isLargeFile }, [isLargeFile])
+  const [textareaMetrics, setTextareaMetrics] = useState({
+    lineHeightPx: 13 * LINE_HEIGHT_RATIO,
+    paddingTopPx: 4,
+  })
+
+  const updateTextareaMetrics = useCallback(() => {
+    const ta = textareaRef.current
+    if (!ta) return
+    const computed = window.getComputedStyle(ta)
+    const measuredLineHeight = Number.parseFloat(computed.lineHeight)
+    const measuredPaddingTop = Number.parseFloat(computed.paddingTop)
+    setEditorClientHeight(ta.clientHeight)
+    setTextareaMetrics({
+      lineHeightPx: Number.isFinite(measuredLineHeight) ? measuredLineHeight : (fontSize ?? 13) * LINE_HEIGHT_RATIO,
+      paddingTopPx: Number.isFinite(measuredPaddingTop) ? measuredPaddingTop : 0,
+    })
+  }, [fontSize])
 
   // Measure (and track) the textarea's client height so virtual rendering
   // stays accurate even after window resize.
   useEffect(() => {
     const ta = textareaRef.current
     if (!ta) return
-    setEditorClientHeight(ta.clientHeight)
+    updateTextareaMetrics()
     const ro = new ResizeObserver(() => {
-      if (isLargeFileRef.current) setEditorClientHeight(ta.clientHeight)
+      updateTextareaMetrics()
     })
     ro.observe(ta)
     return () => ro.disconnect()
-  }, []) // run once on mount; the ResizeObserver keeps it fresh
+  }, [updateTextareaMetrics]) // run on mount; the ResizeObserver keeps it fresh
 
   // ── Fold state ────────────────────────────────────────────────────────────
   const [foldedLines, setFoldedLines] = useState(new Set())
@@ -497,9 +515,10 @@ const Editor = forwardRef(function Editor(
   }, [])
 
   const effectiveFontSize = fontSize ?? 13
-  const lineHeightRatio = 1.5
-  const lineHeightPx = effectiveFontSize * lineHeightRatio
+  const { lineHeightPx, paddingTopPx } = textareaMetrics
   const showSymbols = showWhitespace || showEol || showIndent
+  const useMeasuredCurrentLineTop = !isLargeFile && allHiddenLines.size === 0
+  const currentLineTopPx = (useMeasuredCurrentLineTop ? measuredCurrentLineTop : (paddingTopPx + currentLineVisualIndex * lineHeightPx)) - editorScrollTop
 
   // ── Mirror content ────────────────────────────────────────────────────────
   const tokenizeFn = language ? TOKENIZERS[language] : null
@@ -547,9 +566,7 @@ const Editor = forwardRef(function Editor(
       mirrorRef.current.scrollTop = ta.scrollTop
       mirrorRef.current.scrollLeft = ta.scrollLeft
     }
-    if (isLargeFileRef.current) {
-      setEditorScrollTop(ta.scrollTop)
-    }
+    setEditorScrollTop(ta.scrollTop)
     onEditorScrollRef.current?.(ta.scrollTop, ta.scrollLeft)
   }, [])
 
@@ -563,9 +580,18 @@ const Editor = forwardRef(function Editor(
     const line = lines.length
     const col = lines[lines.length - 1].length + 1
     const sel = Math.abs(selEnd - pos)
+    const lineStart = pos - lines[lines.length - 1].length
     setCurrentLineIndex(line - 1)
+    setCurrentLineStartOffset(lineStart)
     if (onCursorChange) onCursorChange({ line, col, sel })
   }, [onCursorChange])
+
+  useLayoutEffect(() => {
+    if (!useMeasuredCurrentLineTop) return
+    const marker = lineMeasureMarkerRef.current
+    if (!marker) return
+    setMeasuredCurrentLineTop(marker.offsetTop)
+  }, [useMeasuredCurrentLineTop, currentLineStartOffset, content, wordWrap, effectiveFontSize, lineHeightPx])
 
   const handleChange = useCallback(
     (e) => {
@@ -670,7 +696,9 @@ const Editor = forwardRef(function Editor(
   // Scroll the textarea to show the character at `charIndex` without stealing focus.
   const scrollToChar = useCallback((textarea, charIndex) => {
     const linesBeforeMatch = textarea.value.substring(0, charIndex).split('\n').length - 1
-    textarea.scrollTop = Math.max(0, linesBeforeMatch * lineHeightPx - textarea.clientHeight / 2)
+    const nextScrollTop = Math.max(0, linesBeforeMatch * lineHeightPx - textarea.clientHeight / 2)
+    textarea.scrollTop = nextScrollTop
+    setEditorScrollTop(nextScrollTop)
   }, [lineHeightPx])
 
   useImperativeHandle(ref, () => ({
@@ -810,7 +838,9 @@ const Editor = forwardRef(function Editor(
       }
       textarea.focus()
       textarea.setSelectionRange(pos, pos)
-      textarea.scrollTop = Math.max(0, (target - 1) * lineHeightPx - textarea.clientHeight / 2)
+      const nextScrollTop = Math.max(0, (target - 1) * lineHeightPx - textarea.clientHeight / 2)
+      textarea.scrollTop = nextScrollTop
+      setEditorScrollTop(nextScrollTop)
       updateCursor()
     },
 
@@ -909,6 +939,7 @@ const Editor = forwardRef(function Editor(
         ta.scrollTop = top
         if (lineNumbersRef.current) lineNumbersRef.current.scrollTop = top
         if (mirrorRef.current) mirrorRef.current.scrollTop = top
+        setEditorScrollTop(top)
       }
       if (left !== null && left !== undefined) {
         ta.scrollLeft = left
@@ -1675,7 +1706,7 @@ const Editor = forwardRef(function Editor(
 
   return (
     <div className={styles.editorWrapper}>
-      <div className={styles.editorContainer} style={{ fontSize: `${effectiveFontSize}px`, lineHeight: lineHeightRatio }}>
+      <div className={styles.editorContainer} style={{ fontSize: `${effectiveFontSize}px`, lineHeight: LINE_HEIGHT_RATIO }}>
         <div
           ref={lineNumbersRef}
           className={styles.lineNumbers}
@@ -1726,12 +1757,23 @@ const Editor = forwardRef(function Editor(
           })}
         </div>
         <div className={styles.textareaWrapper}>
+          {useMeasuredCurrentLineTop && (
+            <div
+              className={styles.lineMeasure}
+              aria-hidden="true"
+              style={{ whiteSpace: wordWrap ? 'pre-wrap' : 'pre' }}
+            >
+              {content.slice(0, currentLineStartOffset)}
+              {/* Zero-width content keeps the marker in-flow at the exact start of the current line for offset measurement. */}
+              <span ref={lineMeasureMarkerRef} className={styles.lineMeasureMarker}>{'\u200b'}</span>
+            </div>
+          )}
           {!isLargeFile && !allHiddenLines.has(currentLineIndex) && (
             <div
               className={styles.currentLineHighlight}
               aria-hidden="true"
               style={{
-                top: `calc(4px + ${currentLineVisualIndex * lineHeightPx}px)`,
+                top: `${currentLineTopPx}px`,
                 height: `${lineHeightPx}px`,
               }}
             />

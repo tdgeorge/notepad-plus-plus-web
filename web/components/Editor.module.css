@@ -17,13 +17,14 @@
 .lineNumbers {
   background: var(--editor-gutter-bg);
   border-right: 1px solid var(--editor-gutter-border);
-  padding: 4px 20px 4px 6px;
+  padding: 4px 18px 4px 5px;
   text-align: left;
   color: var(--editor-gutter-fg);
-  min-width: 58px;
+  min-width: 48px;
   overflow: hidden;
   user-select: none;
   flex-shrink: 0;
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.4);
 }
 
 .lineNumber {
@@ -83,6 +84,30 @@
   pointer-events: none;
   background: var(--editor-current-line, #e8f2ff);
   z-index: 0;
+}
+
+.lineMeasure {
+  position: absolute;
+  inset: 0;
+  visibility: hidden;
+  pointer-events: none;
+  overflow: hidden;
+  padding: 4px 4px;
+  margin: 0;
+  border: none;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  tab-size: 4;
+  white-space: pre;
+  word-break: normal;
+}
+
+.lineMeasureMarker {
+  display: inline-block;
+  width: 0;
+  height: 1lh;
+  vertical-align: top;
 }
 
 .mirror {
