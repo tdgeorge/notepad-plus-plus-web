@@ -29,6 +29,15 @@ function applyRecordedStep(state, step) {
         cursor: start + inserted.length,
       }
     }
+    case 'replace-range': {
+      const start = Math.max(0, Math.min(text.length, step.start))
+      const end = Math.max(start, Math.min(text.length, step.end))
+      const inserted = typeof step.text === 'string' ? step.text : ''
+      return {
+        text: `${text.slice(0, start)}${inserted}${text.slice(end)}`,
+        cursor: start + inserted.length,
+      }
+    }
     default:
       return state
   }
@@ -114,4 +123,27 @@ test('typing, deleting, then typing replays without dropping middle chars', () =
 
   assert.equal(state.text, 'abxy')
   assert.equal(state.cursor, 4)
+})
+
+test('synthetic double-space auto-period replacement records stable non-caret range step', () => {
+  const step = buildMacroTextStep('word  ', 'word. ', {
+    beforeSelectionStart: 4,
+    beforeSelectionEnd: 6,
+  })
+  assert.deepEqual(step, { action: 'replace-range', start: 4, end: 6, text: '. ' })
+})
+
+test('double-space auto-period playback avoids extra space before period', () => {
+  const snapshots = [
+    { before: 'word', after: 'word ', beforeSelectionStart: 4, beforeSelectionEnd: 4 },
+    { before: 'word  ', after: 'word. ', beforeSelectionStart: 4, beforeSelectionEnd: 6 },
+  ]
+  const steps = snapshots.map(({ before, after, beforeSelectionStart, beforeSelectionEnd }) => (
+    buildMacroTextStep(before, after, { beforeSelectionStart, beforeSelectionEnd })
+  ))
+
+  let state = { text: 'word', cursor: 4 }
+  for (const step of steps) state = applyRecordedStep(state, step)
+
+  assert.equal(state.text, 'word. ')
 })
