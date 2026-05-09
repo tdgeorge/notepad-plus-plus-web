@@ -2,6 +2,38 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { getTextChange, buildMacroTextStep } from './macroTextSteps.mjs'
 
+function applyRecordedStep(state, step) {
+  const { text, cursor } = state
+  switch (step.action) {
+    case 'replace-selection': {
+      const inserted = typeof step.text === 'string' ? step.text : ''
+      return {
+        text: `${text.slice(0, cursor)}${inserted}${text.slice(cursor)}`,
+        cursor: cursor + inserted.length,
+      }
+    }
+    case 'delete-backward':
+      return cursor > 0
+        ? { text: `${text.slice(0, cursor - 1)}${text.slice(cursor)}`, cursor: cursor - 1 }
+        : state
+    case 'delete-forward':
+      return cursor < text.length
+        ? { text: `${text.slice(0, cursor)}${text.slice(cursor + 1)}`, cursor }
+        : state
+    case 'replace-relative': {
+      const start = Math.max(0, Math.min(text.length, cursor + step.startOffset))
+      const end = Math.max(start, Math.min(text.length, cursor + step.endOffset))
+      const inserted = typeof step.text === 'string' ? step.text : ''
+      return {
+        text: `${text.slice(0, start)}${inserted}${text.slice(end)}`,
+        cursor: start + inserted.length,
+      }
+    }
+    default:
+      return state
+  }
+}
+
 test('getTextChange returns minimal replacement window', () => {
   const change = getTextChange('abcXYZdef', 'abc123def')
   assert.deepEqual(change, { start: 3, end: 6, text: '123' })
@@ -50,4 +82,36 @@ test('buildMacroTextStep falls back to relative replacement for complex edits', 
     endOffset: 2,
     text: 'QQ',
   })
+})
+
+test('buildMacroTextStep records insertion at intended caret for repeated chars', () => {
+  const step = buildMacroTextStep('ababa', 'ababca', {
+    beforeSelectionStart: 4,
+    beforeSelectionEnd: 4,
+  })
+  assert.deepEqual(step, { action: 'replace-selection', text: 'c' })
+})
+
+test('typing, deleting, then typing replays without dropping middle chars', () => {
+  const snapshots = [
+    { before: '', after: 'a', caretBefore: 0 },
+    { before: 'a', after: 'ab', caretBefore: 1 },
+    { before: 'ab', after: 'abc', caretBefore: 2 },
+    { before: 'abc', after: 'ab', caretBefore: 3 },
+    { before: 'ab', after: 'abx', caretBefore: 2 },
+    { before: 'abx', after: 'abxy', caretBefore: 3 },
+  ]
+
+  const steps = snapshots.map(({ before, after, caretBefore }) => (
+    buildMacroTextStep(before, after, {
+      beforeSelectionStart: caretBefore,
+      beforeSelectionEnd: caretBefore,
+    })
+  ))
+
+  let state = { text: '', cursor: 0 }
+  for (const step of steps) state = applyRecordedStep(state, step)
+
+  assert.equal(state.text, 'abxy')
+  assert.equal(state.cursor, 4)
 })

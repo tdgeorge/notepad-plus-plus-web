@@ -20,6 +20,39 @@ export function getTextChange(before, after) {
 }
 
 export function buildMacroTextStep(before, after, selectionMeta = {}) {
+  const hasSelectionMeta = Number.isFinite(selectionMeta.beforeSelectionStart)
+    && Number.isFinite(selectionMeta.beforeSelectionEnd)
+
+  if (hasSelectionMeta && typeof before === 'string' && typeof after === 'string') {
+    const beforeLen = before.length
+    const afterLen = after.length
+    const rawStart = Math.floor(selectionMeta.beforeSelectionStart)
+    const rawEnd = Math.floor(selectionMeta.beforeSelectionEnd)
+    const selectionStart = Math.max(0, Math.min(beforeLen, rawStart))
+    const selectionEnd = Math.max(selectionStart, Math.min(beforeLen, rawEnd))
+    const replacedLen = selectionEnd - selectionStart
+    const insertedLen = afterLen - (beforeLen - replacedLen)
+
+    if (insertedLen >= 0) {
+      const insertedText = after.slice(selectionStart, selectionStart + insertedLen)
+      const replayCandidate = `${before.slice(0, selectionStart)}${insertedText}${before.slice(selectionEnd)}`
+
+      if (replayCandidate === after) {
+        if (selectionStart === selectionEnd && insertedLen === 0) {
+          const backspaceCandidate = `${before.slice(0, selectionStart - 1)}${before.slice(selectionStart)}`
+          if (selectionStart > 0 && backspaceCandidate === after) {
+            return { action: 'delete-backward' }
+          }
+          const deleteCandidate = `${before.slice(0, selectionStart)}${before.slice(selectionStart + 1)}`
+          if (selectionStart < beforeLen && deleteCandidate === after) {
+            return { action: 'delete-forward' }
+          }
+        }
+        return { action: 'replace-selection', text: insertedText }
+      }
+    }
+  }
+
   const change = getTextChange(before, after)
   if (!change) return null
 
