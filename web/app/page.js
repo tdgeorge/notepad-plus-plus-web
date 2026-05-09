@@ -362,7 +362,9 @@ export default function Home() {
     const payload = (extra && typeof extra === 'object') ? extra : {}
     setCurrentMacroSteps((prev) => {
       if (prev.length >= MAX_RECORDED_MACRO_STEPS) return prev
-      return [...prev, { menu, action, ...payload }]
+      const next = [...prev, { menu, action, ...payload }]
+      currentMacroStepsRef.current = next
+      return next
     })
   }, [])
 
@@ -1387,12 +1389,17 @@ export default function Home() {
     switch (action) {
       case 'macro-start-recording':
         if (isRecordingMacroRef.current) return
+        currentMacroStepsRef.current = []
+        hasStoppedRecordingMacroRef.current = false
+        isRecordingMacroRef.current = true
         setCurrentMacroSteps([])
         setHasStoppedRecordingMacro(false)
         setIsRecordingMacro(true)
         break
       case 'macro-stop-recording':
         if (!isRecordingMacroRef.current) return
+        isRecordingMacroRef.current = false
+        hasStoppedRecordingMacroRef.current = true
         setIsRecordingMacro(false)
         setHasStoppedRecordingMacro(true)
         break
