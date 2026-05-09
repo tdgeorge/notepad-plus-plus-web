@@ -19,6 +19,7 @@ import { md5 } from '../lib/md5'
 import { applyTheme, THEMES, DEFAULT_THEME_ID } from '../lib/themes'
 import { detectLanguage } from '../lib/languages/index'
 import { buildMacroTextStep } from '../lib/macroTextSteps.mjs'
+import { shouldApplySelectionBeforeMacroStep } from '../lib/macroPlayback.mjs'
 import styles from './page.module.css'
 
 const DEFAULT_FONT_SIZE = 13
@@ -1408,9 +1409,7 @@ export default function Home() {
                 getActiveEditor()?.insertText?.(step.text)
               }
               if (step.action === 'replace-selection' && typeof step.text === 'string') {
-                if (Number.isFinite(step.selectionStart)
-                  && Number.isFinite(step.selectionEnd)
-                  && step.selectionStart !== step.selectionEnd) {
+                if (shouldApplySelectionBeforeMacroStep(step)) {
                   getActiveEditor()?.setSelection?.(step.selectionStart, step.selectionEnd)
                 }
                 getActiveEditor()?.replaceSelection?.(step.text)
