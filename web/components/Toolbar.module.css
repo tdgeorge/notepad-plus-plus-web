@@ -92,21 +92,8 @@
   flex-shrink: 0;
 }
 
-/* Toolbar icon switching: show light icons by default, dark icons in dark themes */
-.iconLight {
+/* Toolbar icon image */
+.icon {
   display: block;
-  image-rendering: pixelated;
-}
-
-.iconDark {
-  display: none;
-  image-rendering: pixelated;
-}
-
-:global(html[data-theme-dark='1']) .iconLight {
-  display: none;
-}
-
-:global(html[data-theme-dark='1']) .iconDark {
-  display: block;
+  image-rendering: auto;
 }

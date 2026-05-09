@@ -4,30 +4,21 @@ import Image from 'next/image'
 import styles from './Toolbar.module.css'
 import { useRef, useState, useEffect, useCallback } from 'react'
 
-function ToolbarIcon({ name, alt }) {
+function ToolbarIcon({ name, alt, isDark }) {
+  const scheme = isDark ? 'dark' : 'light'
   return (
-    <>
-      <Image
-        src={`/icons/toolbar/light/${name}.png`}
-        alt={alt}
-        width={16}
-        height={16}
-        className={styles.iconLight}
-        draggable={false}
-      />
-      <Image
-        src={`/icons/toolbar/dark/${name}.png`}
-        alt={alt}
-        width={16}
-        height={16}
-        className={styles.iconDark}
-        draggable={false}
-      />
-    </>
+    <Image
+      src={`/icons/toolbar/${scheme}/${name}.png`}
+      alt={alt}
+      width={16}
+      height={16}
+      className={styles.icon}
+      draggable={false}
+    />
   )
 }
 
-function ToolbarButton({ title, onClick, children, disabled, active, tone }) {
+function ToolbarButton({ title, onClick, children, disabled, active }) {
   return (
     <button
       className={`${styles.button}${active ? ` ${styles.active}` : ''}`}
@@ -36,7 +27,6 @@ function ToolbarButton({ title, onClick, children, disabled, active, tone }) {
       disabled={disabled}
       aria-label={title}
       aria-pressed={active !== undefined ? active : undefined}
-      data-tone={tone}
     >
       {children}
     </button>
@@ -48,6 +38,7 @@ function ToolbarSep() {
 }
 
 export default function Toolbar({
+  isDark,
   onNew, onOpen, onSave, onSaveAll, onClose, onCloseAll, onPrint,
   onUndo, onRedo, onCut, onCopy, onPaste,
   onFind, onReplace,
@@ -100,75 +91,75 @@ export default function Toolbar({
       )}
       <div className={styles.toolbar} ref={scrollRef} role="toolbar" aria-label="Main toolbar">
         <ToolbarButton title="New (Ctrl+N)" onClick={onNew}>
-          <ToolbarIcon name="new" alt="New" />
+          <ToolbarIcon name="new" alt="New" isDark={isDark} />
         </ToolbarButton>
 
         <ToolbarButton title="Open (Ctrl+O)" onClick={onOpen}>
-          <ToolbarIcon name="open" alt="Open" />
+          <ToolbarIcon name="open" alt="Open" isDark={isDark} />
         </ToolbarButton>
 
         <ToolbarButton title="Save (Ctrl+S)" onClick={onSave}>
-          <ToolbarIcon name="save" alt="Save" />
+          <ToolbarIcon name="save" alt="Save" isDark={isDark} />
         </ToolbarButton>
 
         <ToolbarButton title="Save All (Ctrl+Shift+S)" onClick={onSaveAll}>
-          <ToolbarIcon name="saveAll" alt="Save All" />
+          <ToolbarIcon name="saveAll" alt="Save All" isDark={isDark} />
         </ToolbarButton>
 
         <ToolbarButton title="Close (Ctrl+W)" onClick={onClose}>
-          <ToolbarIcon name="close" alt="Close" />
+          <ToolbarIcon name="close" alt="Close" isDark={isDark} />
         </ToolbarButton>
 
         <ToolbarButton title="Close All" onClick={onCloseAll}>
-          <ToolbarIcon name="closeAll" alt="Close All" />
+          <ToolbarIcon name="closeAll" alt="Close All" isDark={isDark} />
         </ToolbarButton>
 
         <ToolbarButton title="Print (Ctrl+P)" onClick={onPrint}>
-          <ToolbarIcon name="print" alt="Print" />
+          <ToolbarIcon name="print" alt="Print" isDark={isDark} />
         </ToolbarButton>
 
         <ToolbarSep />
 
         <ToolbarButton title="Cut (Ctrl+X)" onClick={onCut}>
-          <ToolbarIcon name="cut" alt="Cut" />
+          <ToolbarIcon name="cut" alt="Cut" isDark={isDark} />
         </ToolbarButton>
 
         <ToolbarButton title="Copy (Ctrl+C)" onClick={onCopy}>
-          <ToolbarIcon name="copy" alt="Copy" />
+          <ToolbarIcon name="copy" alt="Copy" isDark={isDark} />
         </ToolbarButton>
 
         <ToolbarButton title="Paste (Ctrl+V)" onClick={onPaste}>
-          <ToolbarIcon name="paste" alt="Paste" />
+          <ToolbarIcon name="paste" alt="Paste" isDark={isDark} />
         </ToolbarButton>
 
         <ToolbarSep />
 
         <ToolbarButton title="Undo (Ctrl+Z)" onClick={onUndo}>
-          <ToolbarIcon name="undo" alt="Undo" />
+          <ToolbarIcon name="undo" alt="Undo" isDark={isDark} />
         </ToolbarButton>
 
         <ToolbarButton title="Redo (Ctrl+Y)" onClick={onRedo}>
-          <ToolbarIcon name="redo" alt="Redo" />
+          <ToolbarIcon name="redo" alt="Redo" isDark={isDark} />
         </ToolbarButton>
 
         <ToolbarSep />
 
         <ToolbarButton title="Find (Ctrl+F)" onClick={onFind}>
-          <ToolbarIcon name="find" alt="Find" />
+          <ToolbarIcon name="find" alt="Find" isDark={isDark} />
         </ToolbarButton>
 
         <ToolbarButton title="Replace (Ctrl+H)" onClick={onReplace}>
-          <ToolbarIcon name="findReplace" alt="Replace" />
+          <ToolbarIcon name="findReplace" alt="Replace" isDark={isDark} />
         </ToolbarButton>
 
         <ToolbarSep />
 
         <ToolbarButton title="Zoom In (Ctrl+Numpad+)" onClick={onZoomIn}>
-          <ToolbarIcon name="zoomIn" alt="Zoom In" />
+          <ToolbarIcon name="zoomIn" alt="Zoom In" isDark={isDark} />
         </ToolbarButton>
 
         <ToolbarButton title="Zoom Out (Ctrl+Numpad-)" onClick={onZoomOut}>
-          <ToolbarIcon name="zoomOut" alt="Zoom Out" />
+          <ToolbarIcon name="zoomOut" alt="Zoom Out" isDark={isDark} />
         </ToolbarButton>
 
         <ToolbarSep />
@@ -179,7 +170,7 @@ export default function Toolbar({
           active={viewState?.syncScrollV}
           disabled={!viewState?.splitEnabled}
         >
-          <ToolbarIcon name="syncV" alt="Synchronize Vertical Scrolling" />
+          <ToolbarIcon name="syncV" alt="Synchronize Vertical Scrolling" isDark={isDark} />
         </ToolbarButton>
 
         <ToolbarButton
@@ -188,7 +179,7 @@ export default function Toolbar({
           active={viewState?.syncScrollH}
           disabled={!viewState?.splitEnabled}
         >
-          <ToolbarIcon name="syncH" alt="Synchronize Horizontal Scrolling" />
+          <ToolbarIcon name="syncH" alt="Synchronize Horizontal Scrolling" isDark={isDark} />
         </ToolbarButton>
 
         <ToolbarSep />
@@ -198,7 +189,7 @@ export default function Toolbar({
           onClick={onWordWrap}
           active={viewState?.wordWrap}
         >
-          <ToolbarIcon name="wrap" alt="Word Wrap" />
+          <ToolbarIcon name="wrap" alt="Word Wrap" isDark={isDark} />
         </ToolbarButton>
 
         <ToolbarButton
@@ -206,7 +197,7 @@ export default function Toolbar({
           onClick={onShowAllChars}
           active={viewState?.showAllChars}
         >
-          <ToolbarIcon name="allChars" alt="Show All Characters" />
+          <ToolbarIcon name="allChars" alt="Show All Characters" isDark={isDark} />
         </ToolbarButton>
 
         <ToolbarButton
@@ -214,7 +205,7 @@ export default function Toolbar({
           onClick={onShowIndent}
           active={viewState?.showIndent}
         >
-          <ToolbarIcon name="indentGuide" alt="Show Indent Guide" />
+          <ToolbarIcon name="indentGuide" alt="Show Indent Guide" isDark={isDark} />
         </ToolbarButton>
 
       </div>
