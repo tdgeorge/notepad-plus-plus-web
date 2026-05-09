@@ -26,7 +26,7 @@ const MAX_FONT_SIZE = 32
 const INITIAL_TAB_NAME = 'new 1'
 const INITIAL_TAB = { id: 1, name: INITIAL_TAB_NAME, content: '', modified: false }
 const AUTOSAVE_STORAGE_KEY = 'nppw-autosave-backup'
-const AUTOSAVE_INTERVAL_MS = 30_000
+const AUTOSAVE_INTERVAL_MS = 5_000
 
 // Cap the undo stack for large files to avoid unbounded memory growth.
 // Each entry stores a full copy of the document content.
