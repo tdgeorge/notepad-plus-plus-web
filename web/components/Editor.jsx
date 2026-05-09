@@ -1731,6 +1731,7 @@ const Editor = forwardRef(function Editor(
       const el = textareaRef.current
       if (!el || !text) return
       applyInputText(el, text)
+      updateCursor()
     },
 
     replaceRange: (start, end, text = '') => {
@@ -1753,6 +1754,7 @@ const Editor = forwardRef(function Editor(
       const el = textareaRef.current
       if (!el) return
       applyInputText(el, text)
+      updateCursor()
     },
 
     deleteBackward: () => {
@@ -1762,12 +1764,14 @@ const Editor = forwardRef(function Editor(
       const end = el.selectionEnd
       if (start !== end) {
         applyInputText(el, '')
+        updateCursor()
         return
       }
       if (start <= 0) return
       el.focus()
       el.setSelectionRange(start - 1, start)
       applyInputText(el, '')
+      updateCursor()
     },
 
     deleteForward: () => {
@@ -1777,12 +1781,14 @@ const Editor = forwardRef(function Editor(
       const end = el.selectionEnd
       if (start !== end) {
         applyInputText(el, '')
+        updateCursor()
         return
       }
       if (start >= el.value.length) return
       el.focus()
       el.setSelectionRange(start, start + 1)
       applyInputText(el, '')
+      updateCursor()
     },
 
     replaceRelative: (startOffset, endOffset, text = '') => {
@@ -1797,6 +1803,7 @@ const Editor = forwardRef(function Editor(
       el.focus()
       el.setSelectionRange(start, end)
       applyInputText(el, text)
+      updateCursor()
     },
 
   }), [indent, dedent, lineCount, lineHeightPx, updateCursor, updateLineCount, scrollToChar])
