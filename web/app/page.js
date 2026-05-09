@@ -81,6 +81,9 @@ export default function Home() {
   const view2ActiveTabIdRef = useRef(view2ActiveTabId)
   useEffect(() => { view2ActiveTabIdRef.current = view2ActiveTabId }, [view2ActiveTabId])
 
+  const activeViewRef = useRef(activeView)
+  useEffect(() => { activeViewRef.current = activeView }, [activeView])
+
   // Per-tab undo/redo history: { [tabId]: { stack: string[], index: number, savedIndex: number } }
   const undoHistoryRef = useRef({ 1: { stack: [''], index: 0, savedIndex: 0 } })
 
@@ -145,27 +148,52 @@ export default function Home() {
       if (!raw) return
       const backup = JSON.parse(raw)
       if (!(backup?.version === 1 && Array.isArray(backup.tabs) && backup.tabs.length > 0)) return
-      const newIds = backup.tabs.map(() => nextTabId++)
-      const restoredTabs = backup.tabs.map((tab, index) => ({
-        id: newIds[index],
-        name: tab.name ?? `new ${newIds[index]}`,
-        content: tab.content ?? '',
-        modified: true,
-        language: tab.language ?? null,
-      }))
+      const idMap = new Map()
+      const restoredTabs = backup.tabs.map((tab) => {
+        const restoredId = nextTabId++
+        if (typeof tab.id === 'number') {
+          idMap.set(tab.id, restoredId)
+        }
+        return {
+          id: restoredId,
+          view: tab.view === 2 ? 2 : 1,
+          name: tab.name ?? `new ${restoredId}`,
+          content: tab.content ?? '',
+          modified: true,
+          language: tab.language ?? null,
+        }
+      })
+      let restoredView1Tabs = restoredTabs.filter((tab) => tab.view !== 2).map(({ view, ...tab }) => tab)
+      let restoredView2Tabs = restoredTabs.filter((tab) => tab.view === 2).map(({ view, ...tab }) => tab)
+      if (restoredView1Tabs.length === 0 && restoredView2Tabs.length > 0) {
+        const [firstTab, ...remainingTabs] = restoredView2Tabs
+        restoredView1Tabs = [firstTab]
+        restoredView2Tabs = remainingTabs
+      }
+      const restoredActiveTabId = idMap.get(backup.activeTabId)
+      const restoredView2ActiveTabId = idMap.get(backup.view2ActiveTabId)
+      const fallbackActiveTabId = restoredView1Tabs[restoredView1Tabs.length - 1]?.id ?? 1
+      const fallbackView2ActiveTabId = restoredView2Tabs[restoredView2Tabs.length - 1]?.id ?? null
+      const nextActiveTabId = restoredView1Tabs.some((tab) => tab.id === restoredActiveTabId)
+        ? restoredActiveTabId
+        : fallbackActiveTabId
+      const nextView2ActiveTabId = restoredView2Tabs.some((tab) => tab.id === restoredView2ActiveTabId)
+        ? restoredView2ActiveTabId
+        : fallbackView2ActiveTabId
+      const nextActiveView = backup.activeView === 2 && restoredView2Tabs.length > 0 ? 2 : 1
       undoHistoryRef.current = {}
-      restoredTabs.forEach((tab) => {
+      restoredTabs.forEach(({ view, ...tab }) => {
         undoHistoryRef.current[tab.id] = { stack: [tab.content], index: 0, savedIndex: -1 }
       })
-      setTabs(restoredTabs)
-      setActiveTabId(newIds[newIds.length - 1])
+      setTabs(restoredView1Tabs)
+      setView2Tabs(restoredView2Tabs)
+      setSplitEnabled(restoredView2Tabs.length > 0)
+      setActiveTabId(nextActiveTabId)
+      setView2ActiveTabId(nextView2ActiveTabId)
+      setActiveView(nextActiveView)
       setFileHandles({})
-      setSplitEnabled(false)
-      setView2Tabs([])
-      setView2ActiveTabId(null)
-      setActiveView(1)
     } catch (error) {
-      console.error(error)
+      console.error('Failed to restore autosaved tabs:', error)
     }
   }, [])
 
@@ -175,17 +203,29 @@ export default function Home() {
       try {
         const unsavedTabs = [...tabsRef.current, ...view2TabsRef.current]
           .filter((tab) => tab.modified)
-          .map((tab) => ({ name: tab.name, content: tab.content, language: tab.language ?? null }))
+          .map((tab) => ({
+            id: tab.id,
+            view: view2TabsRef.current.some((view2Tab) => view2Tab.id === tab.id) ? 2 : 1,
+            name: tab.name,
+            content: tab.content,
+            language: tab.language ?? null,
+          }))
         if (unsavedTabs.length === 0) {
           localStorage.removeItem(AUTOSAVE_STORAGE_KEY)
           return
         }
         localStorage.setItem(
           AUTOSAVE_STORAGE_KEY,
-          JSON.stringify({ version: 1, updatedAt: Date.now(), tabs: unsavedTabs })
+          JSON.stringify({
+            version: 1,
+            activeView: activeViewRef.current,
+            activeTabId: activeTabIdRef.current,
+            view2ActiveTabId: view2ActiveTabIdRef.current,
+            tabs: unsavedTabs,
+          })
         )
       } catch (error) {
-        console.error(error)
+        console.error('Failed to save autosave backup:', error)
       }
     }
     const intervalId = setInterval(saveAutosaveBackup, AUTOSAVE_INTERVAL_MS)
