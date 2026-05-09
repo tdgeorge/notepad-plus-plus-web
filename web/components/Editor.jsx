@@ -227,6 +227,16 @@ function applyInputText(el, text = '') {
   document.execCommand('insertText', false, typeof text === 'string' ? text : '')
 }
 
+/**
+ * Work around the iOS WebKit race where programmatic setSelectionRange is
+ * discarded after JavaScript completes.  Scheduling through both a
+ * requestAnimationFrame and a nested setTimeout(0) ("double-tick") gives
+ * WebKit enough time to commit the new caret position.
+ */
+function commitSelectionDoubleTick(el, pos) {
+  requestAnimationFrame(() => setTimeout(() => { el.setSelectionRange(pos, pos); el.focus() }, 0))
+}
+
 /** Maps a TOKEN type to the corresponding CSS module class name */
 const TOKEN_CLASSES = {
   [TOKEN.KEYWORD]: styles.hlKeyword,
@@ -1727,11 +1737,23 @@ const Editor = forwardRef(function Editor(
     },
 
     // ── Insert Text ───────────────────────────────────────────────────────
+    // Uses setRangeText (no user-activation required) instead of execCommand
+    // so cursor updates reliably on iOS WebKit even deep inside a click chain.
+    // The requestAnimationFrame + setTimeout "double-tick" works around the
+    // WebKit race where programmatic setSelectionRange is discarded after JS
+    // completes. For multi-step macros the callbacks from all steps fire after
+    // the synchronous loop; the last one wins with the correct final position.
     insertText: (text) => {
       const el = textareaRef.current
       if (!el || !text) return
+      const start = el.selectionStart
+      const end = el.selectionEnd
+      const inserted = typeof text === 'string' ? text : ''
       el.focus()
-      document.execCommand('insertText', false, text)
+      el.setRangeText(inserted, start, end, 'end')
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+      const targetPos = start + inserted.length
+      commitSelectionDoubleTick(el, targetPos)
       updateCursor()
     },
 
@@ -1744,17 +1766,24 @@ const Editor = forwardRef(function Editor(
       const safeEnd = Math.max(safeStart, Math.min(len, safeEndRaw))
       const inserted = typeof text === 'string' ? text : ''
       el.focus()
-      el.setSelectionRange(safeStart, safeEnd)
-      document.execCommand('insertText', false, inserted)
+      el.setRangeText(inserted, safeStart, safeEnd, 'end')
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+      const targetPos = safeStart + inserted.length
+      commitSelectionDoubleTick(el, targetPos)
       updateCursor()
     },
 
     replaceSelection: (text = '') => {
       const el = textareaRef.current
       if (!el) return
+      const start = el.selectionStart
+      const end = el.selectionEnd
       const inserted = typeof text === 'string' ? text : ''
       el.focus()
-      document.execCommand('insertText', false, inserted)
+      el.setRangeText(inserted, start, end, 'end')
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+      const targetPos = start + inserted.length
+      commitSelectionDoubleTick(el, targetPos)
       updateCursor()
     },
 
@@ -1765,14 +1794,18 @@ const Editor = forwardRef(function Editor(
       const end = el.selectionEnd
       if (start !== end) {
         el.focus()
-        document.execCommand('insertText', false, '')
+        el.setRangeText('', start, end, 'end')
+        el.dispatchEvent(new Event('input', { bubbles: true }))
+        commitSelectionDoubleTick(el, start)
         updateCursor()
         return
       }
       if (start <= 0) return
+      const targetPos = start - 1
       el.focus()
-      el.setSelectionRange(start - 1, start)
-      document.execCommand('insertText', false, '')
+      el.setRangeText('', targetPos, start, 'end')
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+      commitSelectionDoubleTick(el, targetPos)
       updateCursor()
     },
 
@@ -1783,14 +1816,17 @@ const Editor = forwardRef(function Editor(
       const end = el.selectionEnd
       if (start !== end) {
         el.focus()
-        document.execCommand('insertText', false, '')
+        el.setRangeText('', start, end, 'end')
+        el.dispatchEvent(new Event('input', { bubbles: true }))
+        commitSelectionDoubleTick(el, start)
         updateCursor()
         return
       }
       if (start >= el.value.length) return
       el.focus()
-      el.setSelectionRange(start, start + 1)
-      document.execCommand('insertText', false, '')
+      el.setRangeText('', start, start + 1, 'end')
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+      commitSelectionDoubleTick(el, start)
       updateCursor()
     },
 
@@ -1805,8 +1841,10 @@ const Editor = forwardRef(function Editor(
       const end = Math.max(start, Math.min(len, base + safeEndOffset))
       const inserted = typeof text === 'string' ? text : ''
       el.focus()
-      el.setSelectionRange(start, end)
-      document.execCommand('insertText', false, inserted)
+      el.setRangeText(inserted, start, end, 'end')
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+      const targetPos = start + inserted.length
+      commitSelectionDoubleTick(el, targetPos)
       updateCursor()
     },
 
