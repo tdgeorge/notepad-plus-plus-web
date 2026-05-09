@@ -33,6 +33,9 @@ const LARGE_FILE_THRESHOLD = 100_000 // ~100 KB of text
 const MAX_UNDO_LARGE_FILE = 20
 const MACROS_STORAGE_KEY = 'nppw-macros'
 const MAX_RECORDED_MACRO_STEPS = 5000
+const MACRO_DEBUG_TAB_NAME = 'macro-debug.log'
+const MACRO_DEBUG_QUERY_PARAM = 'macroDebug'
+const MACRO_DEBUG_MAX_LINES = 2000
 
 /**
  * Push `content` onto the undo history for `tabId`, capping the stack for
@@ -122,11 +125,19 @@ export default function Home() {
   const hasStoppedRecordingMacroRef = useRef(hasStoppedRecordingMacro)
   const savedMacrosRef = useRef(savedMacros)
   const isPlayingBackMacroRef = useRef(false)
+  const macroDebugEnabledRef = useRef(false)
 
   useEffect(() => { isRecordingMacroRef.current = isRecordingMacro }, [isRecordingMacro])
   useEffect(() => { currentMacroStepsRef.current = currentMacroSteps }, [currentMacroSteps])
   useEffect(() => { hasStoppedRecordingMacroRef.current = hasStoppedRecordingMacro }, [hasStoppedRecordingMacro])
   useEffect(() => { savedMacrosRef.current = savedMacros }, [savedMacros])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const raw = params.get(MACRO_DEBUG_QUERY_PARAM)
+    macroDebugEnabledRef.current = raw != null && raw !== '0' && raw.toLowerCase() !== 'false'
+  }, [])
 
   // Load persisted theme on mount and apply it
   useEffect(() => {
@@ -215,6 +226,31 @@ export default function Home() {
     () => [...tabsRef.current, ...view2TabsRef.current],
     []
   )
+
+  const appendMacroDebugLine = useCallback((label, details = null) => {
+    if (!macroDebugEnabledRef.current) return
+    const text = details == null
+      ? ''
+      : (typeof details === 'string' ? details : JSON.stringify(details))
+    const line = `[${new Date().toISOString()}] ${label}${text ? ` ${text}` : ''}`
+
+    setTabs((prev) => {
+      const idx = prev.findIndex((tab) => tab.name === MACRO_DEBUG_TAB_NAME)
+      if (idx === -1) {
+        const id = nextTabId++
+        undoHistoryRef.current[id] = { stack: [line], index: 0, savedIndex: -1 }
+        return [...prev, { id, name: MACRO_DEBUG_TAB_NAME, content: line, modified: true, language: detectLanguage(MACRO_DEBUG_TAB_NAME) }]
+      }
+
+      const existing = prev[idx]
+      const joined = existing.content ? `${existing.content}\n${line}` : line
+      const trimmed = joined.split('\n').slice(-MACRO_DEBUG_MAX_LINES).join('\n')
+      pushUndoEntry(undoHistoryRef, existing.id, trimmed)
+      const next = [...prev]
+      next[idx] = { ...existing, content: trimmed, modified: true }
+      return next
+    })
+  }, [])
 
   const handleNewTab = useCallback(() => {
     const id = nextTabId++
@@ -342,18 +378,25 @@ export default function Home() {
     if (!isRecordingMacroRef.current || isPlayingBackMacroRef.current) return
     if (!menu || !action) return
     const payload = (extra && typeof extra === 'object') ? extra : {}
+    appendMacroDebugLine('record-step', { menu, action, payload })
     setCurrentMacroSteps((prev) => {
       if (prev.length >= MAX_RECORDED_MACRO_STEPS) return prev
       const next = [...prev, { menu, action, ...payload }]
       currentMacroStepsRef.current = next
       return next
     })
-  }, [])
+  }, [appendMacroDebugLine])
 
   const handleContentChange = useCallback((content, selectionMeta = null) => {
     const tabId = activeTabIdRef.current
     const previousContent = tabsRef.current.find((t) => t.id === tabId)?.content ?? ''
     const textStep = buildMacroTextStep(previousContent, content, selectionMeta)
+    appendMacroDebugLine('record-text-change:view1', {
+      beforeLength: previousContent.length,
+      afterLength: content.length,
+      selectionMeta,
+      inferredStep: textStep,
+    })
     if (textStep) {
       recordMacroStep('Macro', textStep.action, textStep)
     }
@@ -361,12 +404,18 @@ export default function Home() {
     setTabs((prev) =>
       prev.map((t) => (t.id === tabId ? { ...t, content, modified: true } : t))
     )
-  }, [recordMacroStep])
+  }, [recordMacroStep, appendMacroDebugLine])
 
   const handleView2ContentChange = useCallback((content, selectionMeta = null) => {
     const tabId = view2ActiveTabIdRef.current
     const previousContent = view2TabsRef.current.find((t) => t.id === tabId)?.content ?? ''
     const textStep = buildMacroTextStep(previousContent, content, selectionMeta)
+    appendMacroDebugLine('record-text-change:view2', {
+      beforeLength: previousContent.length,
+      afterLength: content.length,
+      selectionMeta,
+      inferredStep: textStep,
+    })
     if (textStep) {
       recordMacroStep('Macro', textStep.action, textStep)
     }
@@ -374,7 +423,7 @@ export default function Home() {
     setView2Tabs((prev) =>
       prev.map((t) => (t.id === tabId ? { ...t, content, modified: true } : t))
     )
-  }, [recordMacroStep])
+  }, [recordMacroStep, appendMacroDebugLine])
 
   const downloadFile = useCallback((name, content) => {
     const blob = new Blob([content], { type: 'text/plain' })
@@ -1331,11 +1380,13 @@ export default function Home() {
     if (isRecordingMacroRef.current || isPlayingBackMacroRef.current) return
     if (!Array.isArray(macroSteps) || macroSteps.length === 0) return
     const runCount = Math.max(1, Math.floor(times))
+    appendMacroDebugLine('playback-start', { runCount, stepCount: macroSteps.length })
     isPlayingBackMacroRef.current = true
     try {
       for (let run = 0; run < runCount; run++) {
         for (const step of macroSteps) {
           if (!step || typeof step.action !== 'string' || typeof step.menu !== 'string') continue
+          appendMacroDebugLine('playback-step', { run: run + 1, step })
           switch (step.menu) {
             case 'Edit':
               dispatchEditAction(step.action, { record: false })
@@ -1385,8 +1436,9 @@ export default function Home() {
       }
     } finally {
       isPlayingBackMacroRef.current = false
+      appendMacroDebugLine('playback-end')
     }
-  }, [dispatchEditAction, dispatchViewAction, dispatchSearchAction, dispatchLanguageAction, dispatchToolsAction, getActiveEditor])
+  }, [dispatchEditAction, dispatchViewAction, dispatchSearchAction, dispatchLanguageAction, dispatchToolsAction, getActiveEditor, appendMacroDebugLine])
 
   const handleMacroAction = useCallback((action) => {
     switch (action) {
