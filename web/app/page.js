@@ -1369,7 +1369,7 @@ export default function Home() {
               dispatchToolsAction(step.action, { record: false })
               break
             case 'Macro':
-              if (step.action === 'insert-text' && typeof step.text === 'string' && step.text.length > 0) {
+              if (step.action === 'insert-text' && typeof step.text === 'string') {
                 getActiveEditor()?.insertText?.(step.text)
               }
               break
