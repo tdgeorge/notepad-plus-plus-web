@@ -353,7 +353,7 @@ export default function Home() {
   const handleContentChange = useCallback((content, selectionMeta = null) => {
     const tabId = activeTabIdRef.current
     const previousContent = tabsRef.current.find((t) => t.id === tabId)?.content ?? ''
-    const textStep = buildMacroTextStep(previousContent, content, selectionMeta ?? {})
+    const textStep = buildMacroTextStep(previousContent, content, selectionMeta)
     if (textStep) {
       recordMacroStep('Macro', textStep.action, textStep)
     }
@@ -366,7 +366,7 @@ export default function Home() {
   const handleView2ContentChange = useCallback((content, selectionMeta = null) => {
     const tabId = view2ActiveTabIdRef.current
     const previousContent = view2TabsRef.current.find((t) => t.id === tabId)?.content ?? ''
-    const textStep = buildMacroTextStep(previousContent, content, selectionMeta ?? {})
+    const textStep = buildMacroTextStep(previousContent, content, selectionMeta)
     if (textStep) {
       recordMacroStep('Macro', textStep.action, textStep)
     }
