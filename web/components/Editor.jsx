@@ -1682,6 +1682,18 @@ const Editor = forwardRef(function Editor(
       document.execCommand('insertText', false, text)
     },
 
+    replaceRange: (start, end, text = '') => {
+      const el = textareaRef.current
+      if (!el) return
+      const len = el.value.length
+      const safeStart = Number.isFinite(start) ? Math.max(0, Math.min(len, Math.floor(start))) : el.selectionStart
+      const safeEndRaw = Number.isFinite(end) ? Math.floor(end) : safeStart
+      const safeEnd = Math.max(safeStart, Math.min(len, safeEndRaw))
+      el.focus()
+      el.setSelectionRange(safeStart, safeEnd)
+      document.execCommand('insertText', false, typeof text === 'string' ? text : '')
+    },
+
   }), [indent, dedent, lineCount, lineHeightPx, updateCursor, updateLineCount, scrollToChar])
 
   const handleKeyDown = useCallback(

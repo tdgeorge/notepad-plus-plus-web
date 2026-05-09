@@ -32,9 +32,9 @@ const LARGE_FILE_THRESHOLD = 100_000 // ~100 KB of text
 const MAX_UNDO_LARGE_FILE = 20
 const MACROS_STORAGE_KEY = 'nppw-macros'
 const MAX_RECORDED_MACRO_STEPS = 5000
-const getInsertedText = (before, after) => {
+const getTextChange = (before, after) => {
   if (typeof before !== 'string' || typeof after !== 'string') return null
-  if (after.length <= before.length) return null
+  if (before === after) return null
 
   let start = 0
   while (start < before.length && start < after.length && before[start] === after[start]) start++
@@ -46,10 +46,11 @@ const getInsertedText = (before, after) => {
     afterEnd--
   }
 
-  const removedLength = beforeEnd - start + 1
-  if (removedLength !== 0) return null
-  const insertedText = after.slice(start, afterEnd + 1)
-  return insertedText.length > 0 ? insertedText : null
+  return {
+    start,
+    end: beforeEnd + 1,
+    text: after.slice(start, afterEnd + 1),
+  }
 }
 
 /**
@@ -371,9 +372,9 @@ export default function Home() {
   const handleContentChange = useCallback((content) => {
     const tabId = activeTabIdRef.current
     const previousContent = tabsRef.current.find((t) => t.id === tabId)?.content ?? ''
-    const insertedText = getInsertedText(previousContent, content)
-    if (insertedText) {
-      recordMacroStep('Macro', 'insert-text', { text: insertedText })
+    const textChange = getTextChange(previousContent, content)
+    if (textChange) {
+      recordMacroStep('Macro', 'replace-range', textChange)
     }
     pushUndoEntry(undoHistoryRef, tabId, content)
     setTabs((prev) =>
@@ -384,9 +385,9 @@ export default function Home() {
   const handleView2ContentChange = useCallback((content) => {
     const tabId = view2ActiveTabIdRef.current
     const previousContent = view2TabsRef.current.find((t) => t.id === tabId)?.content ?? ''
-    const insertedText = getInsertedText(previousContent, content)
-    if (insertedText) {
-      recordMacroStep('Macro', 'insert-text', { text: insertedText })
+    const textChange = getTextChange(previousContent, content)
+    if (textChange) {
+      recordMacroStep('Macro', 'replace-range', textChange)
     }
     pushUndoEntry(undoHistoryRef, tabId, content)
     setView2Tabs((prev) =>
@@ -1373,6 +1374,12 @@ export default function Home() {
             case 'Macro':
               if (step.action === 'insert-text' && typeof step.text === 'string') {
                 getActiveEditor()?.insertText?.(step.text)
+              }
+              if (step.action === 'replace-range'
+                && Number.isFinite(step.start)
+                && Number.isFinite(step.end)
+                && typeof step.text === 'string') {
+                getActiveEditor()?.replaceRange?.(step.start, step.end, step.text)
               }
               break
             default:
