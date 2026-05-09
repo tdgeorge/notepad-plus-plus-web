@@ -38,9 +38,13 @@ export function buildMacroTextStep(before, after, selectionMeta = {}) {
       const reconstructedText = `${before.slice(0, selectionStart)}${insertedText}${before.slice(selectionEnd)}`
 
       if (reconstructedText === after) {
-        let cachedMinimalChange
+        let hasCachedMinimalChange = false
+        let cachedMinimalChange = null
         const getMinimalChange = () => {
-          if (cachedMinimalChange === undefined) cachedMinimalChange = getTextChange(before, after)
+          if (!hasCachedMinimalChange) {
+            cachedMinimalChange = getTextChange(before, after)
+            hasCachedMinimalChange = true
+          }
           return cachedMinimalChange
         }
 
