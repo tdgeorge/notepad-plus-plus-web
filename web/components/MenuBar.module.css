@@ -76,7 +76,7 @@
 }
 
 .dropdown {
-  background: #f8f5ef;
+  background: var(--menu-dropdown-bg, var(--chrome-bg-raised));
   border: 1px solid var(--chrome-border);
   border-top: none;
   min-width: 220px;

@@ -72,7 +72,7 @@
   border-radius: var(--ui-radius);
   font-size: 14px;
   line-height: 1;
-  color: #8c4430;
+  color: var(--tab-close-color, var(--chrome-text-subtle));
   padding: 0;
   flex-shrink: 0;
 }

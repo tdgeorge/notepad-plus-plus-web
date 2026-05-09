@@ -9,7 +9,7 @@
   flex-shrink: 0;
   padding: 0 4px;
   font-size: 11px;
-  color: #332e28;
+  color: var(--chrome-text-muted);
   user-select: none;
 }
 
@@ -31,5 +31,5 @@
 .divider {
   width: 1px;
   height: 14px;
-  background: #a69d8f;
+  background: var(--chrome-separator);
 }

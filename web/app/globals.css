@@ -28,6 +28,7 @@
   --tab-active-text: #000000;
   --tab-hover-bg: #e9e1d3;
   --tab-radius: 3px 3px 0 0;
+  --tab-close-color: #8c4430;
 
   /* Editor */
   --editor-bg: #ffffff;
@@ -41,6 +42,10 @@
   --btn-hover-bg: #d8cebd;
   --btn-border: #91897a;
   --btn-text: #000000;
+  --toolbar-btn-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, rgba(219, 210, 193, 0) 100%);
+  --toolbar-btn-hover-bg: linear-gradient(180deg, #f7f0e5 0%, #dfd4c1 100%);
+  --toolbar-btn-active-bg: linear-gradient(180deg, #d5cab7 0%, #eee6d8 100%);
+  --toolbar-btn-toggled-bg: linear-gradient(180deg, #d9cebc 0%, #f1e8da 100%);
   --input-bg: #ffffff;
   --input-border: #91897a;
 
@@ -48,6 +53,7 @@
   --dialog-bg: #f3ede3;
   --dialog-shadow: 4px 4px 8px rgba(0, 0, 0, 0.3);
   --dialog-radius: 0px;
+  --menu-dropdown-bg: #f8f5ef;
 
   /* Typography & geometry */
   --font-ui: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
