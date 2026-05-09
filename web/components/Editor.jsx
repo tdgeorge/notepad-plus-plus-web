@@ -1731,8 +1731,13 @@ const Editor = forwardRef(function Editor(
       const el = textareaRef.current
       if (!el || !text) return
       const start = el.selectionStart
-      applyInputText(el, text)
-      const nextCursor = start + text.length
+      const end = el.selectionEnd
+      const inserted = typeof text === 'string' ? text : ''
+      const newText = el.value.substring(0, start) + inserted + el.value.substring(end)
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
+      const nextCursor = start + inserted.length
       el.setSelectionRange(nextCursor, nextCursor)
       updateCursor()
     },
@@ -1745,9 +1750,10 @@ const Editor = forwardRef(function Editor(
       const safeEndRaw = Number.isFinite(end) ? Math.floor(end) : safeStart
       const safeEnd = Math.max(safeStart, Math.min(len, safeEndRaw))
       const inserted = typeof text === 'string' ? text : ''
-      el.focus()
-      el.setSelectionRange(safeStart, safeEnd)
-      applyInputText(el, inserted)
+      const newText = el.value.substring(0, safeStart) + inserted + el.value.substring(safeEnd)
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
       const nextCursor = safeStart + inserted.length
       el.setSelectionRange(nextCursor, nextCursor)
       updateCursor()
@@ -1757,8 +1763,12 @@ const Editor = forwardRef(function Editor(
       const el = textareaRef.current
       if (!el) return
       const start = el.selectionStart
+      const end = el.selectionEnd
       const inserted = typeof text === 'string' ? text : ''
-      applyInputText(el, inserted)
+      const newText = el.value.substring(0, start) + inserted + el.value.substring(end)
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
       const nextCursor = start + inserted.length
       el.setSelectionRange(nextCursor, nextCursor)
       updateCursor()
@@ -1770,15 +1780,19 @@ const Editor = forwardRef(function Editor(
       const start = el.selectionStart
       const end = el.selectionEnd
       if (start !== end) {
-        applyInputText(el, '')
+        const newText = el.value.substring(0, start) + el.value.substring(end)
+        el.value = newText
+        onChangeRef.current(newText)
+        updateLineCount(newText)
         el.setSelectionRange(start, start)
         updateCursor()
         return
       }
       if (start <= 0) return
-      el.focus()
-      el.setSelectionRange(start - 1, start)
-      applyInputText(el, '')
+      const newText = el.value.substring(0, start - 1) + el.value.substring(start)
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
       const nextCursor = start - 1
       el.setSelectionRange(nextCursor, nextCursor)
       updateCursor()
@@ -1790,15 +1804,19 @@ const Editor = forwardRef(function Editor(
       const start = el.selectionStart
       const end = el.selectionEnd
       if (start !== end) {
-        applyInputText(el, '')
+        const newText = el.value.substring(0, start) + el.value.substring(end)
+        el.value = newText
+        onChangeRef.current(newText)
+        updateLineCount(newText)
         el.setSelectionRange(start, start)
         updateCursor()
         return
       }
       if (start >= el.value.length) return
-      el.focus()
-      el.setSelectionRange(start, start + 1)
-      applyInputText(el, '')
+      const newText = el.value.substring(0, start) + el.value.substring(start + 1)
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
       el.setSelectionRange(start, start)
       updateCursor()
     },
@@ -1813,9 +1831,10 @@ const Editor = forwardRef(function Editor(
       const start = Math.max(0, Math.min(len, base + safeStartOffset))
       const end = Math.max(start, Math.min(len, base + safeEndOffset))
       const inserted = typeof text === 'string' ? text : ''
-      el.focus()
-      el.setSelectionRange(start, end)
-      applyInputText(el, inserted)
+      const newText = el.value.substring(0, start) + inserted + el.value.substring(end)
+      el.value = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
       const nextCursor = start + inserted.length
       el.setSelectionRange(nextCursor, nextCursor)
       updateCursor()
