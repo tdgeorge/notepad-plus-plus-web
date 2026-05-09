@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, useCallback, useState, useMemo, forwardRef, useImperativeHandle, Fragment } from 'react'
+import { useRef, useEffect, useCallback, useState, useMemo, forwardRef, useImperativeHandle, Fragment, useLayoutEffect } from 'react'
 import styles from './Editor.module.css'
 import { TOKENIZERS } from '../lib/languages/index'
 import { TOKEN } from '../lib/languages/javascript'
@@ -411,8 +411,11 @@ const Editor = forwardRef(function Editor(
   const textareaRef = useRef(null)
   const lineNumbersRef = useRef(null)
   const mirrorRef = useRef(null)
+  const lineMeasureMarkerRef = useRef(null)
   const [lineCount, setLineCount] = useState(1)
   const [currentLineIndex, setCurrentLineIndex] = useState(0)
+  const [currentLineStartOffset, setCurrentLineStartOffset] = useState(0)
+  const [measuredCurrentLineTop, setMeasuredCurrentLineTop] = useState(4)
   const onChangeRef = useRef(onChange)
   useEffect(() => { onChangeRef.current = onChange }, [onChange])
   const onUndoRef = useRef(onUndo)
@@ -514,6 +517,7 @@ const Editor = forwardRef(function Editor(
   const effectiveFontSize = fontSize ?? 13
   const { lineHeightPx, paddingTopPx } = textareaMetrics
   const showSymbols = showWhitespace || showEol || showIndent
+  const useMeasuredCurrentLineTop = !isLargeFile && allHiddenLines.size === 0
 
   // ── Mirror content ────────────────────────────────────────────────────────
   const tokenizeFn = language ? TOKENIZERS[language] : null
@@ -575,9 +579,18 @@ const Editor = forwardRef(function Editor(
     const line = lines.length
     const col = lines[lines.length - 1].length + 1
     const sel = Math.abs(selEnd - pos)
+    const lineStart = pos - lines[lines.length - 1].length
     setCurrentLineIndex(line - 1)
+    setCurrentLineStartOffset(lineStart)
     if (onCursorChange) onCursorChange({ line, col, sel })
   }, [onCursorChange])
+
+  useLayoutEffect(() => {
+    if (!useMeasuredCurrentLineTop) return
+    const marker = lineMeasureMarkerRef.current
+    if (!marker) return
+    setMeasuredCurrentLineTop(marker.offsetTop)
+  }, [useMeasuredCurrentLineTop, currentLineStartOffset, content, wordWrap, effectiveFontSize, lineHeightPx])
 
   const handleChange = useCallback(
     (e) => {
@@ -1743,12 +1756,22 @@ const Editor = forwardRef(function Editor(
           })}
         </div>
         <div className={styles.textareaWrapper}>
+          {useMeasuredCurrentLineTop && (
+            <div
+              className={styles.lineMeasure}
+              aria-hidden="true"
+              style={{ whiteSpace: wordWrap ? 'pre-wrap' : 'pre' }}
+            >
+              {content.slice(0, currentLineStartOffset)}
+              <span ref={lineMeasureMarkerRef} className={styles.lineMeasureMarker}>{'\u200b'}</span>
+            </div>
+          )}
           {!isLargeFile && !allHiddenLines.has(currentLineIndex) && (
             <div
               className={styles.currentLineHighlight}
               aria-hidden="true"
               style={{
-                top: `${paddingTopPx + currentLineVisualIndex * lineHeightPx - editorScrollTop}px`,
+                top: `${(useMeasuredCurrentLineTop ? measuredCurrentLineTop : (paddingTopPx + currentLineVisualIndex * lineHeightPx)) - editorScrollTop}px`,
                 height: `${lineHeightPx}px`,
               }}
             />
