@@ -32,6 +32,25 @@ const LARGE_FILE_THRESHOLD = 100_000 // ~100 KB of text
 const MAX_UNDO_LARGE_FILE = 20
 const MACROS_STORAGE_KEY = 'nppw-macros'
 const MAX_RECORDED_MACRO_STEPS = 5000
+const getInsertedText = (before, after) => {
+  if (typeof before !== 'string' || typeof after !== 'string') return null
+  if (after.length <= before.length) return null
+
+  let start = 0
+  while (start < before.length && start < after.length && before[start] === after[start]) start++
+
+  let beforeEnd = before.length - 1
+  let afterEnd = after.length - 1
+  while (beforeEnd >= start && afterEnd >= start && before[beforeEnd] === after[afterEnd]) {
+    beforeEnd--
+    afterEnd--
+  }
+
+  const removedLength = beforeEnd - start + 1
+  if (removedLength !== 0) return null
+  const insertedText = after.slice(start, afterEnd + 1)
+  return insertedText.length > 0 ? insertedText : null
+}
 
 /**
  * Push `content` onto the undo history for `tabId`, capping the stack for
@@ -268,22 +287,6 @@ export default function Home() {
     []
   )
 
-  const handleContentChange = useCallback((content) => {
-    const tabId = activeTabIdRef.current
-    pushUndoEntry(undoHistoryRef, tabId, content)
-    setTabs((prev) =>
-      prev.map((t) => (t.id === tabId ? { ...t, content, modified: true } : t))
-    )
-  }, [])
-
-  const handleView2ContentChange = useCallback((content) => {
-    const tabId = view2ActiveTabIdRef.current
-    pushUndoEntry(undoHistoryRef, tabId, content)
-    setView2Tabs((prev) =>
-      prev.map((t) => (t.id === tabId ? { ...t, content, modified: true } : t))
-    )
-  }, [])
-
   const handleUndo = useCallback(() => {
     const isView1 = activeView === 1
     const tabId = isView1 ? activeTabIdRef.current : view2ActiveTabIdRef.current
@@ -353,14 +356,41 @@ export default function Home() {
     getActiveEditor()?.[action]?.()
   }, [getActiveEditor, getActiveTabRecord, getAllOpenTabs])
 
-  const recordMacroStep = useCallback((menu, action) => {
+  const recordMacroStep = useCallback((menu, action, extra = null) => {
     if (!isRecordingMacroRef.current || isPlayingBackMacroRef.current) return
     if (!menu || !action) return
+    const payload = (extra && typeof extra === 'object') ? extra : {}
     setCurrentMacroSteps((prev) => {
       if (prev.length >= MAX_RECORDED_MACRO_STEPS) return prev
-      return [...prev, { menu, action }]
+      return [...prev, { menu, action, ...payload }]
     })
   }, [])
+
+  const handleContentChange = useCallback((content) => {
+    const tabId = activeTabIdRef.current
+    const previousContent = tabsRef.current.find((t) => t.id === tabId)?.content ?? ''
+    const insertedText = getInsertedText(previousContent, content)
+    if (insertedText) {
+      recordMacroStep('Macro', 'insert-text', { text: insertedText })
+    }
+    pushUndoEntry(undoHistoryRef, tabId, content)
+    setTabs((prev) =>
+      prev.map((t) => (t.id === tabId ? { ...t, content, modified: true } : t))
+    )
+  }, [recordMacroStep])
+
+  const handleView2ContentChange = useCallback((content) => {
+    const tabId = view2ActiveTabIdRef.current
+    const previousContent = view2TabsRef.current.find((t) => t.id === tabId)?.content ?? ''
+    const insertedText = getInsertedText(previousContent, content)
+    if (insertedText) {
+      recordMacroStep('Macro', 'insert-text', { text: insertedText })
+    }
+    pushUndoEntry(undoHistoryRef, tabId, content)
+    setView2Tabs((prev) =>
+      prev.map((t) => (t.id === tabId ? { ...t, content, modified: true } : t))
+    )
+  }, [recordMacroStep])
 
   const downloadFile = useCallback((name, content) => {
     const blob = new Blob([content], { type: 'text/plain' })
@@ -1338,6 +1368,11 @@ export default function Home() {
             case 'Tools':
               dispatchToolsAction(step.action, { record: false })
               break
+            case 'Macro':
+              if (step.action === 'insert-text' && typeof step.text === 'string' && step.text.length > 0) {
+                getActiveEditor()?.insertText?.(step.text)
+              }
+              break
             default:
               break
           }
@@ -1346,7 +1381,7 @@ export default function Home() {
     } finally {
       isPlayingBackMacroRef.current = false
     }
-  }, [dispatchEditAction, dispatchViewAction, dispatchSearchAction, dispatchLanguageAction, dispatchToolsAction])
+  }, [dispatchEditAction, dispatchViewAction, dispatchSearchAction, dispatchLanguageAction, dispatchToolsAction, getActiveEditor])
 
   const handleMacroAction = useCallback((action) => {
     switch (action) {
