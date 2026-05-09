@@ -38,6 +38,7 @@ export function buildMacroTextStep(before, after, selectionMeta = {}) {
       const reconstructedText = `${before.slice(0, selectionStart)}${insertedText}${before.slice(selectionEnd)}`
 
       if (reconstructedText === after) {
+        const minimalChange = getTextChange(before, after)
         if (selectionStart === selectionEnd && insertedLen === 0) {
           const backspaceCandidate = `${before.slice(0, selectionStart - 1)}${before.slice(selectionStart)}`
           if (selectionStart > 0 && backspaceCandidate === after) {
@@ -48,8 +49,17 @@ export function buildMacroTextStep(before, after, selectionMeta = {}) {
             return { action: 'delete-forward' }
           }
         }
+        if (selectionStart === selectionEnd
+          && minimalChange
+          && (minimalChange.start !== selectionStart || minimalChange.end !== selectionEnd)) {
+          return {
+            action: 'replace-relative',
+            startOffset: minimalChange.start - selectionStart,
+            endOffset: minimalChange.end - selectionStart,
+            text: minimalChange.text,
+          }
+        }
         if (selectionStart !== selectionEnd) {
-          const minimalChange = getTextChange(before, after)
           if (minimalChange
             && (minimalChange.start !== selectionStart || minimalChange.end !== selectionEnd)) {
             return {

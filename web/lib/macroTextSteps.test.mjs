@@ -147,3 +147,27 @@ test('double-space auto-period playback avoids extra space before period', () =>
 
   assert.equal(state.text, 'word. ')
 })
+
+test('caret snapshot auto-period uses relative replacement when minimal change differs', () => {
+  const step = buildMacroTextStep('testing ', 'testing. ', {
+    beforeSelectionStart: 8,
+    beforeSelectionEnd: 8,
+  })
+  assert.deepEqual(step, { action: 'replace-relative', startOffset: -1, endOffset: -1, text: '.' })
+})
+
+test('caret snapshot auto-period playback keeps punctuation attached to word', () => {
+  const snapshots = [
+    { before: 'testing', after: 'testing ', beforeSelectionStart: 7, beforeSelectionEnd: 7 },
+    { before: 'testing ', after: 'testing. ', beforeSelectionStart: 8, beforeSelectionEnd: 8 },
+    { before: 'testing. ', after: 'testing.  ', beforeSelectionStart: 9, beforeSelectionEnd: 9 },
+  ]
+  const steps = snapshots.map(({ before, after, beforeSelectionStart, beforeSelectionEnd }) => (
+    buildMacroTextStep(before, after, { beforeSelectionStart, beforeSelectionEnd })
+  ))
+
+  let state = { text: 'testing', cursor: 7 }
+  for (const step of steps) state = applyRecordedStep(state, step)
+
+  assert.equal(state.text, 'testing.  ')
+})
