@@ -150,6 +150,7 @@ export default function Home() {
     tabCount: tabs.length,
     activeTabIndex,
   }
+  const windowTitle = `${activeTab?.name ?? 'new 1'} - Notepad++`
 
   // ── Active editor helper ──────────────────────────────────────────────────
   // Returns the ref for whichever view is currently active.
@@ -1381,6 +1382,15 @@ export default function Home() {
           <span className={styles.dragOverlayText}>Drop files to open</span>
         </div>
       )}
+      <div className={styles.titleBar}>
+        <div className={styles.titleIcon} aria-hidden="true" />
+        <div className={styles.titleText}>{windowTitle}</div>
+        <div className={styles.titleButtons} aria-hidden="true">
+          <span className={styles.titleButtonMinimize} />
+          <span className={styles.titleButtonMaximize} />
+          <span className={styles.titleButtonClose} />
+        </div>
+      </div>
       <MenuBar
         onFileAction={handleFileAction}
         onEditAction={handleEditAction}
