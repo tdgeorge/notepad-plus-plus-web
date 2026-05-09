@@ -23,6 +23,8 @@ import styles from './page.module.css'
 const DEFAULT_FONT_SIZE = 13
 const MIN_FONT_SIZE = 6
 const MAX_FONT_SIZE = 32
+const INITIAL_TAB_NAME = 'new 1'
+const INITIAL_TAB = { id: 1, name: INITIAL_TAB_NAME, content: '', modified: false }
 
 // Cap the undo stack for large files to avoid unbounded memory growth.
 // Each entry stores a full copy of the document content.
@@ -56,7 +58,7 @@ function formatCustomDateTime(value) {
 let nextTabId = 2
 
 export default function Home() {
-  const [tabs, setTabs] = useState([{ id: 1, name: 'new 1', content: '', modified: false }])
+  const [tabs, setTabs] = useState([INITIAL_TAB])
   const [activeTabId, setActiveTabId] = useState(1)
   const [cursorPos, setCursorPos] = useState({ line: 1, col: 1, sel: 0 })
   const editorRef = useRef(null)
@@ -150,7 +152,7 @@ export default function Home() {
     tabCount: tabs.length,
     activeTabIndex,
   }
-  const windowTitle = `${activeTab?.name ?? 'new 1'} - Notepad++`
+  const windowTitle = `${activeTab?.name ?? INITIAL_TAB_NAME} - Notepad++`
 
   // ── Active editor helper ──────────────────────────────────────────────────
   // Returns the ref for whichever view is currently active.

@@ -94,56 +94,42 @@
   flex-shrink: 0;
 }
 
-.button:nth-of-type(1),
-.button:nth-of-type(2) {
+.button[data-tone='green'] {
   color: #2f8a37;
 }
 
-.button:nth-of-type(3),
-.button:nth-of-type(4) {
+.button[data-tone='teal'] {
   color: #2e7e94;
 }
 
-.button:nth-of-type(5),
-.button:nth-of-type(6) {
+.button[data-tone='red'] {
   color: #c23b2a;
 }
 
-.button:nth-of-type(7) {
+.button[data-tone='steel'] {
   color: #4c6682;
 }
 
-.button:nth-of-type(8) {
+.button[data-tone='brown'] {
   color: #7d5d22;
 }
 
-.button:nth-of-type(9) {
+.button[data-tone='blue'] {
   color: #347db1;
 }
 
-.button:nth-of-type(10) {
+.button[data-tone='amber'] {
   color: #ae6b16;
 }
 
-.button:nth-of-type(11),
-.button:nth-of-type(12),
-.button:nth-of-type(15),
-.button:nth-of-type(16) {
-  color: #3f77c5;
-}
-
-.button:nth-of-type(13),
-.button:nth-of-type(14) {
+.button[data-tone='orange'] {
   color: #c34b1b;
 }
 
-.button:nth-of-type(17),
-.button:nth-of-type(18) {
+.button[data-tone='sage'] {
   color: #55715e;
 }
 
-.button:nth-of-type(19),
-.button:nth-of-type(20),
-.button:nth-of-type(21) {
+.button[data-tone='neutral'] {
   color: #6c655b;
 }
