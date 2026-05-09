@@ -35,15 +35,18 @@ export function buildMacroTextStep(before, after, selectionMeta = {}) {
     selectionStart,
     selectionEnd,
   }
+  const buildDeleteStep = (action) => (
+    selectionStart !== selectionEnd
+      ? { action: 'replace-selection', text: '', ...stepBase }
+      : { action, ...stepBase }
+  )
 
   const inputType = typeof selectionMeta.inputType === 'string' ? selectionMeta.inputType : ''
   if (inputType === 'deleteContentBackward') {
-    if (selectionStart !== selectionEnd) return { action: 'replace-selection', text: '', ...stepBase }
-    return { action: 'delete-backward', ...stepBase }
+    return buildDeleteStep('delete-backward')
   }
   if (inputType === 'deleteContentForward') {
-    if (selectionStart !== selectionEnd) return { action: 'replace-selection', text: '', ...stepBase }
-    return { action: 'delete-forward', ...stepBase }
+    return buildDeleteStep('delete-forward')
   }
   if (typeof selectionMeta.inputData === 'string') {
     return { action: 'replace-selection', text: selectionMeta.inputData, ...stepBase }
