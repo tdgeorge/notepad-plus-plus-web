@@ -846,11 +846,11 @@ const MENUS = [
   {
     label: 'Macro',
     items: [
-      { label: 'Start Recording', disabled: true },
-      { label: 'Stop Recording', disabled: true },
-      { label: 'Playback', shortcut: 'Ctrl+Shift+P', disabled: true },
-      { label: 'Save Current Recorded Macro...', disabled: true },
-      { label: 'Run a Macro Multiple Times...', disabled: true },
+      { label: 'Start Recording', action: 'macro-start-recording' },
+      { label: 'Stop Recording', action: 'macro-stop-recording' },
+      { label: 'Playback', shortcut: 'Ctrl+Shift+P', action: 'macro-playback' },
+      { label: 'Save Current Recorded Macro...', action: 'macro-save-current' },
+      { label: 'Run a Macro Multiple Times...', action: 'macro-run-multiple' },
     ],
   },
   {
@@ -909,7 +909,7 @@ const MENUS = [
   },
 ]
 
-export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSearchAction, onLanguageAction, onToolsAction, viewState, fileState }) {
+export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSearchAction, onLanguageAction, onToolsAction, onMacroAction, viewState, fileState, macroState }) {
   const [openMenu, setOpenMenu] = useState(null)
   const [openSubmenu, setOpenSubmenu] = useState(null)
   const [dropdownPos, setDropdownPos] = useState(null)   // { top, left } for portal dropdown
@@ -1094,6 +1094,8 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
         onLanguageAction?.(item.action)
       } else if (menuLabel === 'Tools') {
         onToolsAction?.(item.action)
+      } else if (menuLabel === 'Macro') {
+        onMacroAction?.(item.action)
       } else if (menuLabel === '?') {
         if (item.action === 'npp-home') {
           window.open('https://github.com/tdgeorge/notepad-plus-plus-web', '_blank', 'noopener,noreferrer')
@@ -1154,6 +1156,15 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
         return (fileState?.activeTabIndex ?? 0) === 0
       case 'closeAllToRight':
         return (fileState?.activeTabIndex ?? -1) >= (fileState?.tabCount ?? 0) - 1
+      case 'macro-start-recording':
+        return Boolean(macroState?.isRecording)
+      case 'macro-stop-recording':
+        return !macroState?.isRecording
+      case 'macro-playback':
+      case 'macro-save-current':
+        return Boolean(macroState?.isRecording) || !macroState?.hasCurrentMacro
+      case 'macro-run-multiple':
+        return Boolean(macroState?.isRecording) || !macroState?.hasRunnableMacro
       default: return false
     }
   }
