@@ -146,6 +146,7 @@ test('double-space auto-period playback avoids extra space before period', () =>
   for (const step of steps) state = applyRecordedStep(state, step)
 
   assert.equal(state.text, 'word. ')
+  assert.equal(state.cursor, 6)
 })
 
 test('caret snapshot auto-period uses relative replacement when minimal change differs', () => {
@@ -170,4 +171,5 @@ test('caret snapshot auto-period playback keeps punctuation attached to word', (
   for (const step of steps) state = applyRecordedStep(state, step)
 
   assert.equal(state.text, 'testing.  ')
+  assert.equal(state.cursor, 9)
 })

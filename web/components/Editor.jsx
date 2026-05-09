@@ -1721,9 +1721,13 @@ const Editor = forwardRef(function Editor(
       const safeStart = Number.isFinite(start) ? Math.max(0, Math.min(len, Math.floor(start))) : el.selectionStart
       const safeEndRaw = Number.isFinite(end) ? Math.floor(end) : safeStart
       const safeEnd = Math.max(safeStart, Math.min(len, safeEndRaw))
+      const inserted = typeof text === 'string' ? text : ''
       el.focus()
       el.setSelectionRange(safeStart, safeEnd)
-      applyInputText(el, text)
+      applyInputText(el, inserted)
+      const nextCursor = safeStart + inserted.length
+      el.setSelectionRange(nextCursor, nextCursor)
+      updateCursor()
     },
 
     replaceSelection: (text = '') => {
