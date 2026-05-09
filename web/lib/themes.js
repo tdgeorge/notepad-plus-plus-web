@@ -1,5 +1,5 @@
 /**
- * Theme definitions for Notepad++ Web.
+ * Theme definitions for glitch.txt.
  *
  * Included themes:
  *  - Default (Notepad++)  — from PowerEditor/src/stylers.model.xml

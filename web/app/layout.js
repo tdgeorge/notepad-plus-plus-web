@@ -1,8 +1,8 @@
 import './globals.css'
 
 export const metadata = {
-  title: 'Notepad++ Web',
-  description: 'Notepad++ recreated as a JavaScript web application',
+  title: 'glitch.txt',
+  description: 'glitch.txt - a web-based text editor inspired by Notepad++',
 }
 
 export default function RootLayout({ children }) {

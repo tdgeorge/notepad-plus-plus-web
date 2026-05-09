@@ -1,6 +1,6 @@
 # Web app (`web/`)
 
-This directory contains the Next.js application for Notepad++ Web.
+This directory contains the Next.js application for glitch.txt.
 
 ## Commands
 

@@ -29,13 +29,13 @@ export default function AboutDialog({ isOpen, onClose }) {
 
   return (
     <div className={styles.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={styles.dialog} role="dialog" aria-modal="true" aria-label="About Notepad++ Web">
+      <div className={styles.dialog} role="dialog" aria-modal="true" aria-label="About glitch.txt">
         <div className={styles.titleBar}>
-          <span>About Notepad++ Web</span>
+          <span>About glitch.txt</span>
           <button className={styles.closeBtn} onClick={onClose} aria-label="Close">×</button>
         </div>
         <div className={styles.body}>
-          <div className={styles.appName}>Notepad++ Web</div>
+          <div className={styles.appName}>glitch.txt</div>
           <div className={styles.version}>Version {VERSION}</div>
           <hr className={styles.divider} />
           <p className={styles.description}>
