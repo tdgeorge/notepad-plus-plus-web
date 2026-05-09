@@ -66,6 +66,15 @@
   --ui-radius: 2px;
 }
 
+/* Dark-theme overrides for menu variables that default to light values above.
+   Using html[data-theme-dark="1"] (specificity 0,1,1) beats :root (0,1,0) so
+   these win over the :root defaults when a dark theme is active, as long as
+   applyTheme() clears any stale inline custom properties beforehand. */
+html[data-theme-dark="1"] {
+  --menu-dropdown-bg: var(--chrome-bg-raised);
+  --menu-button-active-bg: var(--chrome-hover);
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
