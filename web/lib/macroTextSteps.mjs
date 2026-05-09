@@ -35,9 +35,9 @@ export function buildMacroTextStep(before, after, selectionMeta = {}) {
 
     if (insertedLen >= 0) {
       const insertedText = after.slice(selectionStart, selectionStart + insertedLen)
-      const replayCandidate = `${before.slice(0, selectionStart)}${insertedText}${before.slice(selectionEnd)}`
+      const reconstructedText = `${before.slice(0, selectionStart)}${insertedText}${before.slice(selectionEnd)}`
 
-      if (replayCandidate === after) {
+      if (reconstructedText === after) {
         if (selectionStart === selectionEnd && insertedLen === 0) {
           const backspaceCandidate = `${before.slice(0, selectionStart - 1)}${before.slice(selectionStart)}`
           if (selectionStart > 0 && backspaceCandidate === after) {
