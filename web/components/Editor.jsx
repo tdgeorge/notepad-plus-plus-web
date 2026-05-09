@@ -607,11 +607,15 @@ const Editor = forwardRef(function Editor(
       const beforeSelection = pendingSelectionRef.current ?? {
         start: e.target.selectionStart,
         end: e.target.selectionEnd,
+        inputType: '',
+        inputData: null,
       }
       pendingSelectionRef.current = null
       onChange(value, {
         beforeSelectionStart: beforeSelection.start,
         beforeSelectionEnd: beforeSelection.end,
+        inputType: beforeSelection.inputType,
+        inputData: beforeSelection.inputData,
         selectionStart: e.target.selectionStart,
         selectionEnd: e.target.selectionEnd,
       })
@@ -620,19 +624,23 @@ const Editor = forwardRef(function Editor(
     [onChange, updateLineCount]
   )
 
-  const captureSelectionSnapshot = useCallback(() => {
+  const captureSelectionSnapshot = useCallback((nativeEvent = null) => {
     const el = textareaRef.current
     if (!el) return
     const start = Number.isFinite(el.selectionStart) ? el.selectionStart : 0
     const end = Number.isFinite(el.selectionEnd) ? el.selectionEnd : start
+    const inputType = nativeEvent && typeof nativeEvent.inputType === 'string' ? nativeEvent.inputType : ''
+    const inputData = nativeEvent && typeof nativeEvent.data === 'string' ? nativeEvent.data : null
     pendingSelectionRef.current = {
       start,
       end,
+      inputType,
+      inputData,
     }
   }, [])
 
-  const handleBeforeInput = useCallback(() => {
-    captureSelectionSnapshot()
+  const handleBeforeInput = useCallback((e) => {
+    captureSelectionSnapshot(e?.nativeEvent ?? null)
   }, [captureSelectionSnapshot])
 
   const handleKeyUp = useCallback(
@@ -745,6 +753,17 @@ const Editor = forwardRef(function Editor(
     selectAll: () => { textareaRef.current?.focus(); textareaRef.current?.select(); updateCursor() },
     indent,
     dedent,
+    setSelection: (start, end = start) => {
+      const el = textareaRef.current
+      if (!el) return
+      const len = el.value.length
+      const safeStart = Number.isFinite(start) ? Math.max(0, Math.min(len, Math.floor(start))) : el.selectionStart
+      const safeEndRaw = Number.isFinite(end) ? Math.floor(end) : safeStart
+      const safeEnd = Math.max(safeStart, Math.min(len, safeEndRaw))
+      el.focus()
+      el.setSelectionRange(safeStart, safeEnd)
+      updateCursor()
+    },
 
     // Search operations
     // noFocus: true keeps keyboard focus in the calling element (e.g. IncrementalSearch input)

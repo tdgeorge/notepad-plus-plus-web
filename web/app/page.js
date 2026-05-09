@@ -1404,6 +1404,9 @@ export default function Home() {
               dispatchToolsAction(step.action, { record: false })
               break
             case 'Macro':
+              if (Number.isFinite(step.selectionStart) && Number.isFinite(step.selectionEnd)) {
+                getActiveEditor()?.setSelection?.(step.selectionStart, step.selectionEnd)
+              }
               if (step.action === 'insert-text' && typeof step.text === 'string') {
                 getActiveEditor()?.insertText?.(step.text)
               }
