@@ -16,7 +16,7 @@ import ToolsHashDialog from '../components/ToolsHashDialog'
 import ToolsRandomDialog from '../components/ToolsRandomDialog'
 import WindowsDialog from '../components/WindowsDialog'
 import { md5 } from '../lib/md5'
-import { applyTheme, DEFAULT_THEME_ID } from '../lib/themes'
+import { applyTheme, THEMES, DEFAULT_THEME_ID } from '../lib/themes'
 import { detectLanguage } from '../lib/languages/index'
 import styles from './page.module.css'
 
@@ -1394,6 +1394,7 @@ export default function Home() {
       />
       {!distractionFree && (
         <Toolbar
+          isDark={THEMES.find((t) => t.id === themeId)?.dark ?? false}
           onNew={handleNewTab}
           onOpen={handleOpen}
           onSave={handleSave}

@@ -72,8 +72,10 @@ export const THEMES = [
     id: 'bespin',
     name: 'Bespin',
     description: 'Notepad++ built-in theme.',
+    dark: true,
     variables: {
       '--chrome-bg': '#39302B',
+      '--toolbar-bg': 'linear-gradient(180deg, #48403B 0%, #39302B 100%)',
       '--chrome-bg-raised': '#403732',
       '--chrome-bg-title': '#483F3A',
       '--chrome-border': '#5C534E',
@@ -116,8 +118,10 @@ export const THEMES = [
     id: 'black-board',
     name: 'Black board',
     description: 'Notepad++ built-in theme.',
+    dark: true,
     variables: {
       '--chrome-bg': '#1B1F30',
+      '--toolbar-bg': 'linear-gradient(180deg, #2D3040 0%, #1B1F30 100%)',
       '--chrome-bg-raised': '#222637',
       '--chrome-bg-title': '#2A2E3F',
       '--chrome-border': '#3E4253',
@@ -160,8 +164,10 @@ export const THEMES = [
     id: 'choco',
     name: 'Choco',
     description: 'Notepad++ built-in theme.',
+    dark: true,
     variables: {
       '--chrome-bg': '#291E1A',
+      '--toolbar-bg': 'linear-gradient(180deg, #3A302C 0%, #291E1A 100%)',
       '--chrome-bg-raised': '#302521',
       '--chrome-bg-title': '#382D29',
       '--chrome-border': '#4C413D',
@@ -204,8 +210,10 @@ export const THEMES = [
     id: 'danslerush-dark',
     name: 'DansLeRuSH-Dark',
     description: 'Notepad++ built-in theme.',
+    dark: true,
     variables: {
       '--chrome-bg': '#3D3D3D',
+      '--toolbar-bg': 'linear-gradient(180deg, #4C4C4C 0%, #3D3D3D 100%)',
       '--chrome-bg-raised': '#444444',
       '--chrome-bg-title': '#4C4C4C',
       '--chrome-border': '#606060',
@@ -248,8 +256,10 @@ export const THEMES = [
     id: 'darkmodedefault',
     name: 'DarkModeDefault',
     description: 'Notepad++ built-in theme.',
+    dark: true,
     variables: {
       '--chrome-bg': '#4E4E4E',
+      '--toolbar-bg': 'linear-gradient(180deg, #5C5C5C 0%, #4E4E4E 100%)',
       '--chrome-bg-raised': '#555555',
       '--chrome-bg-title': '#5D5D5D',
       '--chrome-border': '#717171',
@@ -292,8 +302,10 @@ export const THEMES = [
     id: 'deep-black',
     name: 'Deep Black',
     description: 'Notepad++ built-in theme.',
+    dark: true,
     variables: {
       '--chrome-bg': '#0F0F0F',
+      '--toolbar-bg': 'linear-gradient(180deg, #222222 0%, #0F0F0F 100%)',
       '--chrome-bg-raised': '#161616',
       '--chrome-bg-title': '#1E1E1E',
       '--chrome-border': '#323232',
@@ -380,8 +392,10 @@ export const THEMES = [
     id: 'hotfudgesundae',
     name: 'HotFudgeSundae',
     description: 'Notepad++ built-in theme.',
+    dark: true,
     variables: {
       '--chrome-bg': '#3A1E10',
+      '--toolbar-bg': 'linear-gradient(180deg, #493023 0%, #3A1E10 100%)',
       '--chrome-bg-raised': '#412517',
       '--chrome-bg-title': '#492D1F',
       '--chrome-border': '#5D4133',
@@ -424,8 +438,10 @@ export const THEMES = [
     id: 'mono-industrial',
     name: 'Mono Industrial',
     description: 'Notepad++ built-in theme.',
+    dark: true,
     variables: {
       '--chrome-bg': '#313B37',
+      '--toolbar-bg': 'linear-gradient(180deg, #414A47 0%, #313B37 100%)',
       '--chrome-bg-raised': '#38423E',
       '--chrome-bg-title': '#404A46',
       '--chrome-border': '#545E5A',
@@ -468,8 +484,10 @@ export const THEMES = [
     id: 'monokai',
     name: 'Monokai',
     description: 'Notepad++ built-in theme.',
+    dark: true,
     variables: {
       '--chrome-bg': '#363731',
+      '--toolbar-bg': 'linear-gradient(180deg, #464741 0%, #363731 100%)',
       '--chrome-bg-raised': '#3D3E38',
       '--chrome-bg-title': '#454640',
       '--chrome-border': '#595A54',
@@ -600,8 +618,10 @@ export const THEMES = [
     id: 'obsidian',
     name: 'Obsidian',
     description: 'Notepad++ built-in theme.',
+    dark: true,
     variables: {
       '--chrome-bg': '#384043',
+      '--toolbar-bg': 'linear-gradient(180deg, #474F52 0%, #384043 100%)',
       '--chrome-bg-raised': '#3F474A',
       '--chrome-bg-title': '#474F52',
       '--chrome-border': '#5B6366',
@@ -644,8 +664,10 @@ export const THEMES = [
     id: 'plastic-code-wrap',
     name: 'Plastic Code Wrap',
     description: 'Notepad++ built-in theme.',
+    dark: true,
     variables: {
       '--chrome-bg': '#1A252C',
+      '--toolbar-bg': 'linear-gradient(180deg, #2C363C 0%, #1A252C 100%)',
       '--chrome-bg-raised': '#212C33',
       '--chrome-bg-title': '#29343B',
       '--chrome-border': '#3D484F',
@@ -688,8 +710,10 @@ export const THEMES = [
     id: 'ruby-blue',
     name: 'Ruby Blue',
     description: 'Notepad++ built-in theme.',
+    dark: true,
     variables: {
       '--chrome-bg': '#203344',
+      '--toolbar-bg': 'linear-gradient(180deg, #314352 0%, #203344 100%)',
       '--chrome-bg-raised': '#273A4B',
       '--chrome-bg-title': '#2F4253',
       '--chrome-border': '#435667',
@@ -776,8 +800,10 @@ export const THEMES = [
     id: 'solarized',
     name: 'Solarized',
     description: 'Notepad++ built-in theme.',
+    dark: true,
     variables: {
       '--chrome-bg': '#0F3A45',
+      '--toolbar-bg': 'linear-gradient(180deg, #224953 0%, #0F3A45 100%)',
       '--chrome-bg-raised': '#16414C',
       '--chrome-bg-title': '#1E4954',
       '--chrome-border': '#325D68',
@@ -820,8 +846,10 @@ export const THEMES = [
     id: 'twilight',
     name: 'Twilight',
     description: 'Notepad++ built-in theme.',
+    dark: true,
     variables: {
       '--chrome-bg': '#232323',
+      '--toolbar-bg': 'linear-gradient(180deg, #343434 0%, #232323 100%)',
       '--chrome-bg-raised': '#2A2A2A',
       '--chrome-bg-title': '#323232',
       '--chrome-border': '#464646',
@@ -864,8 +892,10 @@ export const THEMES = [
     id: 'vibrant-ink',
     name: 'Vibrant Ink',
     description: 'Notepad++ built-in theme.',
+    dark: true,
     variables: {
       '--chrome-bg': '#0F0F0F',
+      '--toolbar-bg': 'linear-gradient(180deg, #222222 0%, #0F0F0F 100%)',
       '--chrome-bg-raised': '#161616',
       '--chrome-bg-title': '#1E1E1E',
       '--chrome-border': '#323232',
@@ -908,8 +938,10 @@ export const THEMES = [
     id: 'zenburn',
     name: 'Zenburn',
     description: 'Notepad++ built-in theme.',
+    dark: true,
     variables: {
       '--chrome-bg': '#4E4E4E',
+      '--toolbar-bg': 'linear-gradient(180deg, #5C5C5C 0%, #4E4E4E 100%)',
       '--chrome-bg-raised': '#555555',
       '--chrome-bg-title': '#5D5D5D',
       '--chrome-border': '#717171',
@@ -996,8 +1028,10 @@ export const THEMES = [
     id: 'vim-dark-blue',
     name: 'vim Dark Blue',
     description: 'Notepad++ built-in theme.',
+    dark: true,
     variables: {
       '--chrome-bg': '#0F0F4F',
+      '--toolbar-bg': 'linear-gradient(180deg, #22225D 0%, #0F0F4F 100%)',
       '--chrome-bg-raised': '#161656',
       '--chrome-bg-title': '#1E1E5E',
       '--chrome-border': '#323272',
@@ -1041,8 +1075,10 @@ export const THEMES = [
     name: 'Modern Web Dark',
     description:
       'A dark contemporary web design — deep surfaces, vibrant blue accent, and a system font stack.',
+    dark: true,
     variables: {
       '--chrome-bg': '#1c1c1e',
+      '--toolbar-bg': 'linear-gradient(180deg, #2E2E30 0%, #1c1c1e 100%)',
       '--chrome-bg-raised': '#2c2c2e',
       '--chrome-bg-title': '#2c2c2e',
       '--chrome-border': '#3a3a3c',
@@ -1232,4 +1268,5 @@ export function applyTheme(themeId) {
   for (const [prop, value] of Object.entries(theme.variables)) {
     root.style.setProperty(prop, value)
   }
+  root.dataset.themeDark = theme.dark ? '1' : '0'
 }

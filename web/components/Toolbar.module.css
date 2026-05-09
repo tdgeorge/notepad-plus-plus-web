@@ -59,7 +59,6 @@
   background: var(--toolbar-btn-bg, linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, rgba(219, 210, 193, 0) 100%));
   border: 1px solid transparent;
   border-radius: var(--ui-radius);
-  color: var(--chrome-text-muted);
   padding: 1px;
   flex-shrink: 0;
 }
@@ -83,7 +82,6 @@
 .active {
   background: var(--toolbar-btn-toggled-bg, linear-gradient(180deg, #d9cebc 0%, #f1e8da 100%));
   border-color: var(--chrome-border);
-  color: var(--accent);
 }
 
 .separator {
@@ -94,42 +92,8 @@
   flex-shrink: 0;
 }
 
-.button[data-tone='green'] {
-  color: #2f8a37;
-}
-
-.button[data-tone='teal'] {
-  color: #2e7e94;
-}
-
-.button[data-tone='red'] {
-  color: #c23b2a;
-}
-
-.button[data-tone='steel'] {
-  color: #4c6682;
-}
-
-.button[data-tone='brown'] {
-  color: #7d5d22;
-}
-
-.button[data-tone='blue'] {
-  color: #347db1;
-}
-
-.button[data-tone='amber'] {
-  color: #ae6b16;
-}
-
-.button[data-tone='orange'] {
-  color: #c34b1b;
-}
-
-.button[data-tone='sage'] {
-  color: #55715e;
-}
-
-.button[data-tone='neutral'] {
-  color: #6c655b;
+/* Toolbar icon image */
+.icon {
+  display: block;
+  image-rendering: auto;
 }
