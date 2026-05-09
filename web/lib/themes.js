@@ -1267,8 +1267,10 @@ export function applyTheme(themeId) {
   const root = document.documentElement
   // Remove stale inline CSS custom properties from any previously applied theme
   // so that CSS stylesheet rules (e.g. [data-theme-dark="1"]) are not overridden
-  // by values left over from the previous theme.
-  for (const prop of [...root.style]) {
+  // by values left over from the previous theme.  Iterate backwards through the
+  // live CSSStyleDeclaration to avoid index skipping when items are removed.
+  for (let i = root.style.length - 1; i >= 0; i--) {
+    const prop = root.style[i]
     if (prop.startsWith('--')) {
       root.style.removeProperty(prop)
     }
