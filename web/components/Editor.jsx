@@ -221,6 +221,12 @@ function renderLineSymbols(line, { showWhitespace, showEol, showIndent } = {}) {
   return parts
 }
 
+function applyInputText(el, text = '') {
+  if (!el) return
+  el.focus()
+  document.execCommand('insertText', false, typeof text === 'string' ? text : '')
+}
+
 /** Maps a TOKEN type to the corresponding CSS module class name */
 const TOKEN_CLASSES = {
   [TOKEN.KEYWORD]: styles.hlKeyword,
@@ -597,6 +603,7 @@ const Editor = forwardRef(function Editor(
   const handleChange = useCallback(
     (e) => {
       const value = e.target.value
+      // Fallback when a pre-input snapshot is unavailable (some browser/input paths).
       const beforeSelection = pendingSelectionRef.current ?? {
         start: e.target.selectionStart,
         end: e.target.selectionEnd,
@@ -1702,8 +1709,7 @@ const Editor = forwardRef(function Editor(
     insertText: (text) => {
       const el = textareaRef.current
       if (!el || !text) return
-      el.focus()
-      document.execCommand('insertText', false, text)
+      applyInputText(el, text)
     },
 
     replaceRange: (start, end, text = '') => {
@@ -1721,8 +1727,7 @@ const Editor = forwardRef(function Editor(
     replaceSelection: (text = '') => {
       const el = textareaRef.current
       if (!el) return
-      el.focus()
-      document.execCommand('insertText', false, typeof text === 'string' ? text : '')
+      applyInputText(el, text)
     },
 
     deleteBackward: () => {

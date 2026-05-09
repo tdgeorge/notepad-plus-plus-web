@@ -29,8 +29,7 @@ export function buildMacroTextStep(before, after, selectionMeta = {}) {
   const selectionEnd = Math.max(selectionStart, Math.floor(rawEnd))
 
   if (change.start === selectionStart && change.end === selectionEnd) {
-    if (change.text.length > 0) return { action: 'replace-selection', text: change.text }
-    return { action: 'replace-selection', text: '' }
+    return { action: 'replace-selection', text: change.text }
   }
 
   if (selectionStart === selectionEnd && change.text === '') {
