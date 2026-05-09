@@ -1404,13 +1404,15 @@ export default function Home() {
               dispatchToolsAction(step.action, { record: false })
               break
             case 'Macro':
-              if (Number.isFinite(step.selectionStart) && Number.isFinite(step.selectionEnd)) {
-                getActiveEditor()?.setSelection?.(step.selectionStart, step.selectionEnd)
-              }
               if (step.action === 'insert-text' && typeof step.text === 'string') {
                 getActiveEditor()?.insertText?.(step.text)
               }
               if (step.action === 'replace-selection' && typeof step.text === 'string') {
+                if (Number.isFinite(step.selectionStart)
+                  && Number.isFinite(step.selectionEnd)
+                  && step.selectionStart !== step.selectionEnd) {
+                  getActiveEditor()?.setSelection?.(step.selectionStart, step.selectionEnd)
+                }
                 getActiveEditor()?.replaceSelection?.(step.text)
               }
               if (step.action === 'delete-backward') {
