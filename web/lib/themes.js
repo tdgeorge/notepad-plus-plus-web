@@ -28,7 +28,6 @@ export const THEMES = [
       '--chrome-text-subtle': '#625c52',
       '--chrome-hover': '#ebe4d8',
       '--chrome-separator': '#b8b1a4',
-      '--titlebar-bg': 'linear-gradient(180deg, rgba(140, 135, 179, 0.95) 0%, rgba(96, 92, 135, 0.96) 42%, rgba(72, 71, 112, 0.98) 100%)',
       '--toolbar-bg': 'linear-gradient(180deg, #ddd5c7 0%, #cec5b6 100%)',
       '--menu-button-active-bg': 'linear-gradient(180deg, #faf5ea 0%, #e2d9c9 100%)',
       '--tab-bar-shell-bg': 'linear-gradient(180deg, #cdc6ba 0%, var(--tab-bar-bg) 100%)',
