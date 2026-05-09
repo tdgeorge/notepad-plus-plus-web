@@ -1397,7 +1397,7 @@ export default function Home() {
         setHasStoppedRecordingMacro(true)
         break
       case 'macro-playback':
-        if (currentMacroStepsRef.current.length > 0 || hasStoppedRecordingMacroRef.current) {
+        if (hasStoppedRecordingMacroRef.current && currentMacroStepsRef.current.length > 0) {
           playbackMacro(currentMacroStepsRef.current, 1)
           return
         }
