@@ -18,6 +18,7 @@ import WindowsDialog from '../components/WindowsDialog'
 import { md5 } from '../lib/md5'
 import { applyTheme, THEMES, DEFAULT_THEME_ID } from '../lib/themes'
 import { detectLanguage } from '../lib/languages/index'
+import { buildMacroTextStep } from '../lib/macroTextSteps.mjs'
 import styles from './page.module.css'
 
 const DEFAULT_FONT_SIZE = 13
@@ -32,26 +33,6 @@ const LARGE_FILE_THRESHOLD = 100_000 // ~100 KB of text
 const MAX_UNDO_LARGE_FILE = 20
 const MACROS_STORAGE_KEY = 'nppw-macros'
 const MAX_RECORDED_MACRO_STEPS = 5000
-const getTextChange = (before, after) => {
-  if (typeof before !== 'string' || typeof after !== 'string') return null
-  if (before === after) return null
-
-  let start = 0
-  while (start < before.length && start < after.length && before[start] === after[start]) start++
-
-  let beforeEnd = before.length - 1
-  let afterEnd = after.length - 1
-  while (beforeEnd >= start && afterEnd >= start && before[beforeEnd] === after[afterEnd]) {
-    beforeEnd--
-    afterEnd--
-  }
-
-  return {
-    start,
-    end: beforeEnd + 1,
-    text: after.slice(start, afterEnd + 1),
-  }
-}
 
 /**
  * Push `content` onto the undo history for `tabId`, capping the stack for
@@ -369,12 +350,12 @@ export default function Home() {
     })
   }, [])
 
-  const handleContentChange = useCallback((content) => {
+  const handleContentChange = useCallback((content, selectionMeta = null) => {
     const tabId = activeTabIdRef.current
     const previousContent = tabsRef.current.find((t) => t.id === tabId)?.content ?? ''
-    const textChange = getTextChange(previousContent, content)
-    if (textChange) {
-      recordMacroStep('Macro', 'replace-range', textChange)
+    const textStep = buildMacroTextStep(previousContent, content, selectionMeta ?? {})
+    if (textStep) {
+      recordMacroStep('Macro', textStep.action, textStep)
     }
     pushUndoEntry(undoHistoryRef, tabId, content)
     setTabs((prev) =>
@@ -382,12 +363,12 @@ export default function Home() {
     )
   }, [recordMacroStep])
 
-  const handleView2ContentChange = useCallback((content) => {
+  const handleView2ContentChange = useCallback((content, selectionMeta = null) => {
     const tabId = view2ActiveTabIdRef.current
     const previousContent = view2TabsRef.current.find((t) => t.id === tabId)?.content ?? ''
-    const textChange = getTextChange(previousContent, content)
-    if (textChange) {
-      recordMacroStep('Macro', 'replace-range', textChange)
+    const textStep = buildMacroTextStep(previousContent, content, selectionMeta ?? {})
+    if (textStep) {
+      recordMacroStep('Macro', textStep.action, textStep)
     }
     pushUndoEntry(undoHistoryRef, tabId, content)
     setView2Tabs((prev) =>
@@ -1374,6 +1355,21 @@ export default function Home() {
             case 'Macro':
               if (step.action === 'insert-text' && typeof step.text === 'string') {
                 getActiveEditor()?.insertText?.(step.text)
+              }
+              if (step.action === 'replace-selection' && typeof step.text === 'string') {
+                getActiveEditor()?.replaceSelection?.(step.text)
+              }
+              if (step.action === 'delete-backward') {
+                getActiveEditor()?.deleteBackward?.()
+              }
+              if (step.action === 'delete-forward') {
+                getActiveEditor()?.deleteForward?.()
+              }
+              if (step.action === 'replace-relative'
+                && Number.isFinite(step.startOffset)
+                && Number.isFinite(step.endOffset)
+                && typeof step.text === 'string') {
+                getActiveEditor()?.replaceRelative?.(step.startOffset, step.endOffset, step.text)
               }
               if (step.action === 'replace-range'
                 && Number.isFinite(step.start)

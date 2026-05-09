@@ -437,6 +437,7 @@ const Editor = forwardRef(function Editor(
     lineHeightPx: 13 * LINE_HEIGHT_RATIO,
     paddingTopPx: 4,
   })
+  const pendingSelectionRef = useRef(null)
 
   const updateTextareaMetrics = useCallback(() => {
     const ta = textareaRef.current
@@ -596,11 +597,30 @@ const Editor = forwardRef(function Editor(
   const handleChange = useCallback(
     (e) => {
       const value = e.target.value
-      onChange(value)
+      const beforeSelection = pendingSelectionRef.current ?? {
+        start: e.target.selectionStart,
+        end: e.target.selectionEnd,
+      }
+      pendingSelectionRef.current = null
+      onChange(value, {
+        beforeSelectionStart: beforeSelection.start,
+        beforeSelectionEnd: beforeSelection.end,
+        selectionStart: e.target.selectionStart,
+        selectionEnd: e.target.selectionEnd,
+      })
       updateLineCount(value)
     },
     [onChange, updateLineCount]
   )
+
+  const handleBeforeInput = useCallback(() => {
+    const el = textareaRef.current
+    if (!el) return
+    pendingSelectionRef.current = {
+      start: el.selectionStart,
+      end: el.selectionEnd,
+    }
+  }, [])
 
   const handleKeyUp = useCallback(
     () => {
@@ -1694,10 +1714,70 @@ const Editor = forwardRef(function Editor(
       document.execCommand('insertText', false, typeof text === 'string' ? text : '')
     },
 
+    replaceSelection: (text = '') => {
+      const el = textareaRef.current
+      if (!el) return
+      el.focus()
+      document.execCommand('insertText', false, typeof text === 'string' ? text : '')
+    },
+
+    deleteBackward: () => {
+      const el = textareaRef.current
+      if (!el) return
+      const start = el.selectionStart
+      const end = el.selectionEnd
+      if (start !== end) {
+        el.focus()
+        document.execCommand('insertText', false, '')
+        return
+      }
+      if (start <= 0) return
+      el.focus()
+      el.setSelectionRange(start - 1, start)
+      document.execCommand('insertText', false, '')
+    },
+
+    deleteForward: () => {
+      const el = textareaRef.current
+      if (!el) return
+      const start = el.selectionStart
+      const end = el.selectionEnd
+      if (start !== end) {
+        el.focus()
+        document.execCommand('insertText', false, '')
+        return
+      }
+      if (start >= el.value.length) return
+      el.focus()
+      el.setSelectionRange(start, start + 1)
+      document.execCommand('insertText', false, '')
+    },
+
+    replaceRelative: (startOffset, endOffset, text = '') => {
+      const el = textareaRef.current
+      if (!el) return
+      const base = el.selectionStart
+      const len = el.value.length
+      const safeStartOffset = Number.isFinite(startOffset) ? Math.floor(startOffset) : 0
+      const safeEndOffset = Number.isFinite(endOffset) ? Math.floor(endOffset) : safeStartOffset
+      const start = Math.max(0, Math.min(len, base + safeStartOffset))
+      const end = Math.max(start, Math.min(len, base + safeEndOffset))
+      el.focus()
+      el.setSelectionRange(start, end)
+      document.execCommand('insertText', false, typeof text === 'string' ? text : '')
+    },
+
   }), [indent, dedent, lineCount, lineHeightPx, updateCursor, updateLineCount, scrollToChar])
 
   const handleKeyDown = useCallback(
     (e) => {
+      const el = textareaRef.current
+      if (el) {
+        pendingSelectionRef.current = {
+          start: el.selectionStart,
+          end: el.selectionEnd,
+        }
+      }
       if (e.key === 'Tab') {
         e.preventDefault()
         if (e.shiftKey) {
@@ -1806,6 +1886,7 @@ const Editor = forwardRef(function Editor(
             className={styles.textarea}
             defaultValue={content}
             onChange={handleChange}
+            onBeforeInput={handleBeforeInput}
             onKeyDown={handleKeyDown}
             onKeyUp={handleKeyUp}
             onClick={handleClick}
