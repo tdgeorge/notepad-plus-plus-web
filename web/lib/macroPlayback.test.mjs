@@ -75,6 +75,23 @@ function simulateAbsoluteRangePlayback(steps, initialState) {
   return state
 }
 
+test('applyRangeReplacement clamps out-of-bounds and normalizes non-string text', () => {
+  const result = applyRangeReplacement({ text: 'abcd', cursor: 0 }, -10, 99, 7)
+  assert.equal(result.text, '')
+  assert.equal(result.cursor, 0)
+})
+
+test('simulateAbsoluteRangePlayback handles empty and invalid steps safely', () => {
+  const unchanged = simulateAbsoluteRangePlayback([], { text: 'abc', cursor: 1 })
+  assert.deepEqual(unchanged, { text: 'abc', cursor: 1 })
+
+  const mixed = simulateAbsoluteRangePlayback(
+    [{ action: 'noop' }, { action: 'replace-selection', text: 'x' }],
+    { text: 'abc', cursor: 1 },
+  )
+  assert.deepEqual(mixed, { text: 'axbc', cursor: 2 })
+})
+
 test('multi-line playback keeps translated absolute range near current cursor', () => {
   const steps = [
     { action: 'replace-selection', text: 'X' },
