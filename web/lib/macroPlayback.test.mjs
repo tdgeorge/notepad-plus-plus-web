@@ -81,6 +81,12 @@ test('applyRangeReplacement clamps out-of-bounds and normalizes non-string text'
   assert.equal(result.cursor, 0)
 })
 
+test('applyRangeReplacement sets cursor after inserted text length', () => {
+  const result = applyRangeReplacement({ text: 'abcd', cursor: 1 }, 1, 3, 'XYZ')
+  assert.equal(result.text, 'aXYZd')
+  assert.equal(result.cursor, 4)
+})
+
 test('simulateAbsoluteRangePlayback handles empty and invalid steps safely', () => {
   const unchanged = simulateAbsoluteRangePlayback([], { text: 'abc', cursor: 1 })
   assert.deepEqual(unchanged, { text: 'abc', cursor: 1 })
@@ -90,6 +96,14 @@ test('simulateAbsoluteRangePlayback handles empty and invalid steps safely', () 
     { text: 'abc', cursor: 1 },
   )
   assert.deepEqual(mixed, { text: 'axbc', cursor: 2 })
+})
+
+test('simulateAbsoluteRangePlayback handles empty initial text with translated range step', () => {
+  const result = simulateAbsoluteRangePlayback(
+    [{ action: 'replace-range', start: 10, end: 10, text: 'hello' }],
+    { text: '', cursor: 0 },
+  )
+  assert.deepEqual(result, { text: 'hello', cursor: 5 })
 })
 
 test('multi-line playback keeps translated absolute range near current cursor', () => {
