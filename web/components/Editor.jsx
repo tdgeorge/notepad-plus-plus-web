@@ -1730,7 +1730,10 @@ const Editor = forwardRef(function Editor(
     insertText: (text) => {
       const el = textareaRef.current
       if (!el || !text) return
+      const start = el.selectionStart
       applyInputText(el, text)
+      const nextCursor = start + text.length
+      el.setSelectionRange(nextCursor, nextCursor)
       updateCursor()
     },
 
@@ -1753,7 +1756,11 @@ const Editor = forwardRef(function Editor(
     replaceSelection: (text = '') => {
       const el = textareaRef.current
       if (!el) return
-      applyInputText(el, text)
+      const start = el.selectionStart
+      const inserted = typeof text === 'string' ? text : ''
+      applyInputText(el, inserted)
+      const nextCursor = start + inserted.length
+      el.setSelectionRange(nextCursor, nextCursor)
       updateCursor()
     },
 
@@ -1764,6 +1771,7 @@ const Editor = forwardRef(function Editor(
       const end = el.selectionEnd
       if (start !== end) {
         applyInputText(el, '')
+        el.setSelectionRange(start, start)
         updateCursor()
         return
       }
@@ -1771,6 +1779,8 @@ const Editor = forwardRef(function Editor(
       el.focus()
       el.setSelectionRange(start - 1, start)
       applyInputText(el, '')
+      const nextCursor = start - 1
+      el.setSelectionRange(nextCursor, nextCursor)
       updateCursor()
     },
 
@@ -1781,6 +1791,7 @@ const Editor = forwardRef(function Editor(
       const end = el.selectionEnd
       if (start !== end) {
         applyInputText(el, '')
+        el.setSelectionRange(start, start)
         updateCursor()
         return
       }
@@ -1788,6 +1799,7 @@ const Editor = forwardRef(function Editor(
       el.focus()
       el.setSelectionRange(start, start + 1)
       applyInputText(el, '')
+      el.setSelectionRange(start, start)
       updateCursor()
     },
 
@@ -1800,9 +1812,12 @@ const Editor = forwardRef(function Editor(
       const safeEndOffset = Number.isFinite(endOffset) ? Math.floor(endOffset) : 0
       const start = Math.max(0, Math.min(len, base + safeStartOffset))
       const end = Math.max(start, Math.min(len, base + safeEndOffset))
+      const inserted = typeof text === 'string' ? text : ''
       el.focus()
       el.setSelectionRange(start, end)
-      applyInputText(el, text)
+      applyInputText(el, inserted)
+      const nextCursor = start + inserted.length
+      el.setSelectionRange(nextCursor, nextCursor)
       updateCursor()
     },
 
