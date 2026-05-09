@@ -19,8 +19,7 @@
   flex-shrink: 0;
   padding: 0 8px 0 6px;
   color: #f6f3ff;
-  background:
-    linear-gradient(180deg, rgba(140, 135, 179, 0.95) 0%, rgba(96, 92, 135, 0.96) 42%, rgba(72, 71, 112, 0.98) 100%);
+  background: var(--titlebar-bg, linear-gradient(180deg, rgba(140, 135, 179, 0.95) 0%, rgba(96, 92, 135, 0.96) 42%, rgba(72, 71, 112, 0.98) 100%));
   border-bottom: 1px solid rgba(41, 39, 70, 0.8);
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
 }

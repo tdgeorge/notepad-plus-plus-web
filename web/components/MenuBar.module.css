@@ -67,7 +67,7 @@
 
 .menuButton:hover,
 .menuButton.active {
-  background: linear-gradient(180deg, #faf5ea 0%, #e2d9c9 100%);
+  background: var(--menu-button-active-bg, linear-gradient(180deg, #faf5ea 0%, #e2d9c9 100%));
   border-color: var(--chrome-border);
   color: var(--chrome-text);
   box-shadow:
