@@ -38,6 +38,12 @@ export function buildMacroTextStep(before, after, selectionMeta = {}) {
       const reconstructedText = `${before.slice(0, selectionStart)}${insertedText}${before.slice(selectionEnd)}`
 
       if (reconstructedText === after) {
+        let cachedMinimalChange
+        const getMinimalChange = () => {
+          if (cachedMinimalChange === undefined) cachedMinimalChange = getTextChange(before, after)
+          return cachedMinimalChange
+        }
+
         if (selectionStart === selectionEnd && insertedLen === 0) {
           const backspaceCandidate = `${before.slice(0, selectionStart - 1)}${before.slice(selectionStart)}`
           if (selectionStart > 0 && backspaceCandidate === after) {
@@ -49,7 +55,7 @@ export function buildMacroTextStep(before, after, selectionMeta = {}) {
           }
         }
         if (selectionStart === selectionEnd) {
-          const minimalChange = getTextChange(before, after)
+          const minimalChange = getMinimalChange()
           if (minimalChange
             && (minimalChange.start !== selectionStart || minimalChange.end !== selectionEnd)) {
             return {
@@ -60,7 +66,7 @@ export function buildMacroTextStep(before, after, selectionMeta = {}) {
             }
           }
         } else {
-          const minimalChange = getTextChange(before, after)
+          const minimalChange = getMinimalChange()
           if (minimalChange
             && (minimalChange.start !== selectionStart || minimalChange.end !== selectionEnd)) {
             return {
