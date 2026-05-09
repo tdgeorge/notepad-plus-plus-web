@@ -1161,6 +1161,7 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
       case 'macro-stop-recording':
         return !macroState?.isRecording
       case 'macro-playback':
+        return Boolean(macroState?.isRecording) || !macroState?.hasRunnableMacro
       case 'macro-save-current':
         return Boolean(macroState?.isRecording) || !macroState?.hasCurrentMacro
       case 'macro-run-multiple':

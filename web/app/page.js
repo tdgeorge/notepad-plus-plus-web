@@ -1397,17 +1397,20 @@ export default function Home() {
         setHasStoppedRecordingMacro(true)
         break
       case 'macro-playback':
-        playbackMacro(currentMacroStepsRef.current, 1)
+        if (currentMacroStepsRef.current.length > 0 || hasStoppedRecordingMacroRef.current) {
+          playbackMacro(currentMacroStepsRef.current, 1)
+          return
+        }
+        if (savedMacrosRef.current.length > 0) {
+          playbackMacro(savedMacrosRef.current[0].steps, 1)
+        }
         break
       case 'macro-save-current': {
         const steps = currentMacroStepsRef.current
         const hasRecordableMacro = hasStoppedRecordingMacroRef.current || steps.length > 0
         if (!hasRecordableMacro || isRecordingMacroRef.current) return
         const defaultName = `Recorded Macro ${savedMacrosRef.current.length + 1}`
-        const name = window.prompt('Save macro as:', defaultName)
-        const trimmedName = name?.trim()
-        if (!trimmedName) return
-        setSavedMacros((prev) => [...prev, { name: trimmedName, steps: [...steps] }])
+        setSavedMacros((prev) => [...prev, { name: defaultName, steps: [...steps] }])
         break
       }
       case 'macro-run-multiple': {
