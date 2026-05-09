@@ -1404,9 +1404,6 @@ export default function Home() {
               dispatchToolsAction(step.action, { record: false })
               break
             case 'Macro':
-              if (Number.isFinite(step.selectionStart) && Number.isFinite(step.selectionEnd)) {
-                getActiveEditor()?.setSelection?.(step.selectionStart, step.selectionEnd)
-              }
               if (step.action === 'insert-text' && typeof step.text === 'string') {
                 getActiveEditor()?.insertText?.(step.text)
               }
@@ -1429,6 +1426,9 @@ export default function Home() {
                 && Number.isFinite(step.start)
                 && Number.isFinite(step.end)
                 && typeof step.text === 'string') {
+                if (Number.isFinite(step.selectionStart) && Number.isFinite(step.selectionEnd)) {
+                  getActiveEditor()?.setSelection?.(step.selectionStart, step.selectionEnd)
+                }
                 getActiveEditor()?.replaceRange?.(step.start, step.end, step.text)
               }
               break
