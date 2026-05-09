@@ -19,7 +19,11 @@ import { md5 } from '../lib/md5'
 import { applyTheme, THEMES, DEFAULT_THEME_ID } from '../lib/themes'
 import { detectLanguage } from '../lib/languages/index'
 import { buildMacroTextStep } from '../lib/macroTextSteps.mjs'
-import { shouldApplySelectionBeforeMacroStep } from '../lib/macroPlayback.mjs'
+import {
+  shouldApplySelectionBeforeMacroStep,
+  resolveMacroPlaybackOffset,
+  applyMacroPlaybackOffset,
+} from '../lib/macroPlayback.mjs'
 import styles from './page.module.css'
 
 const DEFAULT_FONT_SIZE = 13
@@ -1385,9 +1389,12 @@ export default function Home() {
     isPlayingBackMacroRef.current = true
     try {
       for (let run = 0; run < runCount; run++) {
+        let macroAbsoluteOffset = null
         for (const step of macroSteps) {
           if (!step || typeof step.action !== 'string' || typeof step.menu !== 'string') continue
           appendMacroDebugLine('playback-step', { run: run + 1, step })
+          const editor = getActiveEditor?.()
+          const currentSelectionStart = editor?.getSelection?.()?.start
           switch (step.menu) {
             case 'Edit':
               dispatchEditAction(step.action, { record: false })
@@ -1406,31 +1413,51 @@ export default function Home() {
               break
             case 'Macro':
               if (step.action === 'insert-text' && typeof step.text === 'string') {
-                getActiveEditor()?.insertText?.(step.text)
+                editor?.insertText?.(step.text)
               }
               if (step.action === 'replace-selection' && typeof step.text === 'string') {
                 if (shouldApplySelectionBeforeMacroStep(step)) {
-                  getActiveEditor()?.setSelection?.(step.selectionStart, step.selectionEnd)
+                  macroAbsoluteOffset = resolveMacroPlaybackOffset(
+                    currentSelectionStart,
+                    step.selectionStart,
+                    macroAbsoluteOffset,
+                  )
+                  const translatedRange = applyMacroPlaybackOffset(
+                    step.selectionStart,
+                    step.selectionEnd,
+                    macroAbsoluteOffset,
+                  )
+                  if (translatedRange) {
+                    editor?.setSelection?.(translatedRange.start, translatedRange.end)
+                  }
                 }
-                getActiveEditor()?.replaceSelection?.(step.text)
+                editor?.replaceSelection?.(step.text)
               }
               if (step.action === 'delete-backward') {
-                getActiveEditor()?.deleteBackward?.()
+                editor?.deleteBackward?.()
               }
               if (step.action === 'delete-forward') {
-                getActiveEditor()?.deleteForward?.()
+                editor?.deleteForward?.()
               }
               if (step.action === 'replace-relative'
                 && Number.isFinite(step.startOffset)
                 && Number.isFinite(step.endOffset)
                 && typeof step.text === 'string') {
-                getActiveEditor()?.replaceRelative?.(step.startOffset, step.endOffset, step.text)
+                editor?.replaceRelative?.(step.startOffset, step.endOffset, step.text)
               }
               if (step.action === 'replace-range'
                 && Number.isFinite(step.start)
                 && Number.isFinite(step.end)
                 && typeof step.text === 'string') {
-                getActiveEditor()?.replaceRange?.(step.start, step.end, step.text)
+                macroAbsoluteOffset = resolveMacroPlaybackOffset(
+                  currentSelectionStart,
+                  step.start,
+                  macroAbsoluteOffset,
+                )
+                const translatedRange = applyMacroPlaybackOffset(step.start, step.end, macroAbsoluteOffset)
+                if (translatedRange) {
+                  editor?.replaceRange?.(translatedRange.start, translatedRange.end, step.text)
+                }
               }
               break
             default:

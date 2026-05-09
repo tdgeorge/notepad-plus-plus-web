@@ -764,6 +764,14 @@ const Editor = forwardRef(function Editor(
       el.setSelectionRange(safeStart, safeEnd)
       updateCursor()
     },
+    getSelection: () => {
+      const el = textareaRef.current
+      if (!el) return null
+      return {
+        start: el.selectionStart,
+        end: el.selectionEnd,
+      }
+    },
 
     // Search operations
     // noFocus: true keeps keyboard focus in the calling element (e.g. IncrementalSearch input)
