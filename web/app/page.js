@@ -1522,8 +1522,21 @@ export default function Home() {
                 const np = getActiveEditor()?.insertText?.(step.text, tp, tp)
                 trackedPos = np ?? null
               } else if (step.action === 'replace-selection' && typeof step.text === 'string') {
-                const np = getActiveEditor()?.replaceSelection?.(step.text, tp, tp)
-                trackedPos = np ?? null
+                // If the recorded step had a real selection (selStart !== selEnd), translate it
+                // to cursor-relative offsets so we replace the correct span of text without
+                // jumping to the absolute recorded position.  The cursor during recording was
+                // at selEnd (right edge), so startOffset = selStart - selEnd (negative) and
+                // endOffset = 0.  For caret-only steps (selStart === selEnd) the selection
+                // offsets would both be 0, so just use replaceSelection at the tracked caret.
+                if (Number.isFinite(step.selectionStart) && Number.isFinite(step.selectionEnd)
+                  && step.selectionStart !== step.selectionEnd) {
+                  const startOffset = step.selectionStart - step.selectionEnd
+                  const np = getActiveEditor()?.replaceRelative?.(startOffset, 0, step.text, tp)
+                  trackedPos = np ?? null
+                } else {
+                  const np = getActiveEditor()?.replaceSelection?.(step.text, tp, tp)
+                  trackedPos = np ?? null
+                }
               } else if (step.action === 'delete-backward') {
                 const np = getActiveEditor()?.deleteBackward?.(tp, tp)
                 trackedPos = np ?? null
