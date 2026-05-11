@@ -237,6 +237,23 @@ function commitSelectionDoubleTick(el, pos) {
   requestAnimationFrame(() => setTimeout(() => { el.setSelectionRange(pos, pos); el.focus() }, 0))
 }
 
+/**
+ * Resolves the effective selection [start, end] for cursor-relative editor methods.
+ * When explicit positions are provided (macro playback), uses them directly.
+ * When only selStart is provided, treats selEnd as equal to selStart (caret).
+ * When neither is provided, falls back to the live DOM selection.
+ */
+function resolveSelection(el, selStart, selEnd) {
+  const len = el.value.length
+  const start = Number.isFinite(selStart)
+    ? Math.max(0, Math.min(len, Math.floor(selStart)))
+    : el.selectionStart
+  const end = Number.isFinite(selEnd)
+    ? Math.max(start, Math.min(len, Math.floor(selEnd)))
+    : (Number.isFinite(selStart) ? start : el.selectionEnd)
+  return [start, end]
+}
+
 /** Maps a TOKEN type to the corresponding CSS module class name */
 const TOKEN_CLASSES = {
   [TOKEN.KEYWORD]: styles.hlKeyword,
@@ -1746,9 +1763,7 @@ const Editor = forwardRef(function Editor(
     insertText: (text, selStart, selEnd) => {
       const el = textareaRef.current
       if (!el || !text) return
-      const len = el.value.length
-      const start = Number.isFinite(selStart) ? Math.max(0, Math.min(len, Math.floor(selStart))) : el.selectionStart
-      const end = Number.isFinite(selEnd) ? Math.max(start, Math.min(len, Math.floor(selEnd))) : (Number.isFinite(selStart) ? start : el.selectionEnd)
+      const [start, end] = resolveSelection(el, selStart, selEnd)
       const inserted = typeof text === 'string' ? text : ''
       el.focus()
       el.setRangeText(inserted, start, end, 'end')
@@ -1777,9 +1792,7 @@ const Editor = forwardRef(function Editor(
     replaceSelection: (text = '', selStart, selEnd) => {
       const el = textareaRef.current
       if (!el) return
-      const len = el.value.length
-      const start = Number.isFinite(selStart) ? Math.max(0, Math.min(len, Math.floor(selStart))) : el.selectionStart
-      const end = Number.isFinite(selEnd) ? Math.max(start, Math.min(len, Math.floor(selEnd))) : (Number.isFinite(selStart) ? start : el.selectionEnd)
+      const [start, end] = resolveSelection(el, selStart, selEnd)
       const inserted = typeof text === 'string' ? text : ''
       el.focus()
       el.setRangeText(inserted, start, end, 'end')
@@ -1792,9 +1805,7 @@ const Editor = forwardRef(function Editor(
     deleteBackward: (selStart, selEnd) => {
       const el = textareaRef.current
       if (!el) return
-      const len = el.value.length
-      const start = Number.isFinite(selStart) ? Math.max(0, Math.min(len, Math.floor(selStart))) : el.selectionStart
-      const end = Number.isFinite(selEnd) ? Math.max(start, Math.min(len, Math.floor(selEnd))) : (Number.isFinite(selStart) ? start : el.selectionEnd)
+      const [start, end] = resolveSelection(el, selStart, selEnd)
       if (start !== end) {
         el.focus()
         el.setRangeText('', start, end, 'end')
@@ -1816,8 +1827,7 @@ const Editor = forwardRef(function Editor(
       const el = textareaRef.current
       if (!el) return
       const len = el.value.length
-      const start = Number.isFinite(selStart) ? Math.max(0, Math.min(len, Math.floor(selStart))) : el.selectionStart
-      const end = Number.isFinite(selEnd) ? Math.max(start, Math.min(len, Math.floor(selEnd))) : (Number.isFinite(selStart) ? start : el.selectionEnd)
+      const [start, end] = resolveSelection(el, selStart, selEnd)
       if (start !== end) {
         el.focus()
         el.setRangeText('', start, end, 'end')
