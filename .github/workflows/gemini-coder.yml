@@ -23,9 +23,8 @@ jobs:
         with:
           # If it's a comment on a PR, checkout that branch. Otherwise, checkout default branch.
           ref: ${{ github.event.pull_request.head.ref || github.event.repository.default_branch }}
-
       - name: Gemini Code Assist
-        uses: google-github-actions/run-gemini-cli@v1
+        uses: google-github-actions/run-gemini-cli@main
         with:
           api_key: ${{ secrets.GEMINI_API_KEY }}
           # Dynamically pull the prompt from the Issue body or the Comment body
