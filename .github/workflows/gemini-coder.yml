@@ -25,13 +25,17 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref || github.event.repository.default_branch }}
       - name: Gemini Code Assist
         uses: google-github-actions/run-gemini-cli@main
-        # Add this env block!
         env:
+          # Required for the underlying CLI engine
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # Prevents the "No auth" warning in some runner environments
+          GOOGLE_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # Ensures the tool doesn't wait for user input on your iPhone
+          GEMINI_CLI_NON_INTERACTIVE: true
         with:
-          # Note: Keep it here too, as some internal parts of the action look for this input
-          api_key: ${{ secrets.GEMINI_API_KEY }}
+          # Use the exact parameter name the new action expects
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
           prompt: |
             Instruction: ${{ github.event.comment.body || github.event.issue.body }}
-            Context: Please modify the existing code based on the instruction above.
+            Context: Modify the code to fulfill the instruction.
           create_pull_request: ${{ github.event.issue.title != '' }}
