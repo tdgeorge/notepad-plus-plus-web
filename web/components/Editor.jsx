@@ -1762,7 +1762,7 @@ const Editor = forwardRef(function Editor(
     // the synchronous loop; the last one wins with the correct final position.
     insertText: (text, selStart, selEnd) => {
       const el = textareaRef.current
-      if (!el || !text) return
+      if (!el || !text) return undefined
       const [start, end] = resolveSelection(el, selStart, selEnd)
       const inserted = typeof text === 'string' ? text : ''
       el.focus()
@@ -1771,6 +1771,7 @@ const Editor = forwardRef(function Editor(
       const targetPos = start + inserted.length
       commitSelectionDoubleTick(el, targetPos)
       updateCursor()
+      return targetPos
     },
 
     replaceRange: (start, end, text = '') => {
@@ -1791,7 +1792,7 @@ const Editor = forwardRef(function Editor(
 
     replaceSelection: (text = '', selStart, selEnd) => {
       const el = textareaRef.current
-      if (!el) return
+      if (!el) return undefined
       const [start, end] = resolveSelection(el, selStart, selEnd)
       const inserted = typeof text === 'string' ? text : ''
       el.focus()
@@ -1800,11 +1801,12 @@ const Editor = forwardRef(function Editor(
       const targetPos = start + inserted.length
       commitSelectionDoubleTick(el, targetPos)
       updateCursor()
+      return targetPos
     },
 
     deleteBackward: (selStart, selEnd) => {
       const el = textareaRef.current
-      if (!el) return
+      if (!el) return undefined
       const [start, end] = resolveSelection(el, selStart, selEnd)
       if (start !== end) {
         el.focus()
@@ -1812,20 +1814,21 @@ const Editor = forwardRef(function Editor(
         el.dispatchEvent(new Event('input', { bubbles: true }))
         commitSelectionDoubleTick(el, start)
         updateCursor()
-        return
+        return start
       }
-      if (start <= 0) return
+      if (start <= 0) return start
       const targetPos = start - 1
       el.focus()
       el.setRangeText('', targetPos, start, 'end')
       el.dispatchEvent(new Event('input', { bubbles: true }))
       commitSelectionDoubleTick(el, targetPos)
       updateCursor()
+      return targetPos
     },
 
     deleteForward: (selStart, selEnd) => {
       const el = textareaRef.current
-      if (!el) return
+      if (!el) return undefined
       const len = el.value.length
       const [start, end] = resolveSelection(el, selStart, selEnd)
       if (start !== end) {
@@ -1834,20 +1837,21 @@ const Editor = forwardRef(function Editor(
         el.dispatchEvent(new Event('input', { bubbles: true }))
         commitSelectionDoubleTick(el, start)
         updateCursor()
-        return
+        return start
       }
-      if (start >= len) return
+      if (start >= len) return start
       el.focus()
       el.setRangeText('', start, start + 1, 'end')
       el.dispatchEvent(new Event('input', { bubbles: true }))
       commitSelectionDoubleTick(el, start)
       updateCursor()
+      return start
     },
 
-    replaceRelative: (startOffset, endOffset, text = '') => {
+    replaceRelative: (startOffset, endOffset, text = '', cursorBase) => {
       const el = textareaRef.current
-      if (!el) return
-      const base = el.selectionStart
+      if (!el) return undefined
+      const base = Number.isFinite(cursorBase) ? Math.max(0, Math.min(el.value.length, Math.floor(cursorBase))) : el.selectionStart
       const len = el.value.length
       const safeStartOffset = Number.isFinite(startOffset) ? Math.floor(startOffset) : 0
       const safeEndOffset = Number.isFinite(endOffset) ? Math.floor(endOffset) : 0
@@ -1860,6 +1864,7 @@ const Editor = forwardRef(function Editor(
       const targetPos = start + inserted.length
       commitSelectionDoubleTick(el, targetPos)
       updateCursor()
+      return targetPos
     },
 
   }), [indent, dedent, lineCount, lineHeightPx, updateCursor, updateLineCount, scrollToChar])

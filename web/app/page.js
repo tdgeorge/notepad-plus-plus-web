@@ -1484,45 +1484,59 @@ export default function Home() {
     isPlayingBackMacroRef.current = true
     try {
       for (let run = 0; run < runCount; run++) {
+        // Track cursor position through cursor-relative steps to avoid reading
+        // stale el.selectionStart on iOS WebKit after setRangeText. null means
+        // use the live DOM value (first step of each run, or after a non-cursor
+        // step that resets position).
+        let trackedPos = null
         for (const step of macroSteps) {
           if (!step || typeof step.action !== 'string' || typeof step.menu !== 'string') continue
           appendMacroDebugLine('playback-step', { run: run + 1, step })
           switch (step.menu) {
             case 'Edit':
               dispatchEditAction(step.action, { record: false })
+              trackedPos = null
               break
             case 'View':
               dispatchViewAction(step.action, { record: false })
+              trackedPos = null
               break
             case 'Search':
               dispatchSearchAction(step.action, { record: false })
+              trackedPos = null
               break
             case 'Language':
               dispatchLanguageAction(step.action, { record: false })
+              trackedPos = null
               break
             case 'Tools':
               dispatchToolsAction(step.action, { record: false })
+              trackedPos = null
               break
-            case 'Macro':
+            case 'Macro': {
+              // For cursor-relative steps, pass the tracked caret position so
+              // each step anchors to where the previous step left the cursor
+              // (not the stale DOM value, and NOT the recorded absolute position).
+              const tp = Number.isFinite(trackedPos) ? trackedPos : undefined
               if (step.action === 'insert-text' && typeof step.text === 'string') {
-                getActiveEditor()?.insertText?.(step.text, step.selectionStart, step.selectionEnd)
-              }
-              if (step.action === 'replace-selection' && typeof step.text === 'string') {
-                getActiveEditor()?.replaceSelection?.(step.text, step.selectionStart, step.selectionEnd)
-              }
-              if (step.action === 'delete-backward') {
-                getActiveEditor()?.deleteBackward?.(step.selectionStart, step.selectionEnd)
-              }
-              if (step.action === 'delete-forward') {
-                getActiveEditor()?.deleteForward?.(step.selectionStart, step.selectionEnd)
-              }
-              if (step.action === 'replace-relative'
+                const np = getActiveEditor()?.insertText?.(step.text, tp, tp)
+                trackedPos = np ?? null
+              } else if (step.action === 'replace-selection' && typeof step.text === 'string') {
+                const np = getActiveEditor()?.replaceSelection?.(step.text, tp, tp)
+                trackedPos = np ?? null
+              } else if (step.action === 'delete-backward') {
+                const np = getActiveEditor()?.deleteBackward?.(tp, tp)
+                trackedPos = np ?? null
+              } else if (step.action === 'delete-forward') {
+                const np = getActiveEditor()?.deleteForward?.(tp, tp)
+                trackedPos = np ?? null
+              } else if (step.action === 'replace-relative'
                 && Number.isFinite(step.startOffset)
                 && Number.isFinite(step.endOffset)
                 && typeof step.text === 'string') {
-                getActiveEditor()?.replaceRelative?.(step.startOffset, step.endOffset, step.text)
-              }
-              if (step.action === 'replace-range'
+                const np = getActiveEditor()?.replaceRelative?.(step.startOffset, step.endOffset, step.text, tp)
+                trackedPos = np ?? null
+              } else if (step.action === 'replace-range'
                 && Number.isFinite(step.start)
                 && Number.isFinite(step.end)
                 && typeof step.text === 'string') {
@@ -1530,9 +1544,12 @@ export default function Home() {
                   getActiveEditor()?.setSelection?.(step.selectionStart, step.selectionEnd)
                 }
                 getActiveEditor()?.replaceRange?.(step.start, step.end, step.text)
+                trackedPos = null
               }
               break
+            }
             default:
+              trackedPos = null
               break
           }
         }
