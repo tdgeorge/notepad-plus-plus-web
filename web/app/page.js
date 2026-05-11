@@ -1530,8 +1530,8 @@ export default function Home() {
                 // offsets would both be 0, so just use replaceSelection at the tracked caret.
                 if (Number.isFinite(step.selectionStart) && Number.isFinite(step.selectionEnd)
                   && step.selectionStart !== step.selectionEnd) {
-                  const startOffset = step.selectionStart - step.selectionEnd
-                  const np = getActiveEditor()?.replaceRelative?.(startOffset, 0, step.text, tp)
+                  const selectionSpan = step.selectionStart - step.selectionEnd  // negative: chars before cursor
+                  const np = getActiveEditor()?.replaceRelative?.(selectionSpan, 0, step.text, tp)
                   trackedPos = np ?? null
                 } else {
                   const np = getActiveEditor()?.replaceSelection?.(step.text, tp, tp)
