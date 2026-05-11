@@ -221,6 +221,39 @@ function renderLineSymbols(line, { showWhitespace, showEol, showIndent } = {}) {
   return parts
 }
 
+function applyInputText(el, text = '') {
+  if (!el) return
+  el.focus()
+  document.execCommand('insertText', false, typeof text === 'string' ? text : '')
+}
+
+/**
+ * Work around the iOS WebKit race where programmatic setSelectionRange is
+ * discarded after JavaScript completes.  Scheduling through both a
+ * requestAnimationFrame and a nested setTimeout(0) ("double-tick") gives
+ * WebKit enough time to commit the new caret position.
+ */
+function commitSelectionDoubleTick(el, pos) {
+  requestAnimationFrame(() => setTimeout(() => { el.setSelectionRange(pos, pos); el.focus() }, 0))
+}
+
+/**
+ * Resolves the effective selection [start, end] for cursor-relative editor methods.
+ * When explicit positions are provided (macro playback), uses them directly.
+ * When only selStart is provided, treats selEnd as equal to selStart (caret).
+ * When neither is provided, falls back to the live DOM selection.
+ */
+function resolveSelection(el, selStart, selEnd) {
+  const len = el.value.length
+  const start = Number.isFinite(selStart)
+    ? Math.max(0, Math.min(len, Math.floor(selStart)))
+    : el.selectionStart
+  const end = Number.isFinite(selEnd)
+    ? Math.max(start, Math.min(len, Math.floor(selEnd)))
+    : (Number.isFinite(selStart) ? start : el.selectionEnd)
+  return [start, end]
+}
+
 /** Maps a TOKEN type to the corresponding CSS module class name */
 const TOKEN_CLASSES = {
   [TOKEN.KEYWORD]: styles.hlKeyword,
@@ -437,6 +470,7 @@ const Editor = forwardRef(function Editor(
     lineHeightPx: 13 * LINE_HEIGHT_RATIO,
     paddingTopPx: 4,
   })
+  const pendingSelectionRef = useRef(null)
 
   const updateTextareaMetrics = useCallback(() => {
     const ta = textareaRef.current
@@ -596,11 +630,45 @@ const Editor = forwardRef(function Editor(
   const handleChange = useCallback(
     (e) => {
       const value = e.target.value
-      onChange(value)
+      // Fallback when a pre-input snapshot is unavailable (some browser/input paths).
+      const beforeSelection = pendingSelectionRef.current ?? {
+        start: e.target.selectionStart,
+        end: e.target.selectionEnd,
+        inputType: '',
+        inputData: null,
+      }
+      pendingSelectionRef.current = null
+      onChange(value, {
+        beforeSelectionStart: beforeSelection.start,
+        beforeSelectionEnd: beforeSelection.end,
+        inputType: beforeSelection.inputType,
+        inputData: beforeSelection.inputData,
+        selectionStart: e.target.selectionStart,
+        selectionEnd: e.target.selectionEnd,
+      })
       updateLineCount(value)
     },
     [onChange, updateLineCount]
   )
+
+  const captureSelectionSnapshot = useCallback((nativeEvent = null) => {
+    const el = textareaRef.current
+    if (!el) return
+    const start = Number.isFinite(el.selectionStart) ? el.selectionStart : 0
+    const end = Number.isFinite(el.selectionEnd) ? el.selectionEnd : start
+    const inputType = nativeEvent && typeof nativeEvent.inputType === 'string' ? nativeEvent.inputType : ''
+    const inputData = nativeEvent && typeof nativeEvent.data === 'string' ? nativeEvent.data : null
+    pendingSelectionRef.current = {
+      start,
+      end,
+      inputType,
+      inputData,
+    }
+  }, [])
+
+  const handleBeforeInput = useCallback((e) => {
+    captureSelectionSnapshot(e?.nativeEvent ?? null)
+  }, [captureSelectionSnapshot])
 
   const handleKeyUp = useCallback(
     () => {
@@ -712,6 +780,17 @@ const Editor = forwardRef(function Editor(
     selectAll: () => { textareaRef.current?.focus(); textareaRef.current?.select(); updateCursor() },
     indent,
     dedent,
+    setSelection: (start, end = start) => {
+      const el = textareaRef.current
+      if (!el) return
+      const len = el.value.length
+      const safeStart = Number.isFinite(start) ? Math.max(0, Math.min(len, Math.floor(start))) : el.selectionStart
+      const safeEndRaw = Number.isFinite(end) ? Math.floor(end) : safeStart
+      const safeEnd = Math.max(safeStart, Math.min(len, safeEndRaw))
+      el.focus()
+      el.setSelectionRange(safeStart, safeEnd)
+      updateCursor()
+    },
 
     // Search operations
     // noFocus: true keeps keyboard focus in the calling element (e.g. IncrementalSearch input)
@@ -1675,17 +1754,124 @@ const Editor = forwardRef(function Editor(
     },
 
     // ── Insert Text ───────────────────────────────────────────────────────
-    insertText: (text) => {
+    // Uses setRangeText (no user-activation required) instead of execCommand
+    // so cursor updates reliably on iOS WebKit even deep inside a click chain.
+    // The requestAnimationFrame + setTimeout "double-tick" works around the
+    // WebKit race where programmatic setSelectionRange is discarded after JS
+    // completes. For multi-step macros the callbacks from all steps fire after
+    // the synchronous loop; the last one wins with the correct final position.
+    insertText: (text, selStart, selEnd) => {
       const el = textareaRef.current
-      if (!el || !text) return
+      if (!el || !text) return undefined
+      const [start, end] = resolveSelection(el, selStart, selEnd)
+      const inserted = typeof text === 'string' ? text : ''
       el.focus()
-      document.execCommand('insertText', false, text)
+      el.setRangeText(inserted, start, end, 'end')
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+      const targetPos = start + inserted.length
+      commitSelectionDoubleTick(el, targetPos)
+      updateCursor()
+      return targetPos
+    },
+
+    replaceRange: (start, end, text = '') => {
+      const el = textareaRef.current
+      if (!el) return
+      const len = el.value.length
+      const safeStart = Number.isFinite(start) ? Math.max(0, Math.min(len, Math.floor(start))) : el.selectionStart
+      const safeEndRaw = Number.isFinite(end) ? Math.floor(end) : safeStart
+      const safeEnd = Math.max(safeStart, Math.min(len, safeEndRaw))
+      const inserted = typeof text === 'string' ? text : ''
+      el.focus()
+      el.setRangeText(inserted, safeStart, safeEnd, 'end')
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+      const targetPos = safeStart + inserted.length
+      commitSelectionDoubleTick(el, targetPos)
+      updateCursor()
+    },
+
+    replaceSelection: (text = '', selStart, selEnd) => {
+      const el = textareaRef.current
+      if (!el) return undefined
+      const [start, end] = resolveSelection(el, selStart, selEnd)
+      const inserted = typeof text === 'string' ? text : ''
+      el.focus()
+      el.setRangeText(inserted, start, end, 'end')
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+      const targetPos = start + inserted.length
+      commitSelectionDoubleTick(el, targetPos)
+      updateCursor()
+      return targetPos
+    },
+
+    deleteBackward: (selStart, selEnd) => {
+      const el = textareaRef.current
+      if (!el) return undefined
+      const [start, end] = resolveSelection(el, selStart, selEnd)
+      if (start !== end) {
+        el.focus()
+        el.setRangeText('', start, end, 'end')
+        el.dispatchEvent(new Event('input', { bubbles: true }))
+        commitSelectionDoubleTick(el, start)
+        updateCursor()
+        return start
+      }
+      if (start <= 0) return start
+      const targetPos = start - 1
+      el.focus()
+      el.setRangeText('', targetPos, start, 'end')
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+      commitSelectionDoubleTick(el, targetPos)
+      updateCursor()
+      return targetPos
+    },
+
+    deleteForward: (selStart, selEnd) => {
+      const el = textareaRef.current
+      if (!el) return undefined
+      const len = el.value.length
+      const [start, end] = resolveSelection(el, selStart, selEnd)
+      if (start !== end) {
+        el.focus()
+        el.setRangeText('', start, end, 'end')
+        el.dispatchEvent(new Event('input', { bubbles: true }))
+        commitSelectionDoubleTick(el, start)
+        updateCursor()
+        return start
+      }
+      if (start >= len) return start
+      el.focus()
+      el.setRangeText('', start, start + 1, 'end')
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+      commitSelectionDoubleTick(el, start)
+      updateCursor()
+      return start
+    },
+
+    replaceRelative: (startOffset, endOffset, text = '', cursorBase) => {
+      const el = textareaRef.current
+      if (!el) return undefined
+      const base = Number.isFinite(cursorBase) ? Math.max(0, Math.min(el.value.length, Math.floor(cursorBase))) : el.selectionStart
+      const len = el.value.length
+      const safeStartOffset = Number.isFinite(startOffset) ? Math.floor(startOffset) : 0
+      const safeEndOffset = Number.isFinite(endOffset) ? Math.floor(endOffset) : 0
+      const start = Math.max(0, Math.min(len, base + safeStartOffset))
+      const end = Math.max(start, Math.min(len, base + safeEndOffset))
+      const inserted = typeof text === 'string' ? text : ''
+      el.focus()
+      el.setRangeText(inserted, start, end, 'end')
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+      const targetPos = start + inserted.length
+      commitSelectionDoubleTick(el, targetPos)
+      updateCursor()
+      return targetPos
     },
 
   }), [indent, dedent, lineCount, lineHeightPx, updateCursor, updateLineCount, scrollToChar])
 
   const handleKeyDown = useCallback(
     (e) => {
+      captureSelectionSnapshot()
       if (e.key === 'Tab') {
         e.preventDefault()
         if (e.shiftKey) {
@@ -1701,7 +1887,7 @@ const Editor = forwardRef(function Editor(
         onRedoRef.current?.()
       }
     },
-    [indent, dedent]
+    [captureSelectionSnapshot, indent, dedent]
   )
 
   return (
@@ -1794,6 +1980,7 @@ const Editor = forwardRef(function Editor(
             className={styles.textarea}
             defaultValue={content}
             onChange={handleChange}
+            onBeforeInput={handleBeforeInput}
             onKeyDown={handleKeyDown}
             onKeyUp={handleKeyUp}
             onClick={handleClick}

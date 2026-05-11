@@ -18,6 +18,7 @@ import WindowsDialog from '../components/WindowsDialog'
 import { md5 } from '../lib/md5'
 import { applyTheme, THEMES, DEFAULT_THEME_ID } from '../lib/themes'
 import { detectLanguage } from '../lib/languages/index'
+import { buildMacroTextStep } from '../lib/macroTextSteps.mjs'
 import styles from './page.module.css'
 
 const DEFAULT_FONT_SIZE = 13
@@ -32,6 +33,11 @@ const AUTOSAVE_INTERVAL_MS = 5_000
 // Each entry stores a full copy of the document content.
 const LARGE_FILE_THRESHOLD = 100_000 // ~100 KB of text
 const MAX_UNDO_LARGE_FILE = 20
+const MACROS_STORAGE_KEY = 'nppw-macros'
+const MAX_RECORDED_MACRO_STEPS = 5000
+const MACRO_DEBUG_TAB_NAME = 'macro-debug.log'
+const MACRO_DEBUG_QUERY_PARAM = 'macroDebug'
+const MACRO_DEBUG_MAX_LINES = 2000
 
 /**
  * Push `content` onto the undo history for `tabId`, capping the stack for
@@ -112,9 +118,31 @@ export default function Home() {
   const [themeId, setThemeId] = useState(DEFAULT_THEME_ID)
   const [windowsDialogOpen, setWindowsDialogOpen] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
+  const [isRecordingMacro, setIsRecordingMacro] = useState(false)
+  const [currentMacroSteps, setCurrentMacroSteps] = useState([])
+  const [hasStoppedRecordingMacro, setHasStoppedRecordingMacro] = useState(false)
+  const [savedMacros, setSavedMacros] = useState([])
   const searchStateRef = useRef({ term: '', options: { matchCase: false, wholeWord: false, wrapAround: true } })
   // Guard flag prevents the two editors from triggering each other's scroll endlessly.
   const syncScrollingRef = useRef(false)
+  const isRecordingMacroRef = useRef(isRecordingMacro)
+  const currentMacroStepsRef = useRef(currentMacroSteps)
+  const hasStoppedRecordingMacroRef = useRef(hasStoppedRecordingMacro)
+  const savedMacrosRef = useRef(savedMacros)
+  const isPlayingBackMacroRef = useRef(false)
+  const macroDebugEnabledRef = useRef(false)
+
+  useEffect(() => { isRecordingMacroRef.current = isRecordingMacro }, [isRecordingMacro])
+  useEffect(() => { currentMacroStepsRef.current = currentMacroSteps }, [currentMacroSteps])
+  useEffect(() => { hasStoppedRecordingMacroRef.current = hasStoppedRecordingMacro }, [hasStoppedRecordingMacro])
+  useEffect(() => { savedMacrosRef.current = savedMacros }, [savedMacros])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const raw = params.get(MACRO_DEBUG_QUERY_PARAM)
+    macroDebugEnabledRef.current = raw != null && raw !== '0' && raw.toLowerCase() !== 'false'
+  }, [])
 
   // Load persisted theme on mount and apply it
   useEffect(() => {
@@ -131,6 +159,30 @@ export default function Home() {
       localStorage.setItem('nppw-theme', themeId)
     }
   }, [themeId])
+
+  useEffect(() => {
+    if (typeof localStorage === 'undefined') return
+    const raw = localStorage.getItem(MACROS_STORAGE_KEY)
+    if (!raw) return
+    try {
+      const parsed = JSON.parse(raw)
+      if (!Array.isArray(parsed)) return
+      const normalized = parsed
+        .filter((item) => typeof item?.name === 'string' && Array.isArray(item?.steps))
+        .map((item) => ({
+          name: item.name,
+          steps: item.steps.filter((step) => typeof step?.menu === 'string' && typeof step?.action === 'string'),
+        }))
+      setSavedMacros(normalized)
+    } catch {
+      // Ignore invalid saved macro data
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof localStorage === 'undefined') return
+    localStorage.setItem(MACROS_STORAGE_KEY, JSON.stringify(savedMacros))
+  }, [savedMacros])
 
   const activeTabIdRef = useRef(activeTabId)
   useEffect(() => { activeTabIdRef.current = activeTabId }, [activeTabId])
@@ -252,6 +304,11 @@ export default function Home() {
     tabCount: tabs.length,
     activeTabIndex,
   }
+  const macroState = {
+    isRecording: isRecordingMacro,
+    hasCurrentMacro: hasStoppedRecordingMacro || currentMacroSteps.length > 0,
+    hasRunnableMacro: hasStoppedRecordingMacro || currentMacroSteps.length > 0 || savedMacros.length > 0,
+  }
   // ── Active editor helper ──────────────────────────────────────────────────
   // Returns the ref for whichever view is currently active.
   const getActiveEditor = useCallback(
@@ -269,6 +326,31 @@ export default function Home() {
     () => [...tabsRef.current, ...view2TabsRef.current],
     []
   )
+
+  const appendMacroDebugLine = useCallback((label, details = null) => {
+    if (!macroDebugEnabledRef.current) return
+    const text = details == null
+      ? ''
+      : (typeof details === 'string' ? details : JSON.stringify(details))
+    const line = `[${new Date().toISOString()}] ${label}${text ? ` ${text}` : ''}`
+
+    setTabs((prev) => {
+      const idx = prev.findIndex((tab) => tab.name === MACRO_DEBUG_TAB_NAME)
+      if (idx === -1) {
+        const id = nextTabId++
+        undoHistoryRef.current[id] = { stack: [line], index: 0, savedIndex: -1 }
+        return [...prev, { id, name: MACRO_DEBUG_TAB_NAME, content: line, modified: true, language: detectLanguage(MACRO_DEBUG_TAB_NAME) }]
+      }
+
+      const existing = prev[idx]
+      const joined = existing.content ? `${existing.content}\n${line}` : line
+      const trimmed = joined.split('\n').slice(-MACRO_DEBUG_MAX_LINES).join('\n')
+      pushUndoEntry(undoHistoryRef, existing.id, trimmed)
+      const next = [...prev]
+      next[idx] = { ...existing, content: trimmed, modified: true }
+      return next
+    })
+  }, [])
 
   const handleNewTab = useCallback(() => {
     const id = nextTabId++
@@ -323,22 +405,6 @@ export default function Home() {
     []
   )
 
-  const handleContentChange = useCallback((content) => {
-    const tabId = activeTabIdRef.current
-    pushUndoEntry(undoHistoryRef, tabId, content)
-    setTabs((prev) =>
-      prev.map((t) => (t.id === tabId ? { ...t, content, modified: true } : t))
-    )
-  }, [])
-
-  const handleView2ContentChange = useCallback((content) => {
-    const tabId = view2ActiveTabIdRef.current
-    pushUndoEntry(undoHistoryRef, tabId, content)
-    setView2Tabs((prev) =>
-      prev.map((t) => (t.id === tabId ? { ...t, content, modified: true } : t))
-    )
-  }, [])
-
   const handleUndo = useCallback(() => {
     const isView1 = activeView === 1
     const tabId = isView1 ? activeTabIdRef.current : view2ActiveTabIdRef.current
@@ -376,9 +442,6 @@ export default function Home() {
       )
     }
   }, [activeView])
-  const handleCut = useCallback(() => getActiveEditor()?.cut(), [getActiveEditor])
-  const handleCopy = useCallback(() => getActiveEditor()?.copy(), [getActiveEditor])
-  const handlePaste = useCallback(() => getActiveEditor()?.paste(), [getActiveEditor])
 
   const handleEditAction = useCallback((action) => {
     if (action === 'copy-filename') {
@@ -410,6 +473,57 @@ export default function Home() {
     }
     getActiveEditor()?.[action]?.()
   }, [getActiveEditor, getActiveTabRecord, getAllOpenTabs])
+
+  const recordMacroStep = useCallback((menu, action, extra = null) => {
+    if (!isRecordingMacroRef.current || isPlayingBackMacroRef.current) return
+    if (!menu || !action) return
+    const payload = (extra && typeof extra === 'object') ? extra : {}
+    appendMacroDebugLine('record-step', { menu, action, payload })
+    setCurrentMacroSteps((prev) => {
+      if (prev.length >= MAX_RECORDED_MACRO_STEPS) return prev
+      const next = [...prev, { menu, action, ...payload }]
+      currentMacroStepsRef.current = next
+      return next
+    })
+  }, [appendMacroDebugLine])
+
+  const handleContentChange = useCallback((content, selectionMeta = null) => {
+    const tabId = activeTabIdRef.current
+    const previousContent = tabsRef.current.find((t) => t.id === tabId)?.content ?? ''
+    const textStep = buildMacroTextStep(previousContent, content, selectionMeta)
+    appendMacroDebugLine('record-text-change:view1', {
+      beforeLength: previousContent.length,
+      afterLength: content.length,
+      selectionMeta,
+      inferredStep: textStep,
+    })
+    if (textStep) {
+      recordMacroStep('Macro', textStep.action, textStep)
+    }
+    pushUndoEntry(undoHistoryRef, tabId, content)
+    setTabs((prev) =>
+      prev.map((t) => (t.id === tabId ? { ...t, content, modified: true } : t))
+    )
+  }, [recordMacroStep, appendMacroDebugLine])
+
+  const handleView2ContentChange = useCallback((content, selectionMeta = null) => {
+    const tabId = view2ActiveTabIdRef.current
+    const previousContent = view2TabsRef.current.find((t) => t.id === tabId)?.content ?? ''
+    const textStep = buildMacroTextStep(previousContent, content, selectionMeta)
+    appendMacroDebugLine('record-text-change:view2', {
+      beforeLength: previousContent.length,
+      afterLength: content.length,
+      selectionMeta,
+      inferredStep: textStep,
+    })
+    if (textStep) {
+      recordMacroStep('Macro', textStep.action, textStep)
+    }
+    pushUndoEntry(undoHistoryRef, tabId, content)
+    setView2Tabs((prev) =>
+      prev.map((t) => (t.id === tabId ? { ...t, content, modified: true } : t))
+    )
+  }, [recordMacroStep, appendMacroDebugLine])
 
   const downloadFile = useCallback((name, content) => {
     const blob = new Blob([content], { type: 'text/plain' })
@@ -1337,6 +1451,192 @@ export default function Home() {
     }
   }, [handleFindNext, handleFindPrev, handleSelectAndFindNext, handleSelectAndFindPrev, getActiveEditor])
 
+  const dispatchEditAction = useCallback((action, { record = true } = {}) => {
+    if (record) recordMacroStep('Edit', action)
+    handleEditAction(action)
+  }, [recordMacroStep, handleEditAction])
+
+  const dispatchViewAction = useCallback((action, { record = true } = {}) => {
+    if (record) recordMacroStep('View', action)
+    handleViewAction(action)
+  }, [recordMacroStep, handleViewAction])
+
+  const dispatchSearchAction = useCallback((action, { record = true } = {}) => {
+    if (record) recordMacroStep('Search', action)
+    handleSearchAction(action)
+  }, [recordMacroStep, handleSearchAction])
+
+  const dispatchLanguageAction = useCallback((action, { record = true } = {}) => {
+    if (record) recordMacroStep('Language', action)
+    handleLanguageAction(action)
+  }, [recordMacroStep, handleLanguageAction])
+
+  const dispatchToolsAction = useCallback((action, { record = true } = {}) => {
+    if (record) recordMacroStep('Tools', action)
+    handleToolsAction(action)
+  }, [recordMacroStep, handleToolsAction])
+
+  const playbackMacro = useCallback((macroSteps, times = 1) => {
+    if (isRecordingMacroRef.current || isPlayingBackMacroRef.current) return
+    if (!Array.isArray(macroSteps) || macroSteps.length === 0) return
+    const runCount = Math.max(1, Math.floor(times))
+    appendMacroDebugLine('playback-start', { runCount, stepCount: macroSteps.length })
+    isPlayingBackMacroRef.current = true
+    try {
+      for (let run = 0; run < runCount; run++) {
+        // Track cursor position through cursor-relative steps to avoid reading
+        // stale el.selectionStart on iOS WebKit after setRangeText. null means
+        // use the live DOM value (first step of each run, or after a non-cursor
+        // step that resets position).
+        let trackedPos = null
+        for (const step of macroSteps) {
+          if (!step || typeof step.action !== 'string' || typeof step.menu !== 'string') continue
+          appendMacroDebugLine('playback-step', { run: run + 1, step })
+          switch (step.menu) {
+            case 'Edit':
+              dispatchEditAction(step.action, { record: false })
+              trackedPos = null
+              break
+            case 'View':
+              dispatchViewAction(step.action, { record: false })
+              trackedPos = null
+              break
+            case 'Search':
+              dispatchSearchAction(step.action, { record: false })
+              trackedPos = null
+              break
+            case 'Language':
+              dispatchLanguageAction(step.action, { record: false })
+              trackedPos = null
+              break
+            case 'Tools':
+              dispatchToolsAction(step.action, { record: false })
+              trackedPos = null
+              break
+            case 'Macro': {
+              // For cursor-relative steps, pass the tracked caret position so
+              // each step anchors to where the previous step left the cursor
+              // (not the stale DOM value, and NOT the recorded absolute position).
+              const tp = Number.isFinite(trackedPos) ? trackedPos : undefined
+              if (step.action === 'insert-text' && typeof step.text === 'string') {
+                const np = getActiveEditor()?.insertText?.(step.text, tp, tp)
+                trackedPos = np ?? null
+              } else if (step.action === 'replace-selection' && typeof step.text === 'string') {
+                // If the recorded step had a real selection (selStart !== selEnd), translate it
+                // to cursor-relative offsets so we replace the correct span of text without
+                // jumping to the absolute recorded position.  The cursor during recording was
+                // at selEnd (right edge), so startOffset = selStart - selEnd (negative) and
+                // endOffset = 0.  For caret-only steps (selStart === selEnd) the selection
+                // offsets would both be 0, so just use replaceSelection at the tracked caret.
+                if (Number.isFinite(step.selectionStart) && Number.isFinite(step.selectionEnd)
+                  && step.selectionStart !== step.selectionEnd) {
+                  const selectionSpan = step.selectionStart - step.selectionEnd  // negative: chars before cursor
+                  const np = getActiveEditor()?.replaceRelative?.(selectionSpan, 0, step.text, tp)
+                  trackedPos = np ?? null
+                } else {
+                  const np = getActiveEditor()?.replaceSelection?.(step.text, tp, tp)
+                  trackedPos = np ?? null
+                }
+              } else if (step.action === 'delete-backward') {
+                const np = getActiveEditor()?.deleteBackward?.(tp, tp)
+                trackedPos = np ?? null
+              } else if (step.action === 'delete-forward') {
+                const np = getActiveEditor()?.deleteForward?.(tp, tp)
+                trackedPos = np ?? null
+              } else if (step.action === 'replace-relative'
+                && Number.isFinite(step.startOffset)
+                && Number.isFinite(step.endOffset)
+                && typeof step.text === 'string') {
+                const np = getActiveEditor()?.replaceRelative?.(step.startOffset, step.endOffset, step.text, tp)
+                trackedPos = np ?? null
+              } else if (step.action === 'replace-range'
+                && Number.isFinite(step.start)
+                && Number.isFinite(step.end)
+                && typeof step.text === 'string') {
+                if (Number.isFinite(step.selectionStart) && Number.isFinite(step.selectionEnd)) {
+                  getActiveEditor()?.setSelection?.(step.selectionStart, step.selectionEnd)
+                }
+                getActiveEditor()?.replaceRange?.(step.start, step.end, step.text)
+                trackedPos = null
+              }
+              break
+            }
+            default:
+              trackedPos = null
+              break
+          }
+        }
+      }
+    } finally {
+      isPlayingBackMacroRef.current = false
+      appendMacroDebugLine('playback-end')
+    }
+  }, [dispatchEditAction, dispatchViewAction, dispatchSearchAction, dispatchLanguageAction, dispatchToolsAction, getActiveEditor, appendMacroDebugLine])
+
+  const handleMacroAction = useCallback((action) => {
+    switch (action) {
+      case 'macro-start-recording':
+        if (isRecordingMacroRef.current) return
+        currentMacroStepsRef.current = []
+        hasStoppedRecordingMacroRef.current = false
+        isRecordingMacroRef.current = true
+        setCurrentMacroSteps([])
+        setHasStoppedRecordingMacro(false)
+        setIsRecordingMacro(true)
+        break
+      case 'macro-stop-recording':
+        if (!isRecordingMacroRef.current) return
+        isRecordingMacroRef.current = false
+        hasStoppedRecordingMacroRef.current = true
+        setIsRecordingMacro(false)
+        setHasStoppedRecordingMacro(true)
+        break
+      case 'macro-playback':
+        if (hasStoppedRecordingMacroRef.current || currentMacroStepsRef.current.length > 0) {
+          playbackMacro(currentMacroStepsRef.current, 1)
+          return
+        }
+        if (savedMacrosRef.current.length > 0) {
+          playbackMacro(savedMacrosRef.current[0].steps, 1)
+        }
+        break
+      case 'macro-save-current': {
+        const steps = currentMacroStepsRef.current
+        const hasRecordableMacro = hasStoppedRecordingMacroRef.current || steps.length > 0
+        if (!hasRecordableMacro || isRecordingMacroRef.current) return
+        const defaultName = `Recorded Macro ${savedMacrosRef.current.length + 1}`
+        setSavedMacros((prev) => [...prev, { name: defaultName, steps: [...steps] }])
+        break
+      }
+      case 'macro-run-multiple': {
+        if (isRecordingMacroRef.current) return
+        const runnable = []
+        if (hasStoppedRecordingMacroRef.current || currentMacroStepsRef.current.length > 0) {
+          runnable.push({ name: 'Current recorded macro', steps: currentMacroStepsRef.current })
+        }
+        runnable.push(...savedMacrosRef.current)
+        if (runnable.length === 0) return
+        let selectedMacro = runnable[0]
+        if (runnable.length > 1) {
+          const options = runnable.map((macro, idx) => `${idx + 1}. ${macro.name}`).join('\n')
+          const selectedIndexRaw = window.prompt(`Select a macro to run:\n${options}`, '1')
+          if (selectedIndexRaw == null) return
+          const selectedIndex = Number.parseInt(selectedIndexRaw, 10)
+          if (Number.isNaN(selectedIndex) || selectedIndex < 1 || selectedIndex > runnable.length) return
+          selectedMacro = runnable[selectedIndex - 1]
+        }
+        const timesRaw = window.prompt('Run macro how many times?', '1')
+        if (timesRaw == null) return
+        const times = Number.parseInt(timesRaw, 10)
+        if (Number.isNaN(times) || times < 1) return
+        playbackMacro(selectedMacro.steps, times)
+        break
+      }
+      default:
+        break
+    }
+  }, [playbackMacro])
+
   // Global keyboard shortcuts
   useEffect(() => {
     const onKeyDown = (e) => {
@@ -1366,18 +1666,21 @@ export default function Home() {
       } else if (ctrl && !e.shiftKey && !e.altKey && key === 'w') {
         e.preventDefault()
         handleCloseActive()
+      } else if (ctrl && e.shiftKey && !e.altKey && key === 'p') {
+        e.preventDefault()
+        handleMacroAction('macro-playback')
       } else if (e.altKey && e.code === 'KeyW') {
         e.preventDefault()
-        setWordWrap((prev) => !prev)
+        dispatchViewAction('word-wrap')
       } else if (e.altKey && !e.shiftKey && e.code === 'KeyH') {
         e.preventDefault()
-        getActiveEditor()?.hideLines()
+        dispatchViewAction('hide-lines')
       } else if (e.altKey && !e.shiftKey && e.key === '0') {
         e.preventDefault()
-        getActiveEditor()?.foldAll()
+        dispatchViewAction('fold-all')
       } else if (e.altKey && e.shiftKey && e.key === '0') {
         e.preventDefault()
-        getActiveEditor()?.unfoldAll()
+        dispatchViewAction('unfold-all')
       } else if (e.key === 'F11') {
         e.preventDefault()
         if (!document.fullscreenElement) {
@@ -1396,7 +1699,7 @@ export default function Home() {
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [handleNewTab, handleNewWindow, handleOpen, handleSave, handleSaveAs, handleSaveAll, handlePrint, handleCloseActive, handleNextTab, handlePrevTab, getActiveEditor])
+  }, [handleNewTab, handleNewWindow, handleOpen, handleSave, handleSaveAs, handleSaveAll, handlePrint, handleCloseActive, handleNextTab, handlePrevTab, dispatchViewAction, handleMacroAction])
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -1406,38 +1709,36 @@ export default function Home() {
 
       if (ctrl && !shift && !alt && e.key === 'f') {
         e.preventDefault()
-        setFindDialogMode('find')
-        setFindDialogOpen(true)
+        dispatchSearchAction('find')
       } else if (ctrl && !shift && !alt && e.key === 'h') {
         e.preventDefault()
-        setFindDialogMode('replace')
-        setFindDialogOpen(true)
+        dispatchSearchAction('replace')
       } else if (!ctrl && !shift && !alt && e.key === 'F3') {
         e.preventDefault()
-        handleFindNext()
+        dispatchSearchAction('findNext')
       } else if (!ctrl && shift && !alt && e.key === 'F3') {
         e.preventDefault()
-        handleFindPrev()
+        dispatchSearchAction('findPrev')
       } else if (ctrl && !shift && !alt && e.key === 'F3') {
         e.preventDefault()
-        handleSelectAndFindNext()
+        dispatchSearchAction('selectFindNext')
       } else if (ctrl && shift && !alt && e.key === 'F3') {
         e.preventDefault()
-        handleSelectAndFindPrev()
+        dispatchSearchAction('selectFindPrev')
       } else if (ctrl && !shift && !alt && e.key === 'g') {
         e.preventDefault()
-        setGoToDialogOpen(true)
+        dispatchSearchAction('goTo')
       } else if (ctrl && !shift && !alt && e.key === 'b') {
         e.preventDefault()
-        getActiveEditor()?.goToMatchingBrace()
+        dispatchSearchAction('goToMatchingBrace')
       } else if (ctrl && !shift && alt && e.key === 'i') {
         e.preventDefault()
-        setIncrementalSearchOpen((v) => !v)
+        dispatchSearchAction('incrementalSearch')
       }
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [handleFindNext, handleFindPrev, handleSelectAndFindNext, handleSelectAndFindPrev, getActiveEditor])
+  }, [dispatchSearchAction])
 
   // Incremental search handlers - pass noFocus so the search input keeps focus
   const handleIncrementalSearch = useCallback((term) => {
@@ -1484,13 +1785,15 @@ export default function Home() {
       )}
       <MenuBar
         onFileAction={handleFileAction}
-        onEditAction={handleEditAction}
-        onViewAction={handleViewAction}
-        onSearchAction={handleSearchAction}
-        onLanguageAction={handleLanguageAction}
-        onToolsAction={handleToolsAction}
+        onEditAction={dispatchEditAction}
+        onViewAction={dispatchViewAction}
+        onSearchAction={dispatchSearchAction}
+        onLanguageAction={dispatchLanguageAction}
+        onToolsAction={dispatchToolsAction}
+        onMacroAction={handleMacroAction}
         viewState={viewState}
         fileState={fileState}
+        macroState={macroState}
       />
       {!distractionFree && (
         <Toolbar
@@ -1502,25 +1805,20 @@ export default function Home() {
           onClose={handleCloseActive}
           onCloseAll={handleCloseAll}
           onPrint={handlePrint}
-          onUndo={handleUndo}
-          onRedo={handleRedo}
-          onCut={handleCut}
-          onCopy={handleCopy}
-          onPaste={handlePaste}
-          onFind={() => { setFindDialogMode('find'); setFindDialogOpen(true) }}
-          onReplace={() => { setFindDialogMode('replace'); setFindDialogOpen(true) }}
+          onUndo={() => dispatchEditAction('undo')}
+          onRedo={() => dispatchEditAction('redo')}
+          onCut={() => dispatchEditAction('cut')}
+          onCopy={() => dispatchEditAction('copy')}
+          onPaste={() => dispatchEditAction('paste')}
+          onFind={() => dispatchSearchAction('find')}
+          onReplace={() => dispatchSearchAction('replace')}
           onZoomIn={handleZoomIn}
           onZoomOut={handleZoomOut}
-          onSyncScrollV={() => setSyncScrollV((prev) => !prev)}
-          onSyncScrollH={() => setSyncScrollH((prev) => !prev)}
-          onWordWrap={() => setWordWrap((prev) => !prev)}
-          onShowAllChars={() => setShowAllChars((prev) => {
-            const next = !prev
-            setShowWhitespace(next)
-            setShowEol(next)
-            return next
-          })}
-          onShowIndent={() => setShowIndent((prev) => !prev)}
+          onSyncScrollV={() => dispatchViewAction('sync-scroll-v')}
+          onSyncScrollH={() => dispatchViewAction('sync-scroll-h')}
+          onWordWrap={() => dispatchViewAction('word-wrap')}
+          onShowAllChars={() => dispatchViewAction('show-all-chars')}
+          onShowIndent={() => dispatchViewAction('show-indent')}
           viewState={viewState}
         />
       )}
