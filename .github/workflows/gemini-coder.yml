@@ -12,9 +12,9 @@ permissions:
 
 jobs:
   gemini-fix:
-    # --- STRICT SECURITY LAYER ---
-    # Only runs if the Repository OWNER triggers it.
-    # Checks for GAI: in titles or /gemini in comments.
+    # --- SECURITY LAYER ---
+    # Only allows the Repository OWNER to trigger the AI.
+    # Checks for 'GAI:' in Issue titles or '/gemini' in PR comments.
     if: |
       github.event.issue.author_association == 'OWNER' &&
       (startsWith(github.event.issue.title, 'GAI:') || startsWith(github.event.comment.body, '/gemini'))
@@ -24,18 +24,27 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          # Checks out the PR branch if it exists, otherwise the default branch.
           ref: ${{ github.event.pull_request.head.ref || github.event.repository.default_branch }}
 
       - name: Gemini Code Assist
-        uses: google-github-actions/run-gemini-cli@v0.1.22
+        uses: google-github-actions/run-gemini-cli@main
         env:
+          # --- AUTHENTICATION & SECURITY ---
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GOOGLE_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          
+          # --- RUNNER SETTINGS ---
           GEMINI_CLI_TRUST_WORKSPACE: true
           GEMINI_CLI_NON_INTERACTIVE: true
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
           prompt: |
             Instruction: ${{ github.event.comment.body || github.event.issue.body }}
-            Context: Modify the code to fulfill the instruction above.
-          create_pull_request: ${{ github.event.issue.title != '' && startsWith(github.event.issue.title, 'GAI:') }}
+            Context: Update the codebase to reflect the instruction above.
+          
+          # --- CONTEXT MAPPING ---
+          # Passing these ensures Gemini knows whether to create a new PR 
+          # or update the current one.
+          github_issue_number: ${{ github.event.issue.number }}
+          github_pr_number: ${{ github.event.pull_request.number }}
