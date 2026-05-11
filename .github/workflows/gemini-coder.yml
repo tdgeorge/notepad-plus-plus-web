@@ -1,0 +1,35 @@
+name: Gemini AI Coder
+on:
+  issues:
+    types: [opened, edited]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  gemini-fix:
+    # Trigger if Issue title starts with 'GAI:' OR if a PR comment starts with '/gemini'
+    if: |
+      startsWith(github.event.issue.title, 'GAI:') || 
+      startsWith(github.event.comment.body, '/gemini')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          # If it's a comment on a PR, checkout that branch. Otherwise, checkout default branch.
+          ref: ${{ github.event.pull_request.head.ref || github.event.repository.default_branch }}
+
+      - name: Gemini Code Assist
+        uses: google-github-actions/run-gemini-cli@v1
+        with:
+          api_key: ${{ secrets.GEMINI_API_KEY }}
+          # Dynamically pull the prompt from the Issue body or the Comment body
+          prompt: |
+            Instruction: ${{ github.event.comment.body || github.event.issue.body }}
+            Context: Please modify the existing code based on the instruction above.
+          create_pull_request: ${{ github.event_issue.title != '' }}
