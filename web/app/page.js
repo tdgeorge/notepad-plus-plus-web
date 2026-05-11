@@ -859,7 +859,7 @@ export default function Home() {
       window.matchMedia('(display-mode: window-controls-overlay)').matches ||
       window.navigator.standalone === true
     if (isAppMode) {
-      window.open(url, '_blank')
+      window.open(url, '_blank', 'noopener,noreferrer')
     } else {
       window.open(url, '_blank', 'noopener,noreferrer,width=1200,height=800')
     }
