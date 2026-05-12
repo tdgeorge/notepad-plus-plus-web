@@ -90,7 +90,7 @@ export default function TabBar({ tabs, activeTabId, onSelect, onClose, onToggleP
                 {tab.pinned ? (
                   <>
                     <span className={styles.srOnly}>Pinned </span>
-                    <span className={styles.pinBadge} aria-hidden="true">\uD83D\uDCCC </span>
+                    <span className={styles.pinBadge} aria-hidden="true">📌 </span>
                   </>
                 ) : null}
                 {tab.modified ? `${tab.name} \u25cf` : tab.name}
@@ -126,7 +126,7 @@ export default function TabBar({ tabs, activeTabId, onSelect, onClose, onToggleP
             }}
             role="menuitem"
           >
-            {tabs.find((tab) => tab.id === contextMenu.tabId)?.pinned ? 'Unpin Tab' : 'Pin Tab'}
+            {orderedTabs.find((tab) => tab.id === contextMenu.tabId)?.pinned ? 'Unpin Tab' : 'Pin Tab'}
           </button>
         </div>
       )}
