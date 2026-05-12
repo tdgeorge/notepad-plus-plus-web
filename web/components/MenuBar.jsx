@@ -791,7 +791,7 @@ const MENUS = [
   {
     label: 'Settings',
     items: [
-      { label: 'Preferences...', shortcut: 'Ctrl+Alt+P', disabled: true },
+      { label: 'Preferences...', shortcut: 'Ctrl+Alt+P', action: 'preferences' },
       { label: 'Style Configurator...', action: 'styleConfigurator' },
       { label: 'Shortcut Mapper...', disabled: true },
       { separator: true },

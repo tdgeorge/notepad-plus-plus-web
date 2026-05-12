@@ -5,7 +5,7 @@
   background: var(--toolbar-bg, linear-gradient(180deg, #ddd5c7 0%, #cec5b6 100%));
   border-bottom: 1px solid var(--chrome-border);
   box-shadow: inset 0 1px 0 var(--chrome-border-light);
-  height: 29px;
+  height: var(--toolbar-height, 29px);
   flex-shrink: 0;
   position: relative;
 }
@@ -54,8 +54,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: var(--toolbar-btn-size, 22px);
+  height: var(--toolbar-btn-size, 22px);
   background: var(--toolbar-btn-bg, linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, rgba(219, 210, 193, 0) 100%));
   border: 1px solid transparent;
   border-radius: var(--ui-radius);

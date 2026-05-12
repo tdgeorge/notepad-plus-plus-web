@@ -12,6 +12,7 @@ import GoToDialog from '../components/GoToDialog'
 import IncrementalSearch from '../components/IncrementalSearch'
 import AboutDialog from '../components/AboutDialog'
 import StyleConfiguratorDialog from '../components/StyleConfiguratorDialog'
+import PreferencesDialog from '../components/PreferencesDialog'
 import ToolsHashDialog from '../components/ToolsHashDialog'
 import ToolsRandomDialog from '../components/ToolsRandomDialog'
 import WindowsDialog from '../components/WindowsDialog'
@@ -38,6 +39,13 @@ const MAX_RECORDED_MACRO_STEPS = 5000
 const MACRO_DEBUG_TAB_NAME = 'macro-debug.log'
 const MACRO_DEBUG_QUERY_PARAM = 'macroDebug'
 const MACRO_DEBUG_MAX_LINES = 2000
+const TOOLBAR_SETTINGS_KEY = 'nppw-toolbar-settings'
+const DEFAULT_TOOLBAR_SETTINGS = {
+  iconSet: 'small',
+  iconColor: 'defaultColor',
+  iconMonochrome: false,
+  customColor: '#0078D4',
+}
 
 /**
  * Push `content` onto the undo history for `tabId`, capping the stack for
@@ -111,6 +119,7 @@ export default function Home() {
   const [incrementalSearchOpen, setIncrementalSearchOpen] = useState(false)
   const [aboutDialogOpen, setAboutDialogOpen] = useState(false)
   const [styleConfiguratorOpen, setStyleConfiguratorOpen] = useState(false)
+  const [preferencesOpen, setPreferencesOpen] = useState(false)
   const [toolsHashDialogOpen, setToolsHashDialogOpen] = useState(false)
   const [toolsHashAlgorithm, setToolsHashAlgorithm] = useState('MD5')
   const [toolsHashInitialText, setToolsHashInitialText] = useState('')
@@ -122,6 +131,7 @@ export default function Home() {
   const [currentMacroSteps, setCurrentMacroSteps] = useState([])
   const [hasStoppedRecordingMacro, setHasStoppedRecordingMacro] = useState(false)
   const [savedMacros, setSavedMacros] = useState([])
+  const [toolbarSettings, setToolbarSettings] = useState(DEFAULT_TOOLBAR_SETTINGS)
   const searchStateRef = useRef({ term: '', options: { matchCase: false, wholeWord: false, wrapAround: true } })
   // Guard flag prevents the two editors from triggering each other's scroll endlessly.
   const syncScrollingRef = useRef(false)
@@ -159,6 +169,31 @@ export default function Home() {
       localStorage.setItem('nppw-theme', themeId)
     }
   }, [themeId])
+
+  // Load persisted toolbar settings on mount
+  useEffect(() => {
+    if (typeof localStorage === 'undefined') return
+    try {
+      const raw = localStorage.getItem(TOOLBAR_SETTINGS_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        setToolbarSettings({ ...DEFAULT_TOOLBAR_SETTINGS, ...parsed })
+      }
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  // Persist toolbar settings and update CSS custom properties when settings change
+  useEffect(() => {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(TOOLBAR_SETTINGS_KEY, JSON.stringify(toolbarSettings))
+    }
+    // Adjust toolbar height CSS variable for large icon sets
+    const isLarge = toolbarSettings.iconSet === 'large' || toolbarSettings.iconSet === 'large-filled'
+    document.documentElement.style.setProperty('--toolbar-height', isLarge ? '43px' : '29px')
+    document.documentElement.style.setProperty('--toolbar-btn-size', isLarge ? '38px' : '22px')
+  }, [toolbarSettings])
 
   useEffect(() => {
     if (typeof localStorage === 'undefined') return
@@ -1011,6 +1046,7 @@ export default function Home() {
         case 'printNow': handlePrint(); break
         case 'exit': handleExit(); break
         case 'about': setAboutDialogOpen(true); break
+        case 'preferences': setPreferencesOpen(true); break
         case 'styleConfigurator': setStyleConfiguratorOpen(true); break
         case 'windows': setWindowsDialogOpen(true); break
         case 'nextTab': handleNextTab(); break
@@ -1681,6 +1717,9 @@ export default function Home() {
       } else if (e.altKey && e.shiftKey && e.key === '0') {
         e.preventDefault()
         dispatchViewAction('unfold-all')
+      } else if (ctrl && e.altKey && !e.shiftKey && key === 'p') {
+        e.preventDefault()
+        setPreferencesOpen(true)
       } else if (e.key === 'F11') {
         e.preventDefault()
         if (!document.fullscreenElement) {
@@ -1798,6 +1837,10 @@ export default function Home() {
       {!distractionFree && (
         <Toolbar
           isDark={THEMES.find((t) => t.id === themeId)?.dark ?? false}
+          iconSet={toolbarSettings.iconSet}
+          iconColor={toolbarSettings.iconColor}
+          iconMonochrome={toolbarSettings.iconMonochrome}
+          customColor={toolbarSettings.customColor}
           onNew={handleNewTab}
           onOpen={handleOpen}
           onSave={handleSave}
@@ -1932,6 +1975,12 @@ export default function Home() {
         currentThemeId={themeId}
         onApply={(id) => setThemeId(id)}
         onClose={() => setStyleConfiguratorOpen(false)}
+      />
+      <PreferencesDialog
+        isOpen={preferencesOpen}
+        toolbarSettings={toolbarSettings}
+        onApply={(settings) => setToolbarSettings(settings)}
+        onClose={() => setPreferencesOpen(false)}
       />
       <ToolsHashDialog
         isOpen={toolsHashDialogOpen}
