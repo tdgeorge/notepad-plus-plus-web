@@ -32,6 +32,38 @@
   line-height: inherit;
 }
 
+.lineBookmarked::before {
+  content: '';
+  position: absolute;
+  right: -9px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #2f6feb;
+}
+
+.lineMarkStyle1 {
+  box-shadow: inset 3px 0 0 #ffd666;
+}
+
+.lineMarkStyle2 {
+  box-shadow: inset 3px 0 0 #ffa940;
+}
+
+.lineMarkStyle3 {
+  box-shadow: inset 3px 0 0 #95de64;
+}
+
+.lineMarkStyle4 {
+  box-shadow: inset 3px 0 0 #69c0ff;
+}
+
+.lineMarkStyle5 {
+  box-shadow: inset 3px 0 0 #d3adf7;
+}
+
 .lineNumberCurrent {
   background: var(--editor-current-line, #e8f2ff);
   color: var(--editor-gutter-fg-current, var(--editor-gutter-fg));
