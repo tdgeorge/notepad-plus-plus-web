@@ -4,8 +4,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import styles from './TabBar.module.css'
 import { getOrderedTabs } from '../lib/pinnedTabs.mjs'
 
-const DOUBLE_TAP_MS = 350
-const DOUBLE_TAP_MAX_MOVE = 24
+const DOUBLE_TAP_MS = 500
+const DOUBLE_TAP_MAX_MOVE = 36
+const TOUCH_DISMISS_GUARD_MS = 250
 
 const TAB_COLORS = {
   1: { bg: '#f5d76e', text: '#333' },
@@ -24,24 +25,25 @@ export default function TabBar({ tabs, activeTabId, onSelect, onClose, onToggleP
     [contextMenu, orderedTabs]
   )
 
-  const openTabContextMenu = (tabId, x, y) => {
-    setContextMenu({ tabId, x, y })
+  const openTabContextMenu = (tabId, x, y, { fromTouch = false } = {}) => {
+    setContextMenu({ tabId, x, y, openedAt: Date.now(), fromTouch })
   }
 
   useEffect(() => {
     if (!contextMenu) return undefined
-    const close = () => setContextMenu(null)
-    document.addEventListener('click', close)
-    document.addEventListener('contextmenu', close)
-    document.addEventListener('keydown', close)
-    window.addEventListener('resize', close)
-    window.addEventListener('scroll', close, true)
+    const closeOnClick = (event) => {
+      if (
+        contextMenu.fromTouch &&
+        Date.now() - contextMenu.openedAt < TOUCH_DISMISS_GUARD_MS
+      ) {
+        return
+      }
+      if (event.target instanceof Element && event.target.closest('[data-tab-context-menu="true"]')) return
+      setContextMenu(null)
+    }
+    document.addEventListener('click', closeOnClick)
     return () => {
-      document.removeEventListener('click', close)
-      document.removeEventListener('contextmenu', close)
-      document.removeEventListener('keydown', close)
-      window.removeEventListener('resize', close)
-      window.removeEventListener('scroll', close, true)
+      document.removeEventListener('click', closeOnClick)
     }
   }, [contextMenu])
 
@@ -78,7 +80,7 @@ export default function TabBar({ tabs, activeTabId, onSelect, onClose, onToggleP
                 const isWithinDistance = dx <= DOUBLE_TAP_MAX_MOVE && dy <= DOUBLE_TAP_MAX_MOVE
                 if (isSameTab && isWithinTime && isWithinDistance) {
                   e.preventDefault()
-                  openTabContextMenu(tab.id, touch.clientX, touch.clientY)
+                  openTabContextMenu(tab.id, touch.clientX, touch.clientY, { fromTouch: true })
                   lastTouchTapRef.current = null
                   return
                 }
@@ -118,6 +120,7 @@ export default function TabBar({ tabs, activeTabId, onSelect, onClose, onToggleP
           className={styles.contextMenu}
           style={{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }}
           role="menu"
+          data-tab-context-menu="true"
           onClick={(e) => e.stopPropagation()}
         >
           <button
