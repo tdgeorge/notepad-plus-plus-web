@@ -1,6 +1,9 @@
 #-------------------------------------------------------------------------------
 # VisualStudio
 
+# Next.js build artifacts (web subproject)
+.next/
+
 #-- User-specific files
 *.suo
 *.user
