@@ -58,7 +58,7 @@ const MENUS = [
         label: 'Close Multiple Documents',
         submenu: [
           { label: 'Close All but Active Document', action: 'closeAllButActive' },
-          { label: 'Close All but Pinned Documents', disabled: true },
+          { label: 'Close All but Pinned Documents', action: 'closeAllButPinned' },
           { label: 'Close All to the Left', action: 'closeAllToLeft' },
           { label: 'Close All to the Right', action: 'closeAllToRight' },
           { label: 'Close All Unchanged', action: 'closeAllUnchanged' },
