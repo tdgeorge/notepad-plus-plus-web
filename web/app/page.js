@@ -17,6 +17,8 @@ import ToolsHashDialog from '../components/ToolsHashDialog'
 import ToolsRandomDialog from '../components/ToolsRandomDialog'
 import WindowsDialog from '../components/WindowsDialog'
 import DocumentMapPanel from '../components/DocumentMapPanel'
+import FunctionListPanel from '../components/FunctionListPanel'
+import { extractSymbols } from '../lib/functionList.mjs'
 import { md5 } from '../lib/md5'
 import { applyTheme, THEMES, DEFAULT_THEME_ID } from '../lib/themes'
 import { detectLanguage } from '../lib/languages/index'
@@ -128,6 +130,7 @@ export default function Home() {
   const [windowsDialogOpen, setWindowsDialogOpen] = useState(false)
   const [docMapOpen, setDocMapOpen] = useState(false)
   const [docMapScrollInfo, setDocMapScrollInfo] = useState({ scrollTop: 0, scrollHeight: 1, clientHeight: 1 })
+  const [funcListOpen, setFuncListOpen] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const [isRecordingMacro, setIsRecordingMacro] = useState(false)
   const [currentMacroSteps, setCurrentMacroSteps] = useState([])
@@ -338,7 +341,7 @@ export default function Home() {
   // Language is stored per-tab (set at file-open time or overridden via Language menu).
   const language = activeTab?.language ?? null
 
-  const viewState = { wordWrap, showWhitespace, showEol, showAllChars, showIndent, language, splitEnabled, distractionFree, syncScrollV, syncScrollH, textDirection, docMapOpen }
+  const viewState = { wordWrap, showWhitespace, showEol, showAllChars, showIndent, language, splitEnabled, distractionFree, syncScrollV, syncScrollH, textDirection, docMapOpen, funcListOpen }
 
   const orderedTabs = useMemo(() => getOrderedTabs(tabs), [tabs])
   const activeTabIndex = orderedTabs.findIndex((t) => t.id === activeTabId)
@@ -1443,6 +1446,9 @@ export default function Home() {
       case 'document-map':
         setDocMapOpen((prev) => !prev)
         break
+      case 'function-list':
+        setFuncListOpen((prev) => !prev)
+        break
       case 'sync-scroll-v':
         setSyncScrollV((prev) => !prev)
         break
@@ -1991,6 +1997,12 @@ export default function Home() {
   const displayContent = activeView === 1 ? (activeTab?.content ?? '') : (view2ActiveTab?.content ?? '')
   const displayIsLargeFile = displayContent.length > LARGE_FILE_THRESHOLD
 
+  // Compute symbols for the Function List panel (memoised by content + language)
+  const funcListSymbols = useMemo(
+    () => (funcListOpen ? extractSymbols(displayContent, displayLanguage) : []),
+    [funcListOpen, displayContent, displayLanguage]
+  )
+
   return (
     <div
       className={`${styles.app} ${isDragOver ? styles.dragOver : ''}`}
@@ -2150,6 +2162,14 @@ export default function Home() {
             clientHeight={docMapScrollInfo.clientHeight}
             onNavigate={(top) => getActiveEditor()?.setScrollPosition(top, null)}
             onClose={() => setDocMapOpen(false)}
+          />
+        )}
+        {funcListOpen && !distractionFree && (
+          <FunctionListPanel
+            symbols={funcListSymbols}
+            language={displayLanguage}
+            onJump={(lineNum) => getActiveEditor()?.goToLine(lineNum)}
+            onClose={() => setFuncListOpen(false)}
           />
         )}
       </div>

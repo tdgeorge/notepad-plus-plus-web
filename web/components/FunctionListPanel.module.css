@@ -1,0 +1,108 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--editor-bg);
+  border-left: 1px solid var(--chrome-border);
+  overflow: hidden;
+  user-select: none;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 4px;
+  background: var(--chrome-bg);
+  border-bottom: 1px solid var(--chrome-border);
+  font-size: 11px;
+  color: var(--chrome-text);
+  flex-shrink: 0;
+}
+
+.title {
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  color: var(--chrome-text-subtle);
+  flex-shrink: 0;
+}
+
+.closeBtn:hover {
+  color: var(--chrome-text);
+}
+
+.list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  scrollbar-width: thin;
+}
+
+.list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.list::-webkit-scrollbar-thumb {
+  background: var(--chrome-border);
+  border-radius: 3px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  font-size: 12px;
+  font-family: var(--editor-font, monospace);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--editor-fg);
+  line-height: 1.6;
+}
+
+.item:hover {
+  background: var(--accent, #0078d4);
+  color: #fff;
+}
+
+.item:hover .kindIcon {
+  color: #fff;
+}
+
+.kindIcon {
+  font-size: 10px;
+  flex-shrink: 0;
+  font-style: normal;
+  color: var(--chrome-text-subtle);
+  min-width: 12px;
+  text-align: center;
+}
+
+.symbolName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.empty {
+  padding: 8px 6px;
+  font-size: 11px;
+  color: var(--chrome-text-subtle);
+  font-style: italic;
+}

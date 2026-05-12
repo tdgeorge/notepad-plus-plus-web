@@ -505,7 +505,7 @@ const MENUS = [
       { label: 'Folder as Workspace', disabled: true },
       { label: 'Document Map', action: 'document-map' },
       { label: 'Document List', action: 'document-list' },
-      { label: 'Function List', disabled: true },
+      { label: 'Function List', action: 'function-list' },
       { separator: true },
       { label: 'Synchronize Vertical Scrolling', action: 'sync-scroll-v' },
       { label: 'Synchronize Horizontal Scrolling', action: 'sync-scroll-h' },
@@ -1125,6 +1125,7 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
       case 'sync-scroll-v': return viewState.syncScrollV
       case 'sync-scroll-h': return viewState.syncScrollH
       case 'document-map': return viewState.docMapOpen
+      case 'function-list': return viewState.funcListOpen
       case 'text-dir-rtl': return viewState.textDirection === 'rtl'
       case 'text-dir-ltr': return viewState.textDirection === 'ltr'
       case 'lang-plain-text': return viewState.language == null
