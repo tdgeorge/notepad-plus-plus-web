@@ -19,6 +19,10 @@ export default function TabBar({ tabs, activeTabId, onSelect, onClose, onToggleP
   const [contextMenu, setContextMenu] = useState(null)
   const lastTouchTapRef = useRef(null)
   const orderedTabs = useMemo(() => getOrderedTabs(tabs), [tabs])
+  const contextMenuTab = useMemo(
+    () => (contextMenu ? orderedTabs.find((tab) => tab.id === contextMenu.tabId) : null),
+    [contextMenu, orderedTabs]
+  )
 
   const openTabContextMenu = (tabId, x, y) => {
     setContextMenu({ tabId, x, y })
@@ -47,6 +51,7 @@ export default function TabBar({ tabs, activeTabId, onSelect, onClose, onToggleP
         const colorStyle = tab.color ? TAB_COLORS[tab.color] : null
         const prev = orderedTabs[index - 1]
         const showPinnedDivider = index > 0 && Boolean(prev?.pinned) && !tab.pinned
+        const tabAriaLabel = `${tab.pinned ? 'Pinned: ' : ''}${tab.name}`
         return (
           <div key={tab.id} className={styles.tabSlot}>
             {showPinnedDivider && <div className={styles.pinnedDivider} aria-hidden="true" />}
@@ -54,6 +59,7 @@ export default function TabBar({ tabs, activeTabId, onSelect, onClose, onToggleP
               className={`${styles.tab} ${tab.id === activeTabId ? styles.active : ''} ${tab.pinned ? styles.pinned : ''}`}
               role="tab"
               aria-selected={tab.id === activeTabId}
+              aria-label={tabAriaLabel}
               onClick={() => onSelect(tab.id)}
               onContextMenu={(e) => {
                 e.preventDefault()
@@ -87,10 +93,7 @@ export default function TabBar({ tabs, activeTabId, onSelect, onClose, onToggleP
             >
               <span className={styles.tabName}>
                 {tab.pinned ? (
-                  <>
-                    <span className={styles.srOnly}>Pinned </span>
-                    <span className={styles.pinBadge} aria-hidden="true">📌</span>
-                  </>
+                  <span className={styles.pinBadge} aria-hidden="true">📌</span>
                 ) : null}
                 {tab.modified ? `${tab.name} \u25cf` : tab.name}
               </span>
@@ -125,7 +128,7 @@ export default function TabBar({ tabs, activeTabId, onSelect, onClose, onToggleP
             }}
             role="menuitem"
           >
-            {orderedTabs.find((tab) => tab.id === contextMenu.tabId)?.pinned ? 'Unpin Tab' : 'Pin Tab'}
+            {contextMenuTab?.pinned ? 'Unpin Tab' : 'Pin Tab'}
           </button>
         </div>
       )}
