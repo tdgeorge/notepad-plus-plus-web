@@ -1483,6 +1483,57 @@ export default function Home() {
       case 'goToMatchingBrace':
         getActiveEditor()?.goToMatchingBrace()
         break
+      case 'mark-prompt': {
+        const term = window.prompt('Mark lines containing:', searchStateRef.current.term ?? '')
+        if (term == null) break
+        const styleRaw = window.prompt('Mark style (1-5):', '1')
+        if (styleRaw == null) break
+        const style = Number.parseInt(styleRaw, 10)
+        if (Number.isNaN(style) || style < 1 || style > 5) {
+          window.alert('Please choose a mark style from 1 to 5.')
+          break
+        }
+        searchStateRef.current = { ...searchStateRef.current, term }
+        getActiveEditor()?.markLinesByTerm?.(term, style)
+        break
+      }
+      case 'bookmark-toggle':
+        getActiveEditor()?.toggleBookmark?.()
+        break
+      case 'bookmark-next':
+        getActiveEditor()?.nextBookmark?.()
+        break
+      case 'bookmark-prev':
+        getActiveEditor()?.prevBookmark?.()
+        break
+      case 'bookmark-clear':
+        getActiveEditor()?.clearBookmarks?.()
+        break
+      case 'bookmark-copy-lines':
+        getActiveEditor()?.copyBookmarkedAndMarkedLines?.()
+        break
+      case 'bookmark-cut-lines':
+        getActiveEditor()?.cutBookmarkedAndMarkedLines?.()
+        break
+      case 'bookmark-paste-lines': {
+        if (navigator.clipboard?.readText) {
+          navigator.clipboard.readText()
+            .then((text) => {
+              getActiveEditor()?.pasteToBookmarkedAndMarkedLines?.(text ?? '')
+            })
+            .catch(() => {})
+        }
+        break
+      }
+      case 'bookmark-remove-lines':
+        getActiveEditor()?.removeBookmarkedAndMarkedLines?.()
+        break
+      case 'bookmark-remove-unmarked-lines':
+        getActiveEditor()?.removeUnbookmarkedAndUnmarkedLines?.()
+        break
+      case 'bookmark-inverse':
+        getActiveEditor()?.inverseBookmarks?.()
+        break
       default:
         break
     }
@@ -1721,6 +1772,15 @@ export default function Home() {
       } else if (ctrl && e.altKey && !e.shiftKey && key === 'p') {
         e.preventDefault()
         setPreferencesOpen(true)
+      } else if (e.key === 'F2' && ctrl) {
+        e.preventDefault()
+        dispatchSearchAction('bookmark-toggle')
+      } else if (e.key === 'F2' && e.shiftKey) {
+        e.preventDefault()
+        dispatchSearchAction('bookmark-prev')
+      } else if (e.key === 'F2') {
+        e.preventDefault()
+        dispatchSearchAction('bookmark-next')
       } else if (e.key === 'F11') {
         e.preventDefault()
         if (!document.fullscreenElement) {
@@ -1739,7 +1799,7 @@ export default function Home() {
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [handleNewTab, handleNewWindow, handleOpen, handleSave, handleSaveAs, handleSaveAll, handlePrint, handleCloseActive, handleNextTab, handlePrevTab, dispatchViewAction, handleMacroAction])
+  }, [handleNewTab, handleNewWindow, handleOpen, handleSave, handleSaveAs, handleSaveAll, handlePrint, handleCloseActive, handleNextTab, handlePrevTab, dispatchViewAction, dispatchSearchAction, handleMacroAction])
 
   useEffect(() => {
     const handleKeyDown = (e) => {

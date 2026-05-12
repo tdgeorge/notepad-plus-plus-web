@@ -4,6 +4,16 @@ import { useRef, useEffect, useCallback, useState, useMemo, forwardRef, useImper
 import styles from './Editor.module.css'
 import { TOKENIZERS } from '../lib/languages/index'
 import { TOKEN } from '../lib/languages/javascript'
+import {
+  getLineIndexAtOffset,
+  getLineStartOffset,
+  normalizeLineSet,
+  remapLineSetAfterEdit,
+  getLineTextBySet,
+  removeLinesBySet,
+  replaceLinesBySet,
+  invertLineSet,
+} from '../lib/lineMarkers.mjs'
 
 const TAB_SIZE = 4
 
@@ -449,6 +459,14 @@ const Editor = forwardRef(function Editor(
   const [currentLineIndex, setCurrentLineIndex] = useState(0)
   const [currentLineStartOffset, setCurrentLineStartOffset] = useState(0)
   const [measuredCurrentLineTop, setMeasuredCurrentLineTop] = useState(4)
+  const [bookmarkedLines, setBookmarkedLines] = useState(new Set())
+  const [markedLinesByStyle, setMarkedLinesByStyle] = useState({
+    1: new Set(),
+    2: new Set(),
+    3: new Set(),
+    4: new Set(),
+    5: new Set(),
+  })
   const onChangeRef = useRef(onChange)
   useEffect(() => { onChangeRef.current = onChange }, [onChange])
   const onUndoRef = useRef(onUndo)
@@ -457,6 +475,11 @@ const Editor = forwardRef(function Editor(
   useEffect(() => { onRedoRef.current = onRedo }, [onRedo])
   const onEditorScrollRef = useRef(onEditorScroll)
   useEffect(() => { onEditorScrollRef.current = onEditorScroll }, [onEditorScroll])
+  const lastValueRef = useRef(content)
+  const bookmarkedLinesRef = useRef(bookmarkedLines)
+  useEffect(() => { bookmarkedLinesRef.current = bookmarkedLines }, [bookmarkedLines])
+  const markedLinesByStyleRef = useRef(markedLinesByStyle)
+  useEffect(() => { markedLinesByStyleRef.current = markedLinesByStyle }, [markedLinesByStyle])
 
   // ── Large-file mode ───────────────────────────────────────────────────────
   // Skip every expensive O(n) operation when the file exceeds the threshold.
@@ -590,6 +613,72 @@ const Editor = forwardRef(function Editor(
     setLineCount(lines)
   }, [])
 
+  useEffect(() => {
+    lastValueRef.current = content
+    const totalLines = content.split('\n').length
+    setBookmarkedLines((prev) => normalizeLineSet(prev, totalLines))
+    setMarkedLinesByStyle((prev) => ({
+      1: normalizeLineSet(prev[1], totalLines),
+      2: normalizeLineSet(prev[2], totalLines),
+      3: normalizeLineSet(prev[3], totalLines),
+      4: normalizeLineSet(prev[4], totalLines),
+      5: normalizeLineSet(prev[5], totalLines),
+    }))
+  }, [content])
+
+  const getAllMarkedLines = useCallback(() => {
+    const union = new Set()
+    const marks = markedLinesByStyleRef.current
+    for (let style = 1; style <= 5; style++) {
+      for (const line of marks[style]) union.add(line)
+    }
+    return union
+  }, [])
+
+  const getMarkedTargetLines = useCallback(() => {
+    const union = new Set(bookmarkedLinesRef.current)
+    for (const line of getAllMarkedLines()) union.add(line)
+    return union
+  }, [getAllMarkedLines])
+
+  const createEmptyMarkStyleSet = useCallback(() => ({
+    1: new Set(),
+    2: new Set(),
+    3: new Set(),
+    4: new Set(),
+    5: new Set(),
+  }), [])
+
+  const normalizeMarkStyle = useCallback((style) => (
+    Number.isFinite(style) ? Math.max(1, Math.min(5, Math.floor(style))) : 1
+  ), [])
+
+  const normalizeMarkedLinesByStyle = useCallback((markedByStyle, totalLines) => ({
+    1: normalizeLineSet(markedByStyle[1], totalLines),
+    2: normalizeLineSet(markedByStyle[2], totalLines),
+    3: normalizeLineSet(markedByStyle[3], totalLines),
+    4: normalizeLineSet(markedByStyle[4], totalLines),
+    5: normalizeLineSet(markedByStyle[5], totalLines),
+  }), [])
+
+  const goToLineIndex = useCallback((lineIndex) => {
+    const textarea = textareaRef.current
+    if (!textarea) return false
+    const lines = textarea.value.split('\n')
+    if (lines.length === 0) return false
+    const targetLine = Math.max(0, Math.min(lineIndex, lines.length - 1))
+    const pos = getLineStartOffset(textarea.value, targetLine)
+    textarea.focus()
+    textarea.setSelectionRange(pos, pos)
+    const nextScrollTop = Math.max(0, targetLine * lineHeightPx - textarea.clientHeight / 2)
+    textarea.scrollTop = nextScrollTop
+    setEditorScrollTop(nextScrollTop)
+    setCurrentLineIndex(targetLine)
+    setCurrentLineStartOffset(pos)
+    if (onCursorChange) onCursorChange({ line: targetLine + 1, col: 1, sel: 0 })
+    return true
+  }, [lineHeightPx, onCursorChange])
+
   const syncScroll = useCallback(() => {
     const ta = textareaRef.current
     if (!ta) return
@@ -630,6 +719,7 @@ const Editor = forwardRef(function Editor(
   const handleChange = useCallback(
     (e) => {
       const value = e.target.value
+      const previousValue = lastValueRef.current
       // Fallback when a pre-input snapshot is unavailable (some browser/input paths).
       const beforeSelection = pendingSelectionRef.current ?? {
         start: e.target.selectionStart,
@@ -638,6 +728,17 @@ const Editor = forwardRef(function Editor(
         inputData: null,
       }
       pendingSelectionRef.current = null
+      if (previousValue !== value) {
+        setBookmarkedLines((prev) => remapLineSetAfterEdit(prev, previousValue, value))
+        setMarkedLinesByStyle((prev) => ({
+          1: remapLineSetAfterEdit(prev[1], previousValue, value),
+          2: remapLineSetAfterEdit(prev[2], previousValue, value),
+          3: remapLineSetAfterEdit(prev[3], previousValue, value),
+          4: remapLineSetAfterEdit(prev[4], previousValue, value),
+          5: remapLineSetAfterEdit(prev[5], previousValue, value),
+        }))
+      }
+      lastValueRef.current = value
       onChange(value, {
         beforeSelectionStart: beforeSelection.start,
         beforeSelectionEnd: beforeSelection.end,
@@ -920,6 +1021,166 @@ const Editor = forwardRef(function Editor(
       const nextScrollTop = Math.max(0, (target - 1) * lineHeightPx - textarea.clientHeight / 2)
       textarea.scrollTop = nextScrollTop
       setEditorScrollTop(nextScrollTop)
+      updateCursor()
+    },
+
+    isCurrentLineBookmarked() {
+      const textarea = textareaRef.current
+      if (!textarea) return false
+      const line = getLineIndexAtOffset(textarea.value, textarea.selectionStart)
+      return bookmarkedLinesRef.current.has(line)
+    },
+
+    toggleBookmark() {
+      const textarea = textareaRef.current
+      if (!textarea) return
+      const line = getLineIndexAtOffset(textarea.value, textarea.selectionStart)
+      setBookmarkedLines((prev) => {
+        const next = new Set(prev)
+        if (next.has(line)) next.delete(line)
+        else next.add(line)
+        return next
+      })
+    },
+
+    nextBookmark() {
+      const textarea = textareaRef.current
+      const bookmarks = [...bookmarkedLinesRef.current].sort((a, b) => a - b)
+      if (!textarea || bookmarks.length === 0) return false
+      const currentLine = getLineIndexAtOffset(textarea.value, textarea.selectionStart)
+      const target = bookmarks.find((line) => line > currentLine) ?? bookmarks[0]
+      return goToLineIndex(target)
+    },
+
+    prevBookmark() {
+      const textarea = textareaRef.current
+      const bookmarks = [...bookmarkedLinesRef.current].sort((a, b) => a - b)
+      if (!textarea || bookmarks.length === 0) return false
+      const currentLine = getLineIndexAtOffset(textarea.value, textarea.selectionStart)
+      const target = [...bookmarks].reverse().find((line) => line < currentLine) ?? bookmarks[bookmarks.length - 1]
+      return goToLineIndex(target)
+    },
+
+    clearBookmarks() {
+      setBookmarkedLines(new Set())
+    },
+
+    inverseBookmarks() {
+      const textarea = textareaRef.current
+      if (!textarea) return
+      const totalLines = textarea.value.split('\n').length
+      setBookmarkedLines((prev) => invertLineSet(prev, totalLines))
+    },
+
+    markLinesByTerm(term, style = 1) {
+      const textarea = textareaRef.current
+      if (!textarea) return 0
+      const safeStyle = normalizeMarkStyle(style)
+      const query = typeof term === 'string' ? term : ''
+      if (!query) {
+        setMarkedLinesByStyle((prev) => ({ ...prev, [safeStyle]: new Set() }))
+        return 0
+      }
+      const needle = query.toLowerCase()
+      const lines = textarea.value.split('\n')
+      const nextSet = new Set()
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].toLowerCase().includes(needle)) nextSet.add(i)
+      }
+      setMarkedLinesByStyle((prev) => ({ ...prev, [safeStyle]: nextSet }))
+      return nextSet.size
+    },
+
+    clearMarkStyle(style = 1) {
+      const safeStyle = normalizeMarkStyle(style)
+      setMarkedLinesByStyle((prev) => ({ ...prev, [safeStyle]: new Set() }))
+    },
+
+    clearAllMarkStyles() {
+      setMarkedLinesByStyle(createEmptyMarkStyleSet())
+    },
+
+    copyBookmarkedAndMarkedLines() {
+      const textarea = textareaRef.current
+      if (!textarea) return ''
+      const targetLines = getMarkedTargetLines()
+      const text = getLineTextBySet(textarea.value, targetLines)
+      if (text && navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(text).catch(() => {})
+      }
+      return text
+    },
+
+    cutBookmarkedAndMarkedLines() {
+      const textarea = textareaRef.current
+      if (!textarea) return
+      const targetLines = getMarkedTargetLines()
+      const copied = getLineTextBySet(textarea.value, targetLines)
+      const newText = removeLinesBySet(textarea.value, targetLines, true)
+      if (newText === textarea.value) return
+      if (copied && navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(copied).catch(() => {})
+      }
+      textarea.value = newText
+      lastValueRef.current = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
+      setBookmarkedLines(new Set())
+      setMarkedLinesByStyle(createEmptyMarkStyleSet())
+      textarea.setSelectionRange(0, 0)
+      textarea.focus()
+      updateCursor()
+    },
+
+    pasteToBookmarkedAndMarkedLines(text = '') {
+      const textarea = textareaRef.current
+      if (!textarea) return
+      const targetLines = getMarkedTargetLines()
+      const newText = replaceLinesBySet(textarea.value, targetLines, text)
+      if (newText === textarea.value) return
+      textarea.value = newText
+      lastValueRef.current = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
+      const totalLines = newText.split('\n').length
+      setBookmarkedLines((prev) => normalizeLineSet(prev, totalLines))
+      setMarkedLinesByStyle((prev) => normalizeMarkedLinesByStyle(prev, totalLines))
+      textarea.focus()
+      updateCursor()
+    },
+
+    removeBookmarkedAndMarkedLines() {
+      const textarea = textareaRef.current
+      if (!textarea) return
+      const targetLines = getMarkedTargetLines()
+      const newText = removeLinesBySet(textarea.value, targetLines, true)
+      if (newText === textarea.value) return
+      textarea.value = newText
+      lastValueRef.current = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
+      setBookmarkedLines(new Set())
+      setMarkedLinesByStyle(createEmptyMarkStyleSet())
+      textarea.setSelectionRange(0, 0)
+      textarea.focus()
+      updateCursor()
+    },
+
+    removeUnbookmarkedAndUnmarkedLines() {
+      const textarea = textareaRef.current
+      if (!textarea) return
+      const targetLines = getMarkedTargetLines()
+      const newText = removeLinesBySet(textarea.value, targetLines, false)
+      if (newText === textarea.value) return
+      textarea.value = newText
+      lastValueRef.current = newText
+      onChangeRef.current(newText)
+      updateLineCount(newText)
+      const totalLines = newText.split('\n').length
+      setBookmarkedLines((prev) => normalizeLineSet(prev, totalLines))
+      setMarkedLinesByStyle((prev) => normalizeMarkedLinesByStyle(prev, totalLines))
+      textarea.setSelectionRange(0, 0)
+      textarea.focus()
       updateCursor()
     },
 
@@ -1867,7 +2128,7 @@ const Editor = forwardRef(function Editor(
       return targetPos
     },
 
-  }), [indent, dedent, lineCount, lineHeightPx, updateCursor, updateLineCount, scrollToChar])
+  }), [indent, dedent, lineCount, lineHeightPx, updateCursor, updateLineCount, scrollToChar, goToLineIndex, getMarkedTargetLines, createEmptyMarkStyleSet, normalizeMarkStyle, normalizeMarkedLinesByStyle])
 
   const handleKeyDown = useCallback(
     (e) => {
@@ -1890,6 +2151,18 @@ const Editor = forwardRef(function Editor(
     [captureSelectionSnapshot, indent, dedent]
   )
 
+  const getLineMarkerClassName = useCallback((lineIndex) => {
+    let markerClassName = ''
+    if (bookmarkedLines.has(lineIndex)) markerClassName += ` ${styles.lineBookmarked}`
+    // Mark styles are prioritized from 1 to 5 when a line matches multiple styles.
+    if (markedLinesByStyle[1].has(lineIndex)) markerClassName += ` ${styles.lineMarkStyle1}`
+    else if (markedLinesByStyle[2].has(lineIndex)) markerClassName += ` ${styles.lineMarkStyle2}`
+    else if (markedLinesByStyle[3].has(lineIndex)) markerClassName += ` ${styles.lineMarkStyle3}`
+    else if (markedLinesByStyle[4].has(lineIndex)) markerClassName += ` ${styles.lineMarkStyle4}`
+    else if (markedLinesByStyle[5].has(lineIndex)) markerClassName += ` ${styles.lineMarkStyle5}`
+    return markerClassName
+  }, [bookmarkedLines, markedLinesByStyle])
+
   return (
     <div className={styles.editorWrapper}>
       <div className={styles.editorContainer} style={{ fontSize: `${effectiveFontSize}px`, lineHeight: LINE_HEIGHT_RATIO }}>
@@ -1910,7 +2183,7 @@ const Editor = forwardRef(function Editor(
               items.push(<div key="top" style={{ height: firstVisible * lineHeightPx }} />)
             }
             for (let i = firstVisible; i <= lastVisible; i++) {
-              items.push(<div key={i} className={`${styles.lineNumber}${i === currentLineIndex ? ` ${styles.lineNumberCurrent}` : ''}`}>{i + 1}</div>)
+              items.push(<div key={i} className={`${styles.lineNumber}${i === currentLineIndex ? ` ${styles.lineNumberCurrent}` : ''}${getLineMarkerClassName(i)}`}>{i + 1}</div>)
             }
             if (lastVisible < lineCount - 1) {
               items.push(<div key="bot" style={{ height: (lineCount - 1 - lastVisible) * lineHeightPx }} />)
@@ -1925,7 +2198,7 @@ const Editor = forwardRef(function Editor(
             return (
               <div
                 key={i}
-                className={`${styles.lineNumber}${i === currentLineIndex ? ` ${styles.lineNumberCurrent}` : ''}`}
+                className={`${styles.lineNumber}${i === currentLineIndex ? ` ${styles.lineNumberCurrent}` : ''}${getLineMarkerClassName(i)}`}
               >
                 {region && (
                   <button
