@@ -690,7 +690,7 @@ const Editor = forwardRef(function Editor(
       mirrorRef.current.scrollLeft = ta.scrollLeft
     }
     setEditorScrollTop(ta.scrollTop)
-    onEditorScrollRef.current?.(ta.scrollTop, ta.scrollLeft)
+    onEditorScrollRef.current?.(ta.scrollTop, ta.scrollLeft, ta.scrollHeight, ta.clientHeight)
   }, [])
 
   const updateCursor = useCallback(() => {
@@ -1285,6 +1285,12 @@ const Editor = forwardRef(function Editor(
         ta.scrollLeft = left
         if (mirrorRef.current) mirrorRef.current.scrollLeft = left
       }
+    },
+
+    getScrollInfo() {
+      const ta = textareaRef.current
+      if (!ta) return null
+      return { scrollTop: ta.scrollTop, scrollHeight: ta.scrollHeight, clientHeight: ta.clientHeight }
     },
 
     // ── EOL Conversion ────────────────────────────────────────────────────
