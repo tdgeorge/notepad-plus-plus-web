@@ -65,8 +65,10 @@ function customColorToFilter(hex) {
   return `hue-rotate(${angle}deg) saturate(${sat}) brightness(${bri})`
 }
 
+// Convert a #RRGGBB or #RGB hex color to [hue°, saturation%, lightness%].
+// Returns a neutral grey [0, 0, 50] for any input that does not match either format.
 function hexToHsl(hex) {
-  // Normalize: expand shorthand #RGB to #RRGGBB
+  // Expand #RGB shorthand to #RRGGBB; any other length falls through to validation
   const normalized = hex.length === 4
     ? '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3]
     : hex

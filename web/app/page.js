@@ -182,7 +182,10 @@ export default function Home() {
     }
   }, [])
 
-  // Persist toolbar settings and update CSS custom properties when settings change
+  // Persist toolbar settings and update CSS custom properties when settings change.
+  // No useEffect cleanup is needed for document-level CSS properties in this SPA
+  // because document.documentElement persists for the app's lifetime and each run
+  // unconditionally overwrites the previous value.
   useEffect(() => {
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(TOOLBAR_SETTINGS_KEY, JSON.stringify(toolbarSettings))
