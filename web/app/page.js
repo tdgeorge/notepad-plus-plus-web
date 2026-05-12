@@ -248,7 +248,7 @@ export default function Home() {
           view: tab.view === 2 ? 2 : 1,
           name: tab.name ?? `new ${restoredId}`,
           content: tab.content ?? '',
-          modified: Boolean(tab.modified),
+          modified: true,
           language: tab.language ?? null,
           ...normalizePinnedState(tab),
         }
@@ -273,7 +273,7 @@ export default function Home() {
       const nextActiveView = backup.activeView === 2 && restoredView2Tabs.length > 0 ? 2 : 1
       undoHistoryRef.current = {}
       restoredTabs.forEach(({ view, ...tab }) => {
-        undoHistoryRef.current[tab.id] = { stack: [tab.content], index: 0, savedIndex: tab.modified ? -1 : 0 }
+        undoHistoryRef.current[tab.id] = { stack: [tab.content], index: 0, savedIndex: -1 }
       })
       setTabs(restoredView1Tabs)
       setView2Tabs(restoredView2Tabs)
@@ -298,7 +298,6 @@ export default function Home() {
             view: view2TabsRef.current.some((view2Tab) => view2Tab.id === tab.id) ? 2 : 1,
             name: tab.name,
             content: tab.content,
-            modified: tab.modified,
             language: tab.language ?? null,
             ...normalizePinnedState(tab),
           }))

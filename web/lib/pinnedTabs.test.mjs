@@ -37,5 +37,7 @@ test('persistence helpers keep pinned tabs and sanitize pin metadata', () => {
   assert.equal(shouldPersistAutosaveTab({ modified: false, pinned: true }), true)
   assert.equal(shouldPersistAutosaveTab({ modified: false, pinned: false }), false)
   assert.deepEqual(normalizePinnedState({ pinned: 1, pinOrder: 'bad' }), { pinned: true, pinOrder: null })
-  assert.deepEqual(normalizePinnedState({ pinned: false, pinOrder: 3 }), { pinned: false, pinOrder: 3 })
+  assert.deepEqual(normalizePinnedState({ pinned: true }), { pinned: true, pinOrder: null })
+  assert.deepEqual(normalizePinnedState({ pinned: false, pinOrder: 3 }), { pinned: false, pinOrder: null })
+  assert.deepEqual(normalizePinnedState({ pinned: true, pinOrder: 3 }), { pinned: true, pinOrder: 3 })
 })

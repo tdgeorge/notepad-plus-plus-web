@@ -44,8 +44,9 @@ export function shouldPersistAutosaveTab(tab) {
 }
 
 export function normalizePinnedState(tab) {
+  const pinned = Boolean(tab?.pinned)
   return {
-    pinned: Boolean(tab?.pinned),
-    pinOrder: Number.isFinite(tab?.pinOrder) ? tab.pinOrder : null,
+    pinned,
+    pinOrder: pinned && Number.isFinite(tab?.pinOrder) ? tab.pinOrder : null,
   }
 }

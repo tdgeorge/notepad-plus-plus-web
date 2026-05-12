@@ -54,7 +54,12 @@ export default function TabBar({ tabs, activeTabId, onSelect, onClose, onToggleP
               style={colorStyle ? { backgroundColor: colorStyle.bg, color: colorStyle.text } : undefined}
             >
               <span className={styles.tabName}>
-                {tab.pinned ? '\uD83D\uDCCC ' : ''}
+                {tab.pinned ? (
+                  <>
+                    <span className={styles.srOnly}>Pinned </span>
+                    <span className={styles.pinBadge} aria-hidden="true">\uD83D\uDCCC </span>
+                  </>
+                ) : null}
                 {tab.modified ? `${tab.name} \u25cf` : tab.name}
               </span>
               <button
@@ -83,7 +88,7 @@ export default function TabBar({ tabs, activeTabId, onSelect, onClose, onToggleP
           <button
             className={styles.contextMenuItem}
             onClick={() => {
-              onTogglePin?.(contextMenu.tabId)
+              onTogglePin(contextMenu.tabId)
               setContextMenu(null)
             }}
             role="menuitem"
