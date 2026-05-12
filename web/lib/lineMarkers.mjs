@@ -1,11 +1,15 @@
 export function getLineIndexAtOffset(text, offset) {
-  const safeOffset = Math.max(0, Math.min(typeof text === 'string' ? text.length : 0, Number.isFinite(offset) ? Math.floor(offset) : 0))
-  return (text.slice(0, safeOffset).match(/\n/g) ?? []).length
+  const source = typeof text === 'string' ? text : ''
+  const textLength = source.length
+  const normalizedOffset = Number.isFinite(offset) ? Math.floor(offset) : 0
+  const safeOffset = Math.max(0, Math.min(textLength, normalizedOffset))
+  return (source.slice(0, safeOffset).match(/\n/g) ?? []).length
 }
 
 export function getLineStartOffset(text, lineIndex) {
   const lines = String(text).split('\n')
-  const target = Math.max(0, Math.min(lines.length - 1, Number.isFinite(lineIndex) ? Math.floor(lineIndex) : 0))
+  const normalizedLineIndex = Number.isFinite(lineIndex) ? Math.floor(lineIndex) : 0
+  const target = Math.max(0, Math.min(lines.length - 1, normalizedLineIndex))
   let offset = 0
   for (let i = 0; i < target; i++) {
     offset += lines[i].length + 1

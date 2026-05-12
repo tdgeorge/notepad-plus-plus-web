@@ -1489,7 +1489,10 @@ export default function Home() {
         const styleRaw = window.prompt('Mark style (1-5):', '1')
         if (styleRaw == null) break
         const style = Number.parseInt(styleRaw, 10)
-        if (Number.isNaN(style) || style < 1 || style > 5) break
+        if (Number.isNaN(style) || style < 1 || style > 5) {
+          window.alert('Please choose a mark style from 1 to 5.')
+          break
+        }
         searchStateRef.current = { ...searchStateRef.current, term }
         getActiveEditor()?.markLinesByTerm?.(term, style)
         break
@@ -1507,26 +1510,26 @@ export default function Home() {
         getActiveEditor()?.clearBookmarks?.()
         break
       case 'bookmark-copy-lines':
-        getActiveEditor()?.copyBookmarkedLines?.()
+        getActiveEditor()?.copyBookmarkedAndMarkedLines?.()
         break
       case 'bookmark-cut-lines':
-        getActiveEditor()?.cutBookmarkedLines?.()
+        getActiveEditor()?.cutBookmarkedAndMarkedLines?.()
         break
       case 'bookmark-paste-lines': {
         if (navigator.clipboard?.readText) {
           navigator.clipboard.readText()
             .then((text) => {
-              getActiveEditor()?.pasteToBookmarkedLines?.(text ?? '')
+              getActiveEditor()?.pasteToBookmarkedAndMarkedLines?.(text ?? '')
             })
             .catch(() => {})
         }
         break
       }
       case 'bookmark-remove-lines':
-        getActiveEditor()?.removeBookmarkedLines?.()
+        getActiveEditor()?.removeBookmarkedAndMarkedLines?.()
         break
       case 'bookmark-remove-unmarked-lines':
-        getActiveEditor()?.removeUnbookmarkedLines?.()
+        getActiveEditor()?.removeUnbookmarkedAndUnmarkedLines?.()
         break
       case 'bookmark-inverse':
         getActiveEditor()?.inverseBookmarks?.()

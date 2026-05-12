@@ -635,11 +635,31 @@ const Editor = forwardRef(function Editor(
     return union
   }, [])
 
-  const getBookmarkedAndMarkedLines = useCallback(() => {
+  const getMarkedTargetLines = useCallback(() => {
     const union = new Set(bookmarkedLinesRef.current)
     for (const line of getAllMarkedLines()) union.add(line)
     return union
   }, [getAllMarkedLines])
+
+  const createEmptyMarkStyleSet = useCallback(() => ({
+    1: new Set(),
+    2: new Set(),
+    3: new Set(),
+    4: new Set(),
+    5: new Set(),
+  }), [])
+
+  const normalizeMarkStyle = useCallback((style) => (
+    Number.isFinite(style) ? Math.max(1, Math.min(5, Math.floor(style))) : 1
+  ), [])
+
+  const normalizeMarkedLinesByStyle = useCallback((markedByStyle, totalLines) => ({
+    1: normalizeLineSet(markedByStyle[1], totalLines),
+    2: normalizeLineSet(markedByStyle[2], totalLines),
+    3: normalizeLineSet(markedByStyle[3], totalLines),
+    4: normalizeLineSet(markedByStyle[4], totalLines),
+    5: normalizeLineSet(markedByStyle[5], totalLines),
+  }), [])
 
   const goToLineIndex = useCallback((lineIndex) => {
     const textarea = textareaRef.current
@@ -1055,7 +1075,7 @@ const Editor = forwardRef(function Editor(
     markLinesByTerm(term, style = 1) {
       const textarea = textareaRef.current
       if (!textarea) return 0
-      const safeStyle = Number.isFinite(style) ? Math.max(1, Math.min(5, Math.floor(style))) : 1
+      const safeStyle = normalizeMarkStyle(style)
       const query = typeof term === 'string' ? term : ''
       if (!query) {
         setMarkedLinesByStyle((prev) => ({ ...prev, [safeStyle]: new Set() }))
@@ -1072,24 +1092,18 @@ const Editor = forwardRef(function Editor(
     },
 
     clearMarkStyle(style = 1) {
-      const safeStyle = Number.isFinite(style) ? Math.max(1, Math.min(5, Math.floor(style))) : 1
+      const safeStyle = normalizeMarkStyle(style)
       setMarkedLinesByStyle((prev) => ({ ...prev, [safeStyle]: new Set() }))
     },
 
     clearAllMarkStyles() {
-      setMarkedLinesByStyle({
-        1: new Set(),
-        2: new Set(),
-        3: new Set(),
-        4: new Set(),
-        5: new Set(),
-      })
+      setMarkedLinesByStyle(createEmptyMarkStyleSet())
     },
 
-    copyBookmarkedLines() {
+    copyBookmarkedAndMarkedLines() {
       const textarea = textareaRef.current
       if (!textarea) return ''
-      const targetLines = getBookmarkedAndMarkedLines()
+      const targetLines = getMarkedTargetLines()
       const text = getLineTextBySet(textarea.value, targetLines)
       if (text && navigator.clipboard?.writeText) {
         navigator.clipboard.writeText(text).catch(() => {})
@@ -1097,10 +1111,10 @@ const Editor = forwardRef(function Editor(
       return text
     },
 
-    cutBookmarkedLines() {
+    cutBookmarkedAndMarkedLines() {
       const textarea = textareaRef.current
       if (!textarea) return
-      const targetLines = getBookmarkedAndMarkedLines()
+      const targetLines = getMarkedTargetLines()
       const copied = getLineTextBySet(textarea.value, targetLines)
       const newText = removeLinesBySet(textarea.value, targetLines, true)
       if (newText === textarea.value) return
@@ -1112,44 +1126,33 @@ const Editor = forwardRef(function Editor(
       onChangeRef.current(newText)
       updateLineCount(newText)
       setBookmarkedLines(new Set())
-      setMarkedLinesByStyle({
-        1: new Set(),
-        2: new Set(),
-        3: new Set(),
-        4: new Set(),
-        5: new Set(),
-      })
+      setMarkedLinesByStyle(createEmptyMarkStyleSet())
       textarea.setSelectionRange(0, 0)
       textarea.focus()
       updateCursor()
     },
 
-    pasteToBookmarkedLines(text = '') {
+    pasteToBookmarkedAndMarkedLines(text = '') {
       const textarea = textareaRef.current
       if (!textarea) return
-      const targetLines = getBookmarkedAndMarkedLines()
+      const targetLines = getMarkedTargetLines()
       const newText = replaceLinesBySet(textarea.value, targetLines, text)
       if (newText === textarea.value) return
       textarea.value = newText
       lastValueRef.current = newText
       onChangeRef.current(newText)
       updateLineCount(newText)
-      setBookmarkedLines((prev) => normalizeLineSet(prev, newText.split('\n').length))
-      setMarkedLinesByStyle((prev) => ({
-        1: normalizeLineSet(prev[1], newText.split('\n').length),
-        2: normalizeLineSet(prev[2], newText.split('\n').length),
-        3: normalizeLineSet(prev[3], newText.split('\n').length),
-        4: normalizeLineSet(prev[4], newText.split('\n').length),
-        5: normalizeLineSet(prev[5], newText.split('\n').length),
-      }))
+      const totalLines = newText.split('\n').length
+      setBookmarkedLines((prev) => normalizeLineSet(prev, totalLines))
+      setMarkedLinesByStyle((prev) => normalizeMarkedLinesByStyle(prev, totalLines))
       textarea.focus()
       updateCursor()
     },
 
-    removeBookmarkedLines() {
+    removeBookmarkedAndMarkedLines() {
       const textarea = textareaRef.current
       if (!textarea) return
-      const targetLines = getBookmarkedAndMarkedLines()
+      const targetLines = getMarkedTargetLines()
       const newText = removeLinesBySet(textarea.value, targetLines, true)
       if (newText === textarea.value) return
       textarea.value = newText
@@ -1157,22 +1160,16 @@ const Editor = forwardRef(function Editor(
       onChangeRef.current(newText)
       updateLineCount(newText)
       setBookmarkedLines(new Set())
-      setMarkedLinesByStyle({
-        1: new Set(),
-        2: new Set(),
-        3: new Set(),
-        4: new Set(),
-        5: new Set(),
-      })
+      setMarkedLinesByStyle(createEmptyMarkStyleSet())
       textarea.setSelectionRange(0, 0)
       textarea.focus()
       updateCursor()
     },
 
-    removeUnbookmarkedLines() {
+    removeUnbookmarkedAndUnmarkedLines() {
       const textarea = textareaRef.current
       if (!textarea) return
-      const targetLines = getBookmarkedAndMarkedLines()
+      const targetLines = getMarkedTargetLines()
       const newText = removeLinesBySet(textarea.value, targetLines, false)
       if (newText === textarea.value) return
       textarea.value = newText
@@ -1181,13 +1178,7 @@ const Editor = forwardRef(function Editor(
       updateLineCount(newText)
       const totalLines = newText.split('\n').length
       setBookmarkedLines((prev) => normalizeLineSet(prev, totalLines))
-      setMarkedLinesByStyle((prev) => ({
-        1: normalizeLineSet(prev[1], totalLines),
-        2: normalizeLineSet(prev[2], totalLines),
-        3: normalizeLineSet(prev[3], totalLines),
-        4: normalizeLineSet(prev[4], totalLines),
-        5: normalizeLineSet(prev[5], totalLines),
-      }))
+      setMarkedLinesByStyle((prev) => normalizeMarkedLinesByStyle(prev, totalLines))
       textarea.setSelectionRange(0, 0)
       textarea.focus()
       updateCursor()
@@ -2137,7 +2128,7 @@ const Editor = forwardRef(function Editor(
       return targetPos
     },
 
-  }), [indent, dedent, lineCount, lineHeightPx, updateCursor, updateLineCount, scrollToChar, goToLineIndex, getBookmarkedAndMarkedLines])
+  }), [indent, dedent, lineCount, lineHeightPx, updateCursor, updateLineCount, scrollToChar, goToLineIndex, getMarkedTargetLines, createEmptyMarkStyleSet, normalizeMarkStyle, normalizeMarkedLinesByStyle])
 
   const handleKeyDown = useCallback(
     (e) => {
@@ -2163,6 +2154,7 @@ const Editor = forwardRef(function Editor(
   const getLineMarkerClassName = useCallback((lineIndex) => {
     let markerClassName = ''
     if (bookmarkedLines.has(lineIndex)) markerClassName += ` ${styles.lineBookmarked}`
+    // Mark styles are prioritized from 1 to 5 when a line matches multiple styles.
     if (markedLinesByStyle[1].has(lineIndex)) markerClassName += ` ${styles.lineMarkStyle1}`
     else if (markedLinesByStyle[2].has(lineIndex)) markerClassName += ` ${styles.lineMarkStyle2}`
     else if (markedLinesByStyle[3].has(lineIndex)) markerClassName += ` ${styles.lineMarkStyle3}`
