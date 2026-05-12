@@ -68,7 +68,7 @@ export default function TabBar({ tabs, activeTabId, onSelect, onClose, onToggleP
                 openTabContextMenu(tab.id, e.clientX, e.clientY)
               }}
               onTouchEnd={(e) => {
-                if (e.target.closest(`.${styles.closeButton}`)) return
+                if (e.target.closest('[data-tab-close-button="true"]')) return
                 const touch = e.changedTouches?.[0]
                 if (!touch) return
                 const now = Date.now()
@@ -101,6 +101,7 @@ export default function TabBar({ tabs, activeTabId, onSelect, onClose, onToggleP
               </span>
               <button
                 className={styles.closeButton}
+                data-tab-close-button="true"
                 onClick={(e) => {
                   e.stopPropagation()
                   onClose(tab.id)
