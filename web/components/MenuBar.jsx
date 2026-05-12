@@ -503,7 +503,7 @@ const MENUS = [
         ],
       },
       { label: 'Folder as Workspace', disabled: true },
-      { label: 'Document Map', disabled: true },
+      { label: 'Document Map', action: 'document-map' },
       { label: 'Document List', action: 'document-list' },
       { label: 'Function List', disabled: true },
       { separator: true },
@@ -1124,6 +1124,7 @@ export default function MenuBar({ onFileAction, onEditAction, onViewAction, onSe
       case 'distraction-free': return viewState.distractionFree
       case 'sync-scroll-v': return viewState.syncScrollV
       case 'sync-scroll-h': return viewState.syncScrollH
+      case 'document-map': return viewState.docMapOpen
       case 'text-dir-rtl': return viewState.textDirection === 'rtl'
       case 'text-dir-ltr': return viewState.textDirection === 'ltr'
       case 'lang-plain-text': return viewState.language == null

@@ -169,6 +169,7 @@ export default function Toolbar({
   onSyncScrollV, onSyncScrollH,
   onWordWrap, onShowAllChars, onShowIndent,
   onDocumentList,
+  onDocumentMap,
   onMacroStartRecording, onMacroStopRecording, onMacroPlayback, onMacroRunMultiple, onMacroSaveCurrent,
   viewState,
   macroState,
@@ -341,7 +342,7 @@ export default function Toolbar({
           <ToolbarIcon name="udl" alt="User Defined Language" {...iconProps} />
         </ToolbarButton>
 
-        <ToolbarButton title="Document Map" disabled>
+        <ToolbarButton title="Document Map" onClick={onDocumentMap} active={viewState?.docMapOpen}>
           <ToolbarIcon name="docMap" alt="Document Map" {...iconProps} />
         </ToolbarButton>
 

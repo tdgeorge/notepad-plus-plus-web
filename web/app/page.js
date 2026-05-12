@@ -16,6 +16,7 @@ import PreferencesDialog, { DEFAULT_TOOLBAR_SETTINGS } from '../components/Prefe
 import ToolsHashDialog from '../components/ToolsHashDialog'
 import ToolsRandomDialog from '../components/ToolsRandomDialog'
 import WindowsDialog from '../components/WindowsDialog'
+import DocumentMapPanel from '../components/DocumentMapPanel'
 import { md5 } from '../lib/md5'
 import { applyTheme, THEMES, DEFAULT_THEME_ID } from '../lib/themes'
 import { detectLanguage } from '../lib/languages/index'
@@ -125,6 +126,8 @@ export default function Home() {
   const [toolsRandomDialogOpen, setToolsRandomDialogOpen] = useState(false)
   const [themeId, setThemeId] = useState(DEFAULT_THEME_ID)
   const [windowsDialogOpen, setWindowsDialogOpen] = useState(false)
+  const [docMapOpen, setDocMapOpen] = useState(false)
+  const [docMapScrollInfo, setDocMapScrollInfo] = useState({ scrollTop: 0, scrollHeight: 1, clientHeight: 1 })
   const [isDragOver, setIsDragOver] = useState(false)
   const [isRecordingMacro, setIsRecordingMacro] = useState(false)
   const [currentMacroSteps, setCurrentMacroSteps] = useState([])
@@ -335,7 +338,7 @@ export default function Home() {
   // Language is stored per-tab (set at file-open time or overridden via Language menu).
   const language = activeTab?.language ?? null
 
-  const viewState = { wordWrap, showWhitespace, showEol, showAllChars, showIndent, language, splitEnabled, distractionFree, syncScrollV, syncScrollH, textDirection }
+  const viewState = { wordWrap, showWhitespace, showEol, showAllChars, showIndent, language, splitEnabled, distractionFree, syncScrollV, syncScrollH, textDirection, docMapOpen }
 
   const orderedTabs = useMemo(() => getOrderedTabs(tabs), [tabs])
   const activeTabIndex = orderedTabs.findIndex((t) => t.id === activeTabId)
@@ -355,6 +358,15 @@ export default function Home() {
     () => (activeView === 1 ? editorRef.current : secondEditorRef.current),
     [activeView]
   )
+
+  // Sync document map scroll info when it opens or the active view changes
+  useEffect(() => {
+    if (!docMapOpen) return
+    const info = getActiveEditor()?.getScrollInfo?.()
+    if (info && info.scrollHeight > 0) {
+      setDocMapScrollInfo(info)
+    }
+  }, [docMapOpen, activeView, getActiveEditor])
 
   const getActiveTabRecord = useCallback(() => {
     const currentTabId = activeView === 1 ? activeTabIdRef.current : view2ActiveTabIdRef.current
@@ -1250,7 +1262,10 @@ export default function Home() {
     }
   }, [splitEnabled, activeView])
 
-  const handleEditor1Scroll = useCallback((scrollTop, scrollLeft) => {
+  const handleEditor1Scroll = useCallback((scrollTop, scrollLeft, scrollHeight, clientHeight) => {
+    if (activeView === 1 && scrollHeight > 0) {
+      setDocMapScrollInfo({ scrollTop, scrollHeight, clientHeight })
+    }
     if (!splitEnabled || syncScrollingRef.current) return
     if (!syncScrollV && !syncScrollH) return
     syncScrollingRef.current = true
@@ -1259,9 +1274,12 @@ export default function Home() {
       syncScrollH ? scrollLeft : null
     )
     requestAnimationFrame(() => { syncScrollingRef.current = false })
-  }, [splitEnabled, syncScrollV, syncScrollH])
+  }, [splitEnabled, syncScrollV, syncScrollH, activeView])
 
-  const handleEditor2Scroll = useCallback((scrollTop, scrollLeft) => {
+  const handleEditor2Scroll = useCallback((scrollTop, scrollLeft, scrollHeight, clientHeight) => {
+    if (activeView === 2 && scrollHeight > 0) {
+      setDocMapScrollInfo({ scrollTop, scrollHeight, clientHeight })
+    }
     if (!splitEnabled || syncScrollingRef.current) return
     if (!syncScrollV && !syncScrollH) return
     syncScrollingRef.current = true
@@ -1270,7 +1288,7 @@ export default function Home() {
       syncScrollH ? scrollLeft : null
     )
     requestAnimationFrame(() => { syncScrollingRef.current = false })
-  }, [splitEnabled, syncScrollV, syncScrollH])
+  }, [splitEnabled, syncScrollV, syncScrollH, activeView])
 
   const handleViewAction = useCallback((action) => {
     // Tab navigation/management by sub-action
@@ -1421,6 +1439,9 @@ export default function Home() {
         break
       case 'document-list':
         setWindowsDialogOpen(true)
+        break
+      case 'document-map':
+        setDocMapOpen((prev) => !prev)
         break
       case 'sync-scroll-v':
         setSyncScrollV((prev) => !prev)
@@ -2023,6 +2044,7 @@ export default function Home() {
           onShowAllChars={() => dispatchViewAction('show-all-chars')}
           onShowIndent={() => dispatchViewAction('show-indent')}
           onDocumentList={() => dispatchViewAction('document-list')}
+          onDocumentMap={() => dispatchViewAction('document-map')}
           onMacroStartRecording={() => handleMacroAction('macro-start-recording')}
           onMacroStopRecording={() => handleMacroAction('macro-stop-recording')}
           onMacroPlayback={() => handleMacroAction('macro-playback')}
@@ -2039,85 +2061,98 @@ export default function Home() {
         onSearchNext={handleIncrementalSearchNext}
         onSearchPrev={handleIncrementalSearchPrev}
       />
-      {splitEnabled ? (
-        <SplitPane
-          ratio={splitRatio}
-          onRatioChange={setSplitRatio}
-          left={
-            <div
-              className={`${styles.viewPane} ${activeView === 1 ? styles.activeViewPane : ''}`}
-              onFocus={() => setActiveView(1)}
-            >
-              {!distractionFree && (
-                <TabBar
-                  tabs={tabs}
-                  activeTabId={activeTabId}
-                  onSelect={setActiveTabId}
-                  onClose={handleCloseTab}
-                  onTogglePin={handleToggleTabPin}
+      <div className={styles.editorRow}>
+        {splitEnabled ? (
+          <SplitPane
+            ratio={splitRatio}
+            onRatioChange={setSplitRatio}
+            left={
+              <div
+                className={`${styles.viewPane} ${activeView === 1 ? styles.activeViewPane : ''}`}
+                onFocus={() => setActiveView(1)}
+              >
+                {!distractionFree && (
+                  <TabBar
+                    tabs={tabs}
+                    activeTabId={activeTabId}
+                    onSelect={setActiveTabId}
+                    onClose={handleCloseTab}
+                    onTogglePin={handleToggleTabPin}
+                  />
+                )}
+                <Editor
+                  key={activeTabId}
+                  ref={editorRef}
+                  content={activeTab?.content ?? ''}
+                  onChange={handleContentChange}
+                  onCursorChange={setCursorPos}
+                  onEditorScroll={handleEditor1Scroll}
+                  {...commonEditorProps}
+                  language={language}
                 />
-              )}
-              <Editor
-                key={activeTabId}
-                ref={editorRef}
-                content={activeTab?.content ?? ''}
-                onChange={handleContentChange}
-                onCursorChange={setCursorPos}
-                onEditorScroll={handleEditor1Scroll}
-                {...commonEditorProps}
-                language={language}
-              />
-            </div>
-          }
-          right={
-            <div
-              className={`${styles.viewPane} ${activeView === 2 ? styles.activeViewPane : ''}`}
-              onFocus={() => setActiveView(2)}
-            >
-              {!distractionFree && (
-                <TabBar
-                  tabs={view2Tabs}
-                  activeTabId={view2ActiveTabId}
-                  onSelect={setView2ActiveTabId}
-                  onClose={handleCloseView2Tab}
-                  onTogglePin={handleToggleView2TabPin}
+              </div>
+            }
+            right={
+              <div
+                className={`${styles.viewPane} ${activeView === 2 ? styles.activeViewPane : ''}`}
+                onFocus={() => setActiveView(2)}
+              >
+                {!distractionFree && (
+                  <TabBar
+                    tabs={view2Tabs}
+                    activeTabId={view2ActiveTabId}
+                    onSelect={setView2ActiveTabId}
+                    onClose={handleCloseView2Tab}
+                    onTogglePin={handleToggleView2TabPin}
+                  />
+                )}
+                <Editor
+                  key={view2ActiveTabId ?? 'view2-empty'}
+                  ref={secondEditorRef}
+                  content={view2ActiveTab?.content ?? ''}
+                  onChange={handleView2ContentChange}
+                  onCursorChange={setView2CursorPos}
+                  onEditorScroll={handleEditor2Scroll}
+                  {...commonEditorProps}
+                  language={view2ActiveTab?.language ?? null}
                 />
-              )}
-              <Editor
-                key={view2ActiveTabId ?? 'view2-empty'}
-                ref={secondEditorRef}
-                content={view2ActiveTab?.content ?? ''}
-                onChange={handleView2ContentChange}
-                onCursorChange={setView2CursorPos}
-                onEditorScroll={handleEditor2Scroll}
-                {...commonEditorProps}
-                language={view2ActiveTab?.language ?? null}
-              />
-            </div>
-          }
-        />
-      ) : (
-        <>
-          {!distractionFree && (
-            <TabBar
-              tabs={tabs}
-              activeTabId={activeTabId}
-              onSelect={setActiveTabId}
-              onClose={handleCloseTab}
-              onTogglePin={handleToggleTabPin}
-            />
-          )}
-          <Editor
-            key={activeTabId}
-            ref={editorRef}
-            content={activeTab?.content ?? ''}
-            onChange={handleContentChange}
-            onCursorChange={setCursorPos}
-            {...commonEditorProps}
-            language={language}
+              </div>
+            }
           />
-        </>
-      )}
+        ) : (
+          <div className={styles.viewPane}>
+            {!distractionFree && (
+              <TabBar
+                tabs={tabs}
+                activeTabId={activeTabId}
+                onSelect={setActiveTabId}
+                onClose={handleCloseTab}
+                onTogglePin={handleToggleTabPin}
+              />
+            )}
+            <Editor
+              key={activeTabId}
+              ref={editorRef}
+              content={activeTab?.content ?? ''}
+              onChange={handleContentChange}
+              onCursorChange={setCursorPos}
+              onEditorScroll={handleEditor1Scroll}
+              {...commonEditorProps}
+              language={language}
+            />
+          </div>
+        )}
+        {docMapOpen && !distractionFree && (
+          <DocumentMapPanel
+            content={displayContent}
+            scrollTop={docMapScrollInfo.scrollTop}
+            scrollHeight={docMapScrollInfo.scrollHeight}
+            clientHeight={docMapScrollInfo.clientHeight}
+            onNavigate={(top) => getActiveEditor()?.setScrollPosition(top, null)}
+            onClose={() => setDocMapOpen(false)}
+          />
+        )}
+      </div>
       {!distractionFree && (
         <StatusBar cursorPos={displayCursorPos} eol="Windows (CR LF)" encoding="UTF-8" language={displayLanguage} isLargeFile={displayIsLargeFile} />
       )}

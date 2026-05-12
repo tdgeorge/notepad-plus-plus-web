@@ -38,6 +38,13 @@
 }
 
 /* ── Split-view pane containers ──────────────────────────────────────────── */
+.editorRow {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  overflow: hidden;
+}
+
 .viewPane {
   display: flex;
   flex-direction: column;
