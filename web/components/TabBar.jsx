@@ -68,7 +68,7 @@ export default function TabBar({ tabs, activeTabId, onSelect, onClose, onToggleP
                 openTabContextMenu(tab.id, e.clientX, e.clientY)
               }}
               onTouchEnd={(e) => {
-                if (e.target.closest('button')) return
+                if (e.target.closest(`.${styles.closeButton}`)) return
                 const touch = e.changedTouches?.[0]
                 if (!touch) return
                 const now = Date.now()
