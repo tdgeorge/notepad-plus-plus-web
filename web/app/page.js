@@ -1863,7 +1863,14 @@ export default function Home() {
           onWordWrap={() => dispatchViewAction('word-wrap')}
           onShowAllChars={() => dispatchViewAction('show-all-chars')}
           onShowIndent={() => dispatchViewAction('show-indent')}
+          onDocumentList={() => dispatchViewAction('document-list')}
+          onMacroStartRecording={() => handleMacroAction('macro-start-recording')}
+          onMacroStopRecording={() => handleMacroAction('macro-stop-recording')}
+          onMacroPlayback={() => handleMacroAction('macro-playback')}
+          onMacroRunMultiple={() => handleMacroAction('macro-run-multiple')}
+          onMacroSaveCurrent={() => handleMacroAction('macro-save-current')}
           viewState={viewState}
+          macroState={macroState}
         />
       )}
       <IncrementalSearch

@@ -168,7 +168,10 @@ export default function Toolbar({
   onZoomIn, onZoomOut,
   onSyncScrollV, onSyncScrollH,
   onWordWrap, onShowAllChars, onShowIndent,
+  onDocumentList,
+  onMacroStartRecording, onMacroStopRecording, onMacroPlayback, onMacroRunMultiple, onMacroSaveCurrent,
   viewState,
+  macroState,
 }) {
   const iconProps = { isDark, iconSet, iconColor, iconMonochrome, customColor }
   const scrollRef = useRef(null)
@@ -330,6 +333,76 @@ export default function Toolbar({
           active={viewState?.showIndent}
         >
           <ToolbarIcon name="indentGuide" alt="Show Indent Guide" {...iconProps} />
+        </ToolbarButton>
+
+        <ToolbarSep />
+
+        <ToolbarButton title="User Defined Language" disabled>
+          <ToolbarIcon name="udl" alt="User Defined Language" {...iconProps} />
+        </ToolbarButton>
+
+        <ToolbarButton title="Document Map" disabled>
+          <ToolbarIcon name="docMap" alt="Document Map" {...iconProps} />
+        </ToolbarButton>
+
+        <ToolbarButton title="Document List" onClick={onDocumentList}>
+          <ToolbarIcon name="docList" alt="Document List" {...iconProps} />
+        </ToolbarButton>
+
+        <ToolbarButton title="Function List" disabled>
+          <ToolbarIcon name="funcList" alt="Function List" {...iconProps} />
+        </ToolbarButton>
+
+        <ToolbarButton title="Folder as Workspace" disabled>
+          <ToolbarIcon name="fileBrowser" alt="Folder as Workspace" {...iconProps} />
+        </ToolbarButton>
+
+        <ToolbarSep />
+
+        <ToolbarButton title="Monitoring (tail -f)" disabled>
+          <ToolbarIcon name="monitoring" alt="Monitoring" {...iconProps} />
+        </ToolbarButton>
+
+        <ToolbarSep />
+
+        <ToolbarButton
+          title="Start Recording"
+          onClick={onMacroStartRecording}
+          disabled={macroState?.isRecording}
+        >
+          <ToolbarIcon name="startRecord" alt="Start Recording" {...iconProps} />
+        </ToolbarButton>
+
+        <ToolbarButton
+          title="Stop Recording"
+          onClick={onMacroStopRecording}
+          disabled={!macroState?.isRecording}
+        >
+          <ToolbarIcon name="stopRecord" alt="Stop Recording" {...iconProps} />
+        </ToolbarButton>
+
+        <ToolbarButton
+          title="Playback"
+          onClick={onMacroPlayback}
+          disabled={macroState?.isRecording || !macroState?.hasRunnableMacro}
+        >
+          <ToolbarIcon name="playRecord" alt="Playback" {...iconProps} />
+        </ToolbarButton>
+
+        <ToolbarButton
+          title="Run a Macro Multiple Times..."
+          onClick={onMacroRunMultiple}
+          disabled={macroState?.isRecording || !macroState?.hasRunnableMacro}
+        >
+          <ToolbarIcon name="playRecordMulti" alt="Run a Macro Multiple Times" {...iconProps} />
+        </ToolbarButton>
+
+        <ToolbarButton
+          title="Save Current Recorded Macro..."
+          onClick={onMacroSaveCurrent}
+          disabled={macroState?.isRecording || !macroState?.hasCurrentMacro}
+        >
+          <ToolbarIcon name="saveRecord" alt="Save Current Recorded Macro" {...iconProps} />
         </ToolbarButton>
 
       </div>
