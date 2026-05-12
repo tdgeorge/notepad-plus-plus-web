@@ -25,6 +25,7 @@ const LINE_PX = 2
  */
 export default function DocumentMapPanel({ content, scrollTop, scrollHeight, clientHeight, onNavigate, onClose }) {
   const canvasRef = useRef(null)
+  const mapContainerRef = useRef(null)
   const isDraggingRef = useRef(false)
 
   // ── Map rendering ──────────────────────────────────────────────────────────
@@ -76,6 +77,23 @@ export default function DocumentMapPanel({ content, scrollTop, scrollHeight, cli
   const viewportTop = (scrollTop / safeScrollHeight) * mapHeight
   // How tall the visible viewport is in the map (px)
   const viewportHeight = Math.min(mapHeight, (safeClientHeight / safeScrollHeight) * mapHeight)
+
+  useEffect(() => {
+    const container = mapContainerRef.current
+    if (!container) return
+
+    const currentTop = container.scrollTop
+    const currentBottom = currentTop + container.clientHeight
+    const viewportBottom = viewportTop + viewportHeight
+
+    if (viewportTop < currentTop) {
+      container.scrollTop = viewportTop
+      return
+    }
+    if (viewportBottom > currentBottom) {
+      container.scrollTop = Math.max(0, viewportBottom - container.clientHeight)
+    }
+  }, [viewportTop, viewportHeight])
 
   // ── Navigation ─────────────────────────────────────────────────────────────
   const navigateToY = useCallback((clientY) => {
@@ -141,7 +159,7 @@ export default function DocumentMapPanel({ content, scrollTop, scrollHeight, cli
           ×
         </button>
       </div>
-      <div className={styles.mapContainer}>
+      <div ref={mapContainerRef} className={styles.mapContainer}>
         <canvas
           ref={canvasRef}
           className={styles.canvas}
