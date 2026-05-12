@@ -12,7 +12,7 @@ import GoToDialog from '../components/GoToDialog'
 import IncrementalSearch from '../components/IncrementalSearch'
 import AboutDialog from '../components/AboutDialog'
 import StyleConfiguratorDialog from '../components/StyleConfiguratorDialog'
-import PreferencesDialog from '../components/PreferencesDialog'
+import PreferencesDialog, { DEFAULT_TOOLBAR_SETTINGS } from '../components/PreferencesDialog'
 import ToolsHashDialog from '../components/ToolsHashDialog'
 import ToolsRandomDialog from '../components/ToolsRandomDialog'
 import WindowsDialog from '../components/WindowsDialog'
@@ -40,12 +40,10 @@ const MACRO_DEBUG_TAB_NAME = 'macro-debug.log'
 const MACRO_DEBUG_QUERY_PARAM = 'macroDebug'
 const MACRO_DEBUG_MAX_LINES = 2000
 const TOOLBAR_SETTINGS_KEY = 'nppw-toolbar-settings'
-const DEFAULT_TOOLBAR_SETTINGS = {
-  iconSet: 'small',
-  iconColor: 'defaultColor',
-  iconMonochrome: false,
-  customColor: '#0078D4',
-}
+const TOOLBAR_HEIGHT_SMALL = '29px'
+const TOOLBAR_HEIGHT_LARGE = '43px'
+const TOOLBAR_BTN_SIZE_SMALL = '22px'
+const TOOLBAR_BTN_SIZE_LARGE = '38px'
 
 /**
  * Push `content` onto the undo history for `tabId`, capping the stack for
@@ -191,8 +189,8 @@ export default function Home() {
     }
     // Adjust toolbar height CSS variable for large icon sets
     const isLarge = toolbarSettings.iconSet === 'large' || toolbarSettings.iconSet === 'large-filled'
-    document.documentElement.style.setProperty('--toolbar-height', isLarge ? '43px' : '29px')
-    document.documentElement.style.setProperty('--toolbar-btn-size', isLarge ? '38px' : '22px')
+    document.documentElement.style.setProperty('--toolbar-height', isLarge ? TOOLBAR_HEIGHT_LARGE : TOOLBAR_HEIGHT_SMALL)
+    document.documentElement.style.setProperty('--toolbar-btn-size', isLarge ? TOOLBAR_BTN_SIZE_LARGE : TOOLBAR_BTN_SIZE_SMALL)
   }, [toolbarSettings])
 
   useEffect(() => {

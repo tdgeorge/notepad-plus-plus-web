@@ -5,7 +5,9 @@ import styles from './Toolbar.module.css'
 import { useRef, useState, useEffect, useCallback } from 'react'
 
 // Fluent color hue-rotate angles (partial mode: shifts only the blue accent pixels)
-// Base secondary hue: ~207° (light #0078D4) / ~204° (dark #4CC2FF)
+// Both light (#0078D4, ~207°) and dark (#4CC2FF, ~204°) icon variants use the same
+// preset rotations because the 3° difference is imperceptible; 207° is used as the
+// common reference.
 const PARTIAL_COLOR_FILTERS = {
   defaultColor: null,
   red:     'hue-rotate(146deg) saturate(1.5)',
@@ -64,9 +66,14 @@ function customColorToFilter(hex) {
 }
 
 function hexToHsl(hex) {
-  const r = parseInt(hex.slice(1, 3), 16) / 255
-  const g = parseInt(hex.slice(3, 5), 16) / 255
-  const b = parseInt(hex.slice(5, 7), 16) / 255
+  // Normalize: expand shorthand #RGB to #RRGGBB
+  const normalized = hex.length === 4
+    ? '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3]
+    : hex
+  if (!/^#[0-9A-Fa-f]{6}$/.test(normalized)) return [0, 0, 50]
+  const r = parseInt(normalized.slice(1, 3), 16) / 255
+  const g = parseInt(normalized.slice(3, 5), 16) / 255
+  const b = parseInt(normalized.slice(5, 7), 16) / 255
   const max = Math.max(r, g, b), min = Math.min(r, g, b)
   let h = 0, s = 0
   const l = (max + min) / 2

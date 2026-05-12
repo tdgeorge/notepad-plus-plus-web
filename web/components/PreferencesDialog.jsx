@@ -24,6 +24,13 @@ const ICON_SETS = [
   { id: 'standard',     label: 'Standard bitmap icons' },
 ]
 
+export const DEFAULT_TOOLBAR_SETTINGS = {
+  iconSet: 'small',
+  iconColor: 'defaultColor',
+  iconMonochrome: false,
+  customColor: '#0078D4',
+}
+
 export default function PreferencesDialog({
   isOpen,
   toolbarSettings,
@@ -31,19 +38,19 @@ export default function PreferencesDialog({
   onClose,
 }) {
   const [activeTab, setActiveTab] = useState('toolbar')
-  const [iconSet, setIconSet] = useState(toolbarSettings?.iconSet ?? 'small')
-  const [iconColor, setIconColor] = useState(toolbarSettings?.iconColor ?? 'defaultColor')
-  const [iconMonochrome, setIconMonochrome] = useState(toolbarSettings?.iconMonochrome ?? false)
-  const [customColor, setCustomColor] = useState(toolbarSettings?.customColor ?? '#0078D4')
+  const [iconSet, setIconSet] = useState(toolbarSettings?.iconSet ?? DEFAULT_TOOLBAR_SETTINGS.iconSet)
+  const [iconColor, setIconColor] = useState(toolbarSettings?.iconColor ?? DEFAULT_TOOLBAR_SETTINGS.iconColor)
+  const [iconMonochrome, setIconMonochrome] = useState(toolbarSettings?.iconMonochrome ?? DEFAULT_TOOLBAR_SETTINGS.iconMonochrome)
+  const [customColor, setCustomColor] = useState(toolbarSettings?.customColor ?? DEFAULT_TOOLBAR_SETTINGS.customColor)
   const closeBtnRef = useRef(null)
 
   // Sync local state when dialog opens or settings change externally
   useEffect(() => {
     if (isOpen) {
-      setIconSet(toolbarSettings?.iconSet ?? 'small')
-      setIconColor(toolbarSettings?.iconColor ?? 'defaultColor')
-      setIconMonochrome(toolbarSettings?.iconMonochrome ?? false)
-      setCustomColor(toolbarSettings?.customColor ?? '#0078D4')
+      setIconSet(toolbarSettings?.iconSet ?? DEFAULT_TOOLBAR_SETTINGS.iconSet)
+      setIconColor(toolbarSettings?.iconColor ?? DEFAULT_TOOLBAR_SETTINGS.iconColor)
+      setIconMonochrome(toolbarSettings?.iconMonochrome ?? DEFAULT_TOOLBAR_SETTINGS.iconMonochrome)
+      setCustomColor(toolbarSettings?.customColor ?? DEFAULT_TOOLBAR_SETTINGS.customColor)
       setTimeout(() => closeBtnRef.current?.focus(), 0)
     }
   }, [isOpen, toolbarSettings])
