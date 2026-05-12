@@ -20,13 +20,14 @@ import { md5 } from '../lib/md5'
 import { applyTheme, THEMES, DEFAULT_THEME_ID } from '../lib/themes'
 import { detectLanguage } from '../lib/languages/index'
 import { buildMacroTextStep } from '../lib/macroTextSteps.mjs'
+import { getOrderedTabs, setTabPinned, getBulkClosableTabIds, shouldPersistAutosaveTab, normalizePinnedState } from '../lib/pinnedTabs.mjs'
 import styles from './page.module.css'
 
 const DEFAULT_FONT_SIZE = 13
 const MIN_FONT_SIZE = 6
 const MAX_FONT_SIZE = 32
 const INITIAL_TAB_NAME = 'new 1'
-const INITIAL_TAB = { id: 1, name: INITIAL_TAB_NAME, content: '', modified: false }
+const INITIAL_TAB = { id: 1, name: INITIAL_TAB_NAME, content: '', modified: false, pinned: false, pinOrder: null }
 const AUTOSAVE_STORAGE_KEY = 'nppw-autosave-backup'
 const AUTOSAVE_INTERVAL_MS = 5_000
 
@@ -247,8 +248,9 @@ export default function Home() {
           view: tab.view === 2 ? 2 : 1,
           name: tab.name ?? `new ${restoredId}`,
           content: tab.content ?? '',
-          modified: true,
+          modified: Boolean(tab.modified),
           language: tab.language ?? null,
+          ...normalizePinnedState(tab),
         }
       })
       let restoredView1Tabs = restoredTabs.filter((tab) => tab.view !== 2).map(({ view, ...tab }) => tab)
@@ -271,7 +273,7 @@ export default function Home() {
       const nextActiveView = backup.activeView === 2 && restoredView2Tabs.length > 0 ? 2 : 1
       undoHistoryRef.current = {}
       restoredTabs.forEach(({ view, ...tab }) => {
-        undoHistoryRef.current[tab.id] = { stack: [tab.content], index: 0, savedIndex: -1 }
+        undoHistoryRef.current[tab.id] = { stack: [tab.content], index: 0, savedIndex: tab.modified ? -1 : 0 }
       })
       setTabs(restoredView1Tabs)
       setView2Tabs(restoredView2Tabs)
@@ -290,13 +292,15 @@ export default function Home() {
     const saveAutosaveBackup = () => {
       try {
         const unsavedTabs = [...tabsRef.current, ...view2TabsRef.current]
-          .filter((tab) => tab.modified)
+          .filter((tab) => shouldPersistAutosaveTab(tab))
           .map((tab) => ({
             id: tab.id,
             view: view2TabsRef.current.some((view2Tab) => view2Tab.id === tab.id) ? 2 : 1,
             name: tab.name,
             content: tab.content,
+            modified: tab.modified,
             language: tab.language ?? null,
+            ...normalizePinnedState(tab),
           }))
         if (unsavedTabs.length === 0) {
           localStorage.removeItem(AUTOSAVE_STORAGE_KEY)
@@ -334,7 +338,8 @@ export default function Home() {
 
   const viewState = { wordWrap, showWhitespace, showEol, showAllChars, showIndent, language, splitEnabled, distractionFree, syncScrollV, syncScrollH, textDirection }
 
-  const activeTabIndex = tabs.findIndex((t) => t.id === activeTabId)
+  const orderedTabs = useMemo(() => getOrderedTabs(tabs), [tabs])
+  const activeTabIndex = orderedTabs.findIndex((t) => t.id === activeTabId)
   const fileState = {
     hasFileHandle: Boolean(fileHandles[activeTabId]),
     tabCount: tabs.length,
@@ -375,7 +380,7 @@ export default function Home() {
       if (idx === -1) {
         const id = nextTabId++
         undoHistoryRef.current[id] = { stack: [line], index: 0, savedIndex: -1 }
-        return [...prev, { id, name: MACRO_DEBUG_TAB_NAME, content: line, modified: true, language: detectLanguage(MACRO_DEBUG_TAB_NAME) }]
+        return [...prev, { id, name: MACRO_DEBUG_TAB_NAME, content: line, modified: true, language: detectLanguage(MACRO_DEBUG_TAB_NAME), pinned: false, pinOrder: null }]
       }
 
       const existing = prev[idx]
@@ -392,7 +397,7 @@ export default function Home() {
     const id = nextTabId++
     const name = `new ${id}`
     undoHistoryRef.current[id] = { stack: [''], index: 0, savedIndex: 0 }
-    setTabs((prev) => [...prev, { id, name, content: '', modified: false, language: null }])
+    setTabs((prev) => [...prev, { id, name, content: '', modified: false, language: null, pinned: false, pinOrder: null }])
     setActiveTabId(id)
   }, [])
 
@@ -440,6 +445,22 @@ export default function Home() {
     },
     []
   )
+
+  const handleToggleTabPin = useCallback((id) => {
+    setTabs((prev) => {
+      const target = prev.find((tab) => tab.id === id)
+      if (!target) return prev
+      return setTabPinned(prev, id, !target.pinned)
+    })
+  }, [])
+
+  const handleToggleView2TabPin = useCallback((id) => {
+    setView2Tabs((prev) => {
+      const target = prev.find((tab) => tab.id === id)
+      if (!target) return prev
+      return setTabPinned(prev, id, !target.pinned)
+    })
+  }, [])
 
   const handleUndo = useCallback(() => {
     const isView1 = activeView === 1
@@ -586,7 +607,7 @@ export default function Home() {
           const content = await file.text()
           const id = nextTabId++
           undoHistoryRef.current[id] = { stack: [content], index: 0, savedIndex: 0 }
-          setTabs((prev) => [...prev, { id, name: file.name, content, modified: false, language: detectLanguage(file.name) }])
+          setTabs((prev) => [...prev, { id, name: file.name, content, modified: false, language: detectLanguage(file.name), pinned: false, pinOrder: null }])
           setFileHandles((prev) => ({ ...prev, [id]: handle }))
           setActiveTabId(id)
         }
@@ -602,7 +623,7 @@ export default function Home() {
           const content = await file.text()
           const id = nextTabId++
           undoHistoryRef.current[id] = { stack: [content], index: 0, savedIndex: 0 }
-          setTabs((prev) => [...prev, { id, name: file.name, content, modified: false, language: detectLanguage(file.name) }])
+          setTabs((prev) => [...prev, { id, name: file.name, content, modified: false, language: detectLanguage(file.name), pinned: false, pinOrder: null }])
           setActiveTabId(id)
         }
       }
@@ -739,61 +760,125 @@ export default function Home() {
   }, [handleCloseTab])
 
   const handleCloseAll = useCallback(() => {
-    const newId = nextTabId++
-    undoHistoryRef.current = { [newId]: { stack: [''], index: 0, savedIndex: 0 } }
-    setTabs([{ id: newId, name: `new ${newId}`, content: '', modified: false }])
-    setActiveTabId(newId)
-    if (splitEnabled) {
-      setSplitEnabled(false)
-      setView2Tabs([])
-      setView2ActiveTabId(null)
-      setActiveView(1)
+    const closableView1Ids = getBulkClosableTabIds(tabsRef.current)
+    const closableView2Ids = getBulkClosableTabIds(view2TabsRef.current)
+    const allClosableIds = new Set([...closableView1Ids, ...closableView2Ids])
+    if (allClosableIds.size === 0) return
+
+    allClosableIds.forEach((id) => { delete undoHistoryRef.current[id] })
+    setFileHandles((existing) => {
+      const next = { ...existing }
+      allClosableIds.forEach((id) => { delete next[id] })
+      return next
+    })
+
+    let remainingView1 = tabsRef.current.filter((tab) => !allClosableIds.has(tab.id))
+    let remainingView2 = view2TabsRef.current.filter((tab) => !allClosableIds.has(tab.id))
+
+    if (remainingView1.length === 0) {
+      if (remainingView2.length > 0) {
+        remainingView1 = [remainingView2[0]]
+        remainingView2 = remainingView2.slice(1)
+        setView2Tabs(remainingView2)
+      } else {
+        const newId = nextTabId++
+        undoHistoryRef.current[newId] = { stack: [''], index: 0, savedIndex: 0 }
+        remainingView1 = [{ id: newId, name: `new ${newId}`, content: '', modified: false, language: null, pinned: false, pinOrder: null }]
+      }
+    } else {
+      setView2Tabs(remainingView2)
     }
-  }, [splitEnabled])
+
+    setTabs(remainingView1)
+    if (!remainingView1.find((tab) => tab.id === activeTabIdRef.current)) {
+      setActiveTabId(remainingView1[0].id)
+    }
+    if (!remainingView2.find((tab) => tab.id === view2ActiveTabIdRef.current)) {
+      setView2ActiveTabId(remainingView2[0]?.id ?? null)
+    }
+    if (remainingView2.length === 0) {
+      setSplitEnabled(false)
+      if (activeViewRef.current === 2) setActiveView(1)
+    } else {
+      setSplitEnabled(true)
+    }
+  }, [])
 
   const handleCloseAllButActive = useCallback(() => {
     setTabs((prev) => {
       const active = prev.find((t) => t.id === activeTabIdRef.current)
       if (!active) return prev
-      const toRemove = prev.filter((t) => t.id !== active.id)
-      toRemove.forEach((t) => { delete undoHistoryRef.current[t.id] })
-      return [active]
+      const closableIds = new Set(getBulkClosableTabIds(prev, (tab) => tab.id !== active.id))
+      if (closableIds.size === 0) return prev
+      closableIds.forEach((id) => { delete undoHistoryRef.current[id] })
+      setFileHandles((existing) => {
+        const next = { ...existing }
+        closableIds.forEach((id) => { delete next[id] })
+        return next
+      })
+      return prev.filter((tab) => !closableIds.has(tab.id))
     })
   }, [])
 
+  const handleCloseAllButPinned = useCallback(() => {
+    handleCloseAll()
+  }, [handleCloseAll])
+
   const handleCloseAllToLeft = useCallback(() => {
     setTabs((prev) => {
-      const idx = prev.findIndex((t) => t.id === activeTabIdRef.current)
+      const ordered = getOrderedTabs(prev)
+      const idx = ordered.findIndex((t) => t.id === activeTabIdRef.current)
       if (idx <= 0) return prev
-      const toRemove = prev.slice(0, idx)
-      toRemove.forEach((t) => { delete undoHistoryRef.current[t.id] })
-      return prev.slice(idx)
+      const leftIds = new Set(ordered.slice(0, idx).map((tab) => tab.id))
+      const closableIds = new Set(getBulkClosableTabIds(prev, (tab) => leftIds.has(tab.id)))
+      if (closableIds.size === 0) return prev
+      closableIds.forEach((id) => { delete undoHistoryRef.current[id] })
+      setFileHandles((existing) => {
+        const next = { ...existing }
+        closableIds.forEach((id) => { delete next[id] })
+        return next
+      })
+      return prev.filter((tab) => !closableIds.has(tab.id))
     })
   }, [])
 
   const handleCloseAllToRight = useCallback(() => {
     setTabs((prev) => {
-      const idx = prev.findIndex((t) => t.id === activeTabIdRef.current)
-      if (idx === -1 || idx === prev.length - 1) return prev
-      const toRemove = prev.slice(idx + 1)
-      toRemove.forEach((t) => { delete undoHistoryRef.current[t.id] })
-      return prev.slice(0, idx + 1)
+      const ordered = getOrderedTabs(prev)
+      const idx = ordered.findIndex((t) => t.id === activeTabIdRef.current)
+      if (idx === -1 || idx === ordered.length - 1) return prev
+      const rightIds = new Set(ordered.slice(idx + 1).map((tab) => tab.id))
+      const closableIds = new Set(getBulkClosableTabIds(prev, (tab) => rightIds.has(tab.id)))
+      if (closableIds.size === 0) return prev
+      closableIds.forEach((id) => { delete undoHistoryRef.current[id] })
+      setFileHandles((existing) => {
+        const next = { ...existing }
+        closableIds.forEach((id) => { delete next[id] })
+        return next
+      })
+      return prev.filter((tab) => !closableIds.has(tab.id))
     })
   }, [])
 
   const handleCloseAllUnchanged = useCallback(() => {
     setTabs((prev) => {
-      const remaining = prev.filter((t) => t.modified)
+      const remaining = prev.filter((t) => t.modified || t.pinned)
       if (remaining.length === 0) {
         const newId = nextTabId++
         undoHistoryRef.current[newId] = { stack: [''], index: 0, savedIndex: 0 }
         const toRemove = prev
         toRemove.forEach((t) => { delete undoHistoryRef.current[t.id] })
         setActiveTabId(newId)
-        return [{ id: newId, name: `new ${newId}`, content: '', modified: false }]
+        setFileHandles({})
+        return [{ id: newId, name: `new ${newId}`, content: '', modified: false, language: null, pinned: false, pinOrder: null }]
       }
-      const toRemove = prev.filter((t) => !t.modified)
+      const toRemove = prev.filter((t) => !t.modified && !t.pinned)
       toRemove.forEach((t) => { delete undoHistoryRef.current[t.id] })
+      setFileHandles((existing) => {
+        const next = { ...existing }
+        toRemove.forEach((tab) => { delete next[tab.id] })
+        return next
+      })
       if (!remaining.find((t) => t.id === activeTabIdRef.current)) {
         setActiveTabId(remaining[0].id)
       }
@@ -804,7 +889,12 @@ export default function Home() {
   const handleSaveSession = useCallback(() => {
     const session = {
       version: 1,
-      tabs: tabsRef.current.map((t) => ({ name: t.name, content: t.content, language: t.language ?? null })),
+      tabs: tabsRef.current.map((t) => ({
+        name: t.name,
+        content: t.content,
+        language: t.language ?? null,
+        ...normalizePinnedState(t),
+      })),
     }
     const json = JSON.stringify(session, null, 2)
     const blob = new Blob([json], { type: 'application/json' })
@@ -825,6 +915,7 @@ export default function Home() {
       content: t.content ?? '',
       modified: false,
       language: t.language ?? null,
+      ...normalizePinnedState(t),
     }))
     newTabs.forEach((t) => {
       undoHistoryRef.current[t.id] = { stack: [t.content], index: 0, savedIndex: 0 }
@@ -907,13 +998,13 @@ export default function Home() {
 
   const handleNextTab = useCallback(() => {
     if (activeView === 1) {
-      const currentTabs = tabsRef.current
+      const currentTabs = getOrderedTabs(tabsRef.current)
       const idx = currentTabs.findIndex((t) => t.id === activeTabIdRef.current)
       if (idx === -1 || currentTabs.length <= 1) return
       const nextIdx = (idx + 1) % currentTabs.length
       setActiveTabId(currentTabs[nextIdx].id)
     } else {
-      const currentTabs = view2TabsRef.current
+      const currentTabs = getOrderedTabs(view2TabsRef.current)
       const idx = currentTabs.findIndex((t) => t.id === view2ActiveTabIdRef.current)
       if (idx === -1 || currentTabs.length <= 1) return
       const nextIdx = (idx + 1) % currentTabs.length
@@ -923,13 +1014,13 @@ export default function Home() {
 
   const handlePrevTab = useCallback(() => {
     if (activeView === 1) {
-      const currentTabs = tabsRef.current
+      const currentTabs = getOrderedTabs(tabsRef.current)
       const idx = currentTabs.findIndex((t) => t.id === activeTabIdRef.current)
       if (idx === -1 || currentTabs.length <= 1) return
       const prevIdx = (idx - 1 + currentTabs.length) % currentTabs.length
       setActiveTabId(currentTabs[prevIdx].id)
     } else {
-      const currentTabs = view2TabsRef.current
+      const currentTabs = getOrderedTabs(view2TabsRef.current)
       const idx = currentTabs.findIndex((t) => t.id === view2ActiveTabIdRef.current)
       if (idx === -1 || currentTabs.length <= 1) return
       const prevIdx = (idx - 1 + currentTabs.length) % currentTabs.length
@@ -959,9 +1050,17 @@ export default function Home() {
       return isDesc ? kb.localeCompare(ka) : ka.localeCompare(kb)
     }
     if (activeView === 1) {
-      setTabs((prev) => [...prev].sort(sortFn))
+      setTabs((prev) => {
+        const pinned = prev.filter((tab) => tab.pinned)
+        const unpinned = prev.filter((tab) => !tab.pinned)
+        return [...pinned, ...unpinned.sort(sortFn)]
+      })
     } else {
-      setView2Tabs((prev) => [...prev].sort(sortFn))
+      setView2Tabs((prev) => {
+        const pinned = prev.filter((tab) => tab.pinned)
+        const unpinned = prev.filter((tab) => !tab.pinned)
+        return [...pinned, ...unpinned.sort(sortFn)]
+      })
     }
   }, [activeView])
 
@@ -993,7 +1092,7 @@ export default function Home() {
       const id = ids[i]
       const content = await file.text()
       undoHistoryRef.current[id] = { stack: [content], index: 0, savedIndex: 0 }
-      setTabs((prev) => [...prev, { id, name: file.name, content, modified: false, language: detectLanguage(file.name) }])
+      setTabs((prev) => [...prev, { id, name: file.name, content, modified: false, language: detectLanguage(file.name), pinned: false, pinOrder: null }])
       lastId = id
     }
     if (lastId !== null) {
@@ -1038,6 +1137,7 @@ export default function Home() {
         case 'closeActive': handleCloseActive(); break
         case 'closeAll': handleCloseAll(); break
         case 'closeAllButActive': handleCloseAllButActive(); break
+        case 'closeAllButPinned': handleCloseAllButPinned(); break
         case 'closeAllToLeft': handleCloseAllToLeft(); break
         case 'closeAllToRight': handleCloseAllToRight(); break
         case 'closeAllUnchanged': handleCloseAllUnchanged(); break
@@ -1065,7 +1165,7 @@ export default function Home() {
     [
       handleNewTab, handleOpen, handleReload, handleSave,
       handleSaveAs, handleSaveCopyAs, handleSaveAll, handleRename,
-      handleCloseActive, handleCloseAll, handleCloseAllButActive,
+      handleCloseActive, handleCloseAll, handleCloseAllButActive, handleCloseAllButPinned,
       handleCloseAllToLeft, handleCloseAllToRight, handleCloseAllUnchanged,
       handleLoadSession, handleSaveSession,
       handlePrint, handleExit, handleNextTab, handlePrevTab,
@@ -1955,6 +2055,7 @@ export default function Home() {
                   activeTabId={activeTabId}
                   onSelect={setActiveTabId}
                   onClose={handleCloseTab}
+                  onTogglePin={handleToggleTabPin}
                 />
               )}
               <Editor
@@ -1980,6 +2081,7 @@ export default function Home() {
                   activeTabId={view2ActiveTabId}
                   onSelect={setView2ActiveTabId}
                   onClose={handleCloseView2Tab}
+                  onTogglePin={handleToggleView2TabPin}
                 />
               )}
               <Editor
@@ -2003,6 +2105,7 @@ export default function Home() {
               activeTabId={activeTabId}
               onSelect={setActiveTabId}
               onClose={handleCloseTab}
+              onTogglePin={handleToggleTabPin}
             />
           )}
           <Editor

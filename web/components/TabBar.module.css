@@ -2,6 +2,7 @@
   display: flex;
   flex-direction: row;
   align-items: flex-end;
+  position: relative;
   background: var(--tab-bar-shell-bg, linear-gradient(180deg, #cdc6ba 0%, var(--tab-bar-bg) 100%));
   border-bottom: 1px solid var(--chrome-border);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
@@ -42,8 +43,17 @@
   user-select: none;
 }
 
+.tabSlot {
+  display: flex;
+  align-items: flex-end;
+}
+
 .tab:hover {
   background: var(--tab-hover-bg);
+}
+
+.tab.pinned {
+  background: linear-gradient(180deg, #e9e2d1 0%, #dfd6c5 100%);
 }
 
 .tab.active {
@@ -85,4 +95,37 @@
 
 .tabFill {
   flex: 1;
+}
+
+.pinnedDivider {
+  width: 1px;
+  height: 17px;
+  margin: 0 4px 4px 2px;
+  background: var(--chrome-border);
+}
+
+.contextMenu {
+  position: fixed;
+  z-index: 1200;
+  background: var(--menu-bg, #f7f3ea);
+  border: 1px solid var(--chrome-border);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  border-radius: var(--ui-radius);
+  min-width: 130px;
+  padding: 3px;
+}
+
+.contextMenuItem {
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: var(--chrome-text);
+  padding: 5px 8px;
+  font-size: 12px;
+  border-radius: var(--ui-radius);
+}
+
+.contextMenuItem:hover {
+  background: var(--menu-item-hover-bg, rgba(0, 0, 0, 0.08));
 }
