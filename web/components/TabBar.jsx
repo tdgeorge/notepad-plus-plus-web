@@ -1,8 +1,11 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import styles from './TabBar.module.css'
 import { getOrderedTabs } from '../lib/pinnedTabs.mjs'
+
+const DOUBLE_TAP_MS = 350
+const DOUBLE_TAP_MAX_MOVE = 24
 
 const TAB_COLORS = {
   1: { bg: '#f5d76e', text: '#333' },
@@ -14,7 +17,12 @@ const TAB_COLORS = {
 
 export default function TabBar({ tabs, activeTabId, onSelect, onClose, onTogglePin }) {
   const [contextMenu, setContextMenu] = useState(null)
+  const lastTouchTapRef = useRef(null)
   const orderedTabs = useMemo(() => getOrderedTabs(tabs), [tabs])
+
+  const openTabContextMenu = (tabId, x, y) => {
+    setContextMenu({ tabId, x, y })
+  }
 
   useEffect(() => {
     if (!contextMenu) return undefined
@@ -49,7 +57,32 @@ export default function TabBar({ tabs, activeTabId, onSelect, onClose, onToggleP
               onClick={() => onSelect(tab.id)}
               onContextMenu={(e) => {
                 e.preventDefault()
-                setContextMenu({ tabId: tab.id, x: e.clientX, y: e.clientY })
+                openTabContextMenu(tab.id, e.clientX, e.clientY)
+              }}
+              onTouchEnd={(e) => {
+                const target = e.target
+                if (target && typeof target.closest === 'function' && target.closest('button')) return
+                const touch = e.changedTouches?.[0]
+                if (!touch) return
+                const now = Date.now()
+                const lastTap = lastTouchTapRef.current
+                const isSameTab = lastTap?.tabId === tab.id
+                const isWithinTime = Boolean(lastTap && now - lastTap.time <= DOUBLE_TAP_MS)
+                const dx = lastTap ? Math.abs(touch.clientX - lastTap.x) : Infinity
+                const dy = lastTap ? Math.abs(touch.clientY - lastTap.y) : Infinity
+                const isWithinDistance = dx <= DOUBLE_TAP_MAX_MOVE && dy <= DOUBLE_TAP_MAX_MOVE
+                if (isSameTab && isWithinTime && isWithinDistance) {
+                  e.preventDefault()
+                  openTabContextMenu(tab.id, touch.clientX, touch.clientY)
+                  lastTouchTapRef.current = null
+                  return
+                }
+                lastTouchTapRef.current = {
+                  tabId: tab.id,
+                  time: now,
+                  x: touch.clientX,
+                  y: touch.clientY,
+                }
               }}
               style={colorStyle ? { backgroundColor: colorStyle.bg, color: colorStyle.text } : undefined}
             >
