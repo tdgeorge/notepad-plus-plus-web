@@ -73,6 +73,7 @@
 
 .pinBadge {
   display: inline-block;
+  margin-right: 2px;
 }
 
 .srOnly {

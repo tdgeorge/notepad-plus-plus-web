@@ -60,8 +60,7 @@ export default function TabBar({ tabs, activeTabId, onSelect, onClose, onToggleP
                 openTabContextMenu(tab.id, e.clientX, e.clientY)
               }}
               onTouchEnd={(e) => {
-                const target = e.target
-                if (target && typeof target.closest === 'function' && target.closest('button')) return
+                if (e.target.closest('button')) return
                 const touch = e.changedTouches?.[0]
                 if (!touch) return
                 const now = Date.now()
@@ -90,7 +89,7 @@ export default function TabBar({ tabs, activeTabId, onSelect, onClose, onToggleP
                 {tab.pinned ? (
                   <>
                     <span className={styles.srOnly}>Pinned </span>
-                    <span className={styles.pinBadge} aria-hidden="true">📌 </span>
+                    <span className={styles.pinBadge} aria-hidden="true">📌</span>
                   </>
                 ) : null}
                 {tab.modified ? `${tab.name} \u25cf` : tab.name}
