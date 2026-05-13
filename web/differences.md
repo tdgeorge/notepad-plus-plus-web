@@ -216,4 +216,3 @@ Items marked **N/A** are inherently unavailable in a browser context. All others
 | Shell extension (right-click "Edit with Notepad++") | **N/A** |
 | File-change detection and reload prompt | Not implemented — no file-system watching |
 | Jump list / taskbar pinning (Windows) | **N/A** |
-| Drag-and-drop files from Explorer onto the window | Not implemented |
