@@ -23,6 +23,7 @@ import { md5 } from '../lib/md5'
 import { applyTheme, THEMES, DEFAULT_THEME_ID } from '../lib/themes'
 import { detectLanguage } from '../lib/languages/index'
 import { buildMacroTextStep } from '../lib/macroTextSteps.mjs'
+import { handleBrowserExit } from '../lib/exitPage.mjs'
 import { getOrderedTabs, setTabPinned, getBulkClosableTabIds, shouldPersistAutosaveTab, normalizePinnedState } from '../lib/pinnedTabs.mjs'
 import styles from './page.module.css'
 
@@ -1007,7 +1008,7 @@ export default function Home() {
   }, [])
 
   const handleExit = useCallback(() => {
-    window.close()
+    handleBrowserExit(window)
   }, [])
 
   const handleNextTab = useCallback(() => {
