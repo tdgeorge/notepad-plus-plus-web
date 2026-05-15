@@ -32,3 +32,8 @@ test('createWebPreviewTab applies a consistent untitled fallback name', () => {
   const next = createWebPreviewTab({ id: 1, name: '   ', content: '' }, 9)
   assert.equal(next.name, 'Untitled 9 (webpage)')
 })
+
+test('createWebPreviewTab treats mixed whitespace names as empty', () => {
+  const next = createWebPreviewTab({ id: 1, name: '\t \n ', content: '' }, 7)
+  assert.equal(next.name, 'Untitled 7 (webpage)')
+})
