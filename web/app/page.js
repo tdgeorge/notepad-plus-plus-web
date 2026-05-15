@@ -2117,7 +2117,7 @@ export default function Home() {
                     title={`${activeTab?.name ?? 'untitled'} webpage preview`}
                     className={styles.webpagePreviewFrame}
                     srcDoc={activeTab?.content ?? ''}
-                    sandbox="allow-scripts allow-forms allow-modals allow-pointer-lock allow-popups"
+                    sandbox="allow-scripts allow-forms allow-modals allow-pointer-lock"
                   />
                 ) : (
                   <Editor
@@ -2153,7 +2153,7 @@ export default function Home() {
                     title={`${view2ActiveTab?.name ?? 'untitled'} webpage preview`}
                     className={styles.webpagePreviewFrame}
                     srcDoc={view2ActiveTab?.content ?? ''}
-                    sandbox="allow-scripts allow-forms allow-modals allow-pointer-lock allow-popups"
+                    sandbox="allow-scripts allow-forms allow-modals allow-pointer-lock"
                   />
                 ) : (
                   <Editor
@@ -2187,7 +2187,7 @@ export default function Home() {
                 title={`${activeTab?.name ?? 'untitled'} webpage preview`}
                 className={styles.webpagePreviewFrame}
                 srcDoc={activeTab?.content ?? ''}
-                sandbox="allow-scripts allow-forms allow-modals allow-pointer-lock allow-popups"
+                sandbox="allow-scripts allow-forms allow-modals allow-pointer-lock"
               />
             ) : (
               <Editor
