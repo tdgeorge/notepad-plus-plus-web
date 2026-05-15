@@ -105,6 +105,7 @@ test('buildMarkdownPreviewDocument supports blockquotes tables images details ne
   assert.match(html, /<summary>More info<\/summary>/)
   assert.match(html, /<ul><li>parent<ul><li>child<ul><li>grandchild<\/li><\/ul><\/li><\/ul><\/li><\/ul>/)
   assert.equal((html.match(/<hr \/>/g) || []).length, 2)
+  assert.match(html, /hr \{ border: 0; border-top: 1px solid/)
 })
 
 test('buildMarkdownPreviewDocument supports footnote references highlight and flexible image syntax', () => {
