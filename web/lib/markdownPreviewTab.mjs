@@ -549,7 +549,7 @@ export function buildMarkdownPreviewDocument(markdown, tabName) {
     code { padding: 0.15em 0.35em; border-radius: 4px; background: rgba(127, 127, 127, 0.12); }
     pre code { padding: 0; background: transparent; }
     blockquote { margin: 1em 0; padding-left: 1em; border-left: 4px solid rgba(127, 127, 127, 0.5); }
-    hr { border: 0; border-top: 1px solid rgba(127, 127, 127, 0.5); margin: 1.5em 0; }
+    hr { border: 0; border-top: 1px solid currentColor; opacity: 0.35; margin: 1.5em 0; }
     table { width: 100%; border-collapse: collapse; margin: 1em 0; }
     th, td { border: 1px solid rgba(127, 127, 127, 0.35); padding: 0.45em 0.6em; }
     img { max-width: 100%; height: auto; }

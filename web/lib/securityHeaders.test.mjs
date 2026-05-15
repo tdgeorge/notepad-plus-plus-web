@@ -7,5 +7,4 @@ test('content security policy allows external images for markdown previews', asy
   const rootHeaders = headers.find((entry) => entry.source === '/(.*)')?.headers ?? []
   const csp = rootHeaders.find((entry) => entry.key === 'Content-Security-Policy')?.value ?? ''
   assert.match(csp, /img-src[^;]*https:/)
-  assert.match(csp, /img-src[^;]*http:/)
 })
