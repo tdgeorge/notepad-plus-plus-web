@@ -69,3 +69,40 @@ test('buildMarkdownPreviewDocument supports full markdown fixture features', () 
   assert.match(html, /<pre><code class="language-js">const x = 1 &lt; 2<\/code><\/pre>/)
   assert.match(html, /<code>inline `code` span<\/code>/)
 })
+
+test('buildMarkdownPreviewDocument supports blockquotes tables images details nested lists and spaced rules', () => {
+  const markdown = [
+    '> Quote line',
+    '> - one',
+    '>   - two',
+    '',
+    '| Name | Count |',
+    '| :--- | ---: |',
+    '| apples | 10 |',
+    '| pears | 2 |',
+    '',
+    '![diagram](https://example.com/pic.png "Diagram")',
+    '',
+    '<details open>',
+    '<summary>More info</summary>',
+    'Extra details content.',
+    '</details>',
+    '',
+    '- parent',
+    '  - child',
+    '    - grandchild',
+    '',
+    '* * *',
+    '',
+    '- - -',
+  ].join('\n')
+
+  const html = buildMarkdownPreviewDocument(markdown)
+  assert.match(html, /<blockquote>[\s\S]*<ul><li>one<ul><li>two<\/li><\/ul><\/li><\/ul>[\s\S]*<\/blockquote>/)
+  assert.match(html, /<table><thead><tr><th style="text-align:left">Name<\/th><th style="text-align:right">Count<\/th><\/tr><\/thead><tbody><tr><td style="text-align:left">apples<\/td><td style="text-align:right">10<\/td><\/tr><tr><td style="text-align:left">pears<\/td><td style="text-align:right">2<\/td><\/tr><\/tbody><\/table>/)
+  assert.match(html, /<img src="https:\/\/example\.com\/pic\.png" alt="diagram" title="Diagram" \/>/)
+  assert.match(html, /<details open>/)
+  assert.match(html, /<summary>More info<\/summary>/)
+  assert.match(html, /<ul><li>parent<ul><li>child<ul><li>grandchild<\/li><\/ul><\/li><\/ul><\/li><\/ul>/)
+  assert.equal((html.match(/<hr \/>/g) || []).length, 2)
+})

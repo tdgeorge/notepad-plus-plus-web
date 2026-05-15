@@ -8,9 +8,9 @@ function escapeHtml(value) {
 }
 
 const ALLOWED_HTML_TAGS = new Set([
-  'a', 'abbr', 'b', 'blockquote', 'br', 'code', 'dd', 'del', 'div', 'dl', 'dt',
+  'a', 'abbr', 'b', 'blockquote', 'br', 'code', 'dd', 'del', 'details', 'div', 'dl', 'dt',
   'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'i', 'img', 'li', 'ol', 'p',
-  'pre', 's', 'span', 'strong', 'sub', 'sup', 'u', 'ul',
+  'pre', 's', 'span', 'strong', 'sub', 'summary', 'sup', 'u', 'ul',
 ])
 
 const COMMON_ALLOWED_ATTRS = new Set(['class', 'id', 'title', 'lang'])
@@ -21,6 +21,7 @@ const TAG_ALLOWED_ATTRS = {
   pre: new Set(['class']),
   span: new Set(['class']),
   div: new Set(['class']),
+  details: new Set(['open']),
 }
 
 const INLINE_SAFE_HTML_TAG_PATTERN = Array
@@ -28,6 +29,11 @@ const INLINE_SAFE_HTML_TAG_PATTERN = Array
   .sort((a, b) => b.length - a.length)
   .join('|')
 const INLINE_SAFE_HTML_TAG_REGEX = new RegExp(`</?(?:${INLINE_SAFE_HTML_TAG_PATTERN})(?:\\s+[^<>]*)?\\s*/?>`, 'gi')
+const LIST_LINE_REGEX = /^([ \t]*)([-*+]|\d+\.)\s+(.*)$/
+
+function countIndent(value) {
+  return String(value).replace(/\t/g, '  ').length
+}
 
 function sanitizeHref(rawHref) {
   const trimmed = String(rawHref).trim()
@@ -37,6 +43,19 @@ function sanitizeHref(rawHref) {
   try {
     const parsed = new URL(trimmed, 'https://example.local/')
     if (parsed.protocol === 'http:' || parsed.protocol === 'https:' || parsed.protocol === 'mailto:') {
+      return trimmed
+    }
+  } catch {}
+  return '#'
+}
+
+function sanitizeImageSrc(rawSrc) {
+  const trimmed = String(rawSrc).trim()
+  if (!trimmed) return '#'
+  if (trimmed.startsWith('/') || trimmed.startsWith('./') || trimmed.startsWith('../')) return trimmed
+  try {
+    const parsed = new URL(trimmed, 'https://example.local/')
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
       return trimmed
     }
   } catch {}
@@ -70,8 +89,14 @@ function sanitizeHtmlTag(rawTag) {
       }
     }
 
-    if (attrName === 'href' || attrName === 'src') {
+    if (attrName === 'href') {
       const safe = sanitizeHref(rawValue)
+      attrs.push(`${attrName}="${escapeHtml(safe)}"`)
+      continue
+    }
+
+    if (attrName === 'src') {
+      const safe = sanitizeImageSrc(rawValue)
       attrs.push(`${attrName}="${escapeHtml(safe)}"`)
       continue
     }
@@ -84,6 +109,11 @@ function sanitizeHtmlTag(rawTag) {
 
     if (attrName === 'rel') {
       attrs.push(`rel="${escapeHtml(rawValue || 'noopener noreferrer')}"`)
+      continue
+    }
+
+    if (attrName === 'open') {
+      attrs.push('open')
       continue
     }
 
@@ -127,9 +157,21 @@ function splitInlineCodeSegments(line) {
 }
 
 function renderTextInlineMarkdown(segment) {
+  const images = []
+  const withImages = segment.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+"([^"]*)")?\)/g, (_, alt, src, title) => {
+    const token = `@@MDIMAGE${images.length}@@`
+    images.push({
+      token,
+      alt: escapeHtml(alt),
+      src: escapeHtml(sanitizeImageSrc(src)),
+      title: title ? escapeHtml(title) : '',
+    })
+    return token
+  })
+
   const links = []
-  const withLinks = segment.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, href) => {
-    const token = `@@NPPWLINK${links.length}@@`
+  const withLinks = withImages.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, href) => {
+    const token = `@@MDLINK${links.length}@@`
     links.push({
       token,
       text: escapeHtml(text),
@@ -142,7 +184,7 @@ function renderTextInlineMarkdown(segment) {
   const withHtmlPlaceholders = withLinks.replace(INLINE_SAFE_HTML_TAG_REGEX, (rawTag) => {
     const safeTag = sanitizeHtmlTag(rawTag)
     if (!safeTag) return ''
-    const token = `@@NPPWHTML${htmlTags.length}@@`
+    const token = `@@MDHTML${htmlTags.length}@@`
     htmlTags.push({ token, safeTag })
     return token
   })
@@ -154,6 +196,10 @@ function renderTextInlineMarkdown(segment) {
   html = html.replace(/\^([^^\s][^^]*?)\^/g, '<sup>$1</sup>')
   html = html.replace(/(^|[^~])~([^~\s][^~]*?)~(?!~)/g, '$1<sub>$2</sub>')
 
+  for (const image of images) {
+    const titleAttr = image.title ? ` title="${image.title}"` : ''
+    html = html.replace(image.token, `<img src="${image.src}" alt="${image.alt}"${titleAttr} />`)
+  }
   for (const link of links) {
     html = html.replace(link.token, `<a href="${link.href}" target="_blank" rel="noopener noreferrer">${link.text}</a>`)
   }
@@ -172,6 +218,159 @@ function renderInlineMarkdown(line) {
   }).join('')
 }
 
+function isHorizontalRuleLine(trimmedLine) {
+  return /^(?:-{3,}|\*{3,}|(?:-\s*){3,}|(?:\*\s*){3,})$/.test(trimmedLine)
+}
+
+function parseTableRow(line) {
+  const trimmed = String(line).trim()
+  if (!trimmed.includes('|')) return null
+  const normalized = trimmed.replace(/^\|/, '').replace(/\|$/, '')
+  const cells = normalized.split('|').map((cell) => cell.trim())
+  if (cells.length < 2) return null
+  return cells
+}
+
+function parseTableDivider(line, expectedCount) {
+  const cells = parseTableRow(line)
+  if (!cells || cells.length !== expectedCount) return null
+
+  const aligns = []
+  for (const cell of cells) {
+    const compact = cell.replace(/\s+/g, '')
+    if (!/^:?-{3,}:?$/.test(compact)) return null
+    if (compact.startsWith(':') && compact.endsWith(':')) aligns.push('center')
+    else if (compact.endsWith(':')) aligns.push('right')
+    else if (compact.startsWith(':')) aligns.push('left')
+    else aligns.push('')
+  }
+
+  return aligns
+}
+
+function parseTableBlock(lines, startIndex) {
+  const headerCells = parseTableRow(lines[startIndex])
+  const aligns = parseTableDivider(lines[startIndex + 1], headerCells.length)
+  let index = startIndex + 2
+  const bodyRows = []
+
+  while (index < lines.length) {
+    const rowLine = lines[index]
+    if (!rowLine.trim()) break
+    const rowCells = parseTableRow(rowLine)
+    if (!rowCells || rowCells.length !== headerCells.length) break
+    bodyRows.push(rowCells)
+    index += 1
+  }
+
+  const renderCell = (tag, cell, align) => {
+    const alignAttr = align ? ` style="text-align:${align}"` : ''
+    return `<${tag}${alignAttr}>${renderInlineMarkdown(cell)}</${tag}>`
+  }
+
+  const thead = `<thead><tr>${headerCells.map((cell, i) => renderCell('th', cell, aligns[i])).join('')}</tr></thead>`
+  const tbodyRows = bodyRows
+    .map((row) => `<tr>${row.map((cell, i) => renderCell('td', cell, aligns[i])).join('')}</tr>`)
+    .join('')
+  const tbody = `<tbody>${tbodyRows}</tbody>`
+
+  return {
+    html: `<table>${thead}${tbody}</table>`,
+    nextIndex: index,
+  }
+}
+
+function parseListBlock(lines, startIndex) {
+  let index = startIndex
+  const parts = []
+  const stack = []
+
+  const closeList = () => {
+    const current = stack.pop()
+    if (current) {
+      parts.push(`</li></${current.type}>`)
+    }
+  }
+
+  while (index < lines.length) {
+    const line = lines[index]
+    const match = LIST_LINE_REGEX.exec(line)
+    if (!match) break
+
+    const indent = countIndent(match[1])
+    const type = /\d+\./.test(match[2]) ? 'ol' : 'ul'
+    const text = match[3].trim()
+
+    while (stack.length && indent < stack[stack.length - 1].indent) {
+      closeList()
+    }
+
+    if (!stack.length) {
+      parts.push(`<${type}><li>${renderInlineMarkdown(text)}`)
+      stack.push({ type, indent })
+    } else {
+      const current = stack[stack.length - 1]
+      if (indent > current.indent) {
+        parts.push(`<${type}><li>${renderInlineMarkdown(text)}`)
+        stack.push({ type, indent })
+      } else if (indent === current.indent) {
+        if (type === current.type) {
+          parts.push(`</li><li>${renderInlineMarkdown(text)}`)
+        } else {
+          closeList()
+          parts.push(`<${type}><li>${renderInlineMarkdown(text)}`)
+          stack.push({ type, indent })
+        }
+      } else {
+        break
+      }
+    }
+
+    index += 1
+
+    while (index < lines.length) {
+      const continuation = lines[index]
+      if (!continuation.trim()) break
+      if (LIST_LINE_REGEX.test(continuation)) break
+      if (countIndent(continuation) > indent) {
+        parts.push(` ${renderInlineMarkdown(continuation.trim())}`)
+        index += 1
+        continue
+      }
+      break
+    }
+  }
+
+  while (stack.length) {
+    closeList()
+  }
+
+  return {
+    html: parts.join(''),
+    nextIndex: index,
+  }
+}
+
+function sanitizeStandaloneHtmlLine(line) {
+  const trimmed = line.trim()
+
+  if (/^<\/?[a-zA-Z][^>]*>$/.test(trimmed)) {
+    return sanitizeHtmlTag(trimmed)
+  }
+
+  const fullTagMatch = /^<([a-zA-Z][\w:-]*)([^>]*)>([\s\S]*)<\/\1>$/.exec(trimmed)
+  if (!fullTagMatch) return null
+
+  const tagName = fullTagMatch[1].toLowerCase()
+  if (!ALLOWED_HTML_TAGS.has(tagName)) return null
+
+  const opening = sanitizeHtmlTag(`<${fullTagMatch[1]}${fullTagMatch[2]}>`)
+  const closing = sanitizeHtmlTag(`</${fullTagMatch[1]}>`)
+  if (!opening || !closing) return null
+
+  return `${opening}${renderInlineMarkdown(fullTagMatch[3])}${closing}`
+}
+
 function markdownToHtml(markdown) {
   const lines = String(markdown ?? '').replaceAll('\r\n', '\n').split('\n')
   const blocks = []
@@ -180,28 +379,21 @@ function markdownToHtml(markdown) {
   let codeFenceMarker = null
   let codeFenceLang = ''
   let paragraph = []
-  let listType = null
-  let listItems = []
 
   const flushParagraph = () => {
     if (!paragraph.length) return
     blocks.push(`<p>${renderInlineMarkdown(paragraph.join(' '))}</p>`)
     paragraph = []
   }
-  const flushList = () => {
-    if (!listType || !listItems.length) return
-    const items = listItems.map((item) => `<li>${renderInlineMarkdown(item)}</li>`).join('')
-    blocks.push(`<${listType}>${items}</${listType}>`)
-    listType = null
-    listItems = []
-  }
 
-  for (const line of lines) {
+  let index = 0
+  while (index < lines.length) {
+    const line = lines[index]
     const trimmed = line.trim()
     const fenceMatch = /^(```+|~~~+)\s*([\w-]+)?\s*$/.exec(trimmed)
+
     if (fenceMatch) {
       flushParagraph()
-      flushList()
       if (inCodeBlock) {
         if (fenceMatch[1][0] === codeFenceMarker) {
           const classAttr = codeFenceLang ? ` class="language-${escapeHtml(codeFenceLang)}"` : ''
@@ -219,75 +411,99 @@ function markdownToHtml(markdown) {
         codeFenceLang = fenceMatch[2] ? fenceMatch[2].toLowerCase() : ''
         codeLines = []
       }
+      index += 1
       continue
     }
 
     if (inCodeBlock) {
       codeLines.push(line)
-      continue
-    }
-
-    if (/^<\/?[a-zA-Z][^>]*>\s*$/.test(trimmed)) {
-      flushParagraph()
-      flushList()
-      const safeTag = sanitizeHtmlTag(trimmed)
-      if (safeTag) {
-        blocks.push(safeTag)
-      } else {
-        blocks.push(`<p>${escapeHtml(line)}</p>`)
-      }
+      index += 1
       continue
     }
 
     if (!trimmed) {
       flushParagraph()
-      flushList()
+      index += 1
       continue
     }
 
-    const headingMatch = /^(#{1,6})\s+(.*)$/.exec(line)
-    if (headingMatch) {
+    if (/^\s*>\s?/.test(line)) {
       flushParagraph()
-      flushList()
-      const level = headingMatch[1].length
-      blocks.push(`<h${level}>${renderInlineMarkdown(headingMatch[2])}</h${level}>`)
+      const quoteLines = []
+      while (index < lines.length) {
+        const quoteLine = lines[index]
+        const quoteMatch = /^\s*>\s?(.*)$/.exec(quoteLine)
+        if (quoteMatch) {
+          quoteLines.push(quoteMatch[1])
+          index += 1
+          continue
+        }
+        if (!quoteLine.trim() && /^\s*>\s?/.test(lines[index + 1] || '')) {
+          quoteLines.push('')
+          index += 1
+          continue
+        }
+        break
+      }
+      blocks.push(`<blockquote>${markdownToHtml(quoteLines.join('\n'))}</blockquote>`)
       continue
     }
 
-    if (/^---+$/.test(trimmed) || /^\*{3,}$/.test(trimmed)) {
+    const standaloneHtml = sanitizeStandaloneHtmlLine(line)
+    if (standaloneHtml !== null) {
       flushParagraph()
-      flushList()
+      if (standaloneHtml) {
+        blocks.push(standaloneHtml)
+      } else {
+        blocks.push(`<p>${escapeHtml(line)}</p>`)
+      }
+      index += 1
+      continue
+    }
+
+    const headerMatch = /^(#{1,6})\s+(.*)$/.exec(line)
+    if (headerMatch) {
+      flushParagraph()
+      const level = headerMatch[1].length
+      blocks.push(`<h${level}>${renderInlineMarkdown(headerMatch[2])}</h${level}>`)
+      index += 1
+      continue
+    }
+
+    if (isHorizontalRuleLine(trimmed)) {
+      flushParagraph()
       blocks.push('<hr />')
+      index += 1
       continue
     }
 
-    const unorderedMatch = /^[-*+]\s+(.*)$/.exec(line)
-    if (unorderedMatch) {
+    const headerCells = parseTableRow(line)
+    if (headerCells && index + 1 < lines.length && parseTableDivider(lines[index + 1], headerCells.length)) {
       flushParagraph()
-      if (listType !== 'ul') flushList()
-      listType = 'ul'
-      listItems.push(unorderedMatch[1])
+      const table = parseTableBlock(lines, index)
+      blocks.push(table.html)
+      index = table.nextIndex
       continue
     }
 
-    const orderedMatch = /^\d+\.\s+(.*)$/.exec(line)
-    if (orderedMatch) {
+    if (LIST_LINE_REGEX.test(line)) {
       flushParagraph()
-      if (listType !== 'ol') flushList()
-      listType = 'ol'
-      listItems.push(orderedMatch[1])
+      const list = parseListBlock(lines, index)
+      blocks.push(list.html)
+      index = list.nextIndex
       continue
     }
 
     paragraph.push(trimmed)
+    index += 1
   }
 
   if (inCodeBlock) {
     const classAttr = codeFenceLang ? ` class="language-${escapeHtml(codeFenceLang)}"` : ''
     blocks.push(`<pre><code${classAttr}>${escapeHtml(codeLines.join('\n'))}</code></pre>`)
   }
+
   flushParagraph()
-  flushList()
   return blocks.join('\n')
 }
 
@@ -307,6 +523,10 @@ export function buildMarkdownPreviewDocument(markdown, tabName) {
     pre { padding: 12px; border-radius: 6px; overflow: auto; background: rgba(127, 127, 127, 0.12); }
     code { padding: 0.15em 0.35em; border-radius: 4px; background: rgba(127, 127, 127, 0.12); }
     pre code { padding: 0; background: transparent; }
+    blockquote { margin: 1em 0; padding-left: 1em; border-left: 4px solid rgba(127, 127, 127, 0.5); }
+    table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+    th, td { border: 1px solid rgba(127, 127, 127, 0.35); padding: 0.45em 0.6em; }
+    img { max-width: 100%; height: auto; }
   </style>
 </head>
 <body>
