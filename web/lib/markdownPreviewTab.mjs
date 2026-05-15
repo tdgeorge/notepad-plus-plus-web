@@ -9,7 +9,7 @@ function escapeHtml(value) {
 
 const ALLOWED_HTML_TAGS = new Set([
   'a', 'abbr', 'b', 'blockquote', 'br', 'code', 'dd', 'del', 'details', 'div', 'dl', 'dt',
-  'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'i', 'img', 'li', 'ol', 'p',
+  'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'i', 'img', 'li', 'mark', 'ol', 'p',
   'pre', 's', 'span', 'strong', 'sub', 'summary', 'sup', 'u', 'ul',
 ])
 
