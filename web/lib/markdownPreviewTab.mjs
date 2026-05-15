@@ -7,6 +7,22 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;')
 }
 
+const ALLOWED_HTML_TAGS = new Set([
+  'a', 'abbr', 'b', 'blockquote', 'br', 'code', 'dd', 'del', 'div', 'dl', 'dt',
+  'em', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr', 'i', 'img', 'li', 'ol', 'p',
+  'pre', 's', 'span', 'strong', 'sub', 'sup', 'u', 'ul',
+])
+
+const COMMON_ALLOWED_ATTRS = new Set(['class', 'id', 'title', 'lang'])
+const TAG_ALLOWED_ATTRS = {
+  a: new Set(['href', 'target', 'rel', 'title']),
+  img: new Set(['src', 'alt', 'width', 'height', 'title']),
+  code: new Set(['class']),
+  pre: new Set(['class']),
+  span: new Set(['class']),
+  div: new Set(['class']),
+}
+
 function sanitizeHref(rawHref) {
   const trimmed = String(rawHref).trim()
   if (!trimmed) return '#'
@@ -21,29 +37,132 @@ function sanitizeHref(rawHref) {
   return '#'
 }
 
-function renderInlineMarkdown(line) {
-  const segments = String(line).split(/(`[^`]*`)/g)
-  return segments.map((segment) => {
-    if (segment.startsWith('`') && segment.endsWith('`') && segment.length >= 2) {
-      return `<code>${escapeHtml(segment.slice(1, -1))}</code>`
+function sanitizeHtmlTag(rawTag) {
+  const tagMatch = /^<\s*(\/?)\s*([a-zA-Z][\w:-]*)([\s\S]*?)\s*(\/?)>$/.exec(rawTag)
+  if (!tagMatch) return ''
+  const isClosing = Boolean(tagMatch[1])
+  const tagName = tagMatch[2].toLowerCase()
+  const isSelfClosing = Boolean(tagMatch[4])
+  if (!ALLOWED_HTML_TAGS.has(tagName)) return ''
+  if (isClosing) return `</${tagName}>`
+
+  const attrsRaw = tagMatch[3] ?? ''
+  const attrs = []
+  const allowedForTag = TAG_ALLOWED_ATTRS[tagName] ?? new Set()
+  const attrRegex = /([a-zA-Z_:][\w:.-]*)(?:\s*=\s*(".*?"|'.*?'|[^\s"'`=<>]+))?/g
+  let match
+  while ((match = attrRegex.exec(attrsRaw)) !== null) {
+    const attrName = match[1].toLowerCase()
+    if (attrName.startsWith('on')) continue
+    if (!COMMON_ALLOWED_ATTRS.has(attrName) && !allowedForTag.has(attrName)) continue
+
+    let rawValue = ''
+    if (match[2]) {
+      rawValue = match[2].trim()
+      if ((rawValue.startsWith('"') && rawValue.endsWith('"')) || (rawValue.startsWith("'") && rawValue.endsWith("'"))) {
+        rawValue = rawValue.slice(1, -1)
+      }
     }
-    const links = []
-    const withPlaceholders = segment.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, text, href) => {
-      const token = `__NPPW_LINK_${links.length}__`
-      links.push({
-        token,
-        text: escapeHtml(text),
-        href: escapeHtml(sanitizeHref(href)),
-      })
-      return token
+
+    if (attrName === 'href' || attrName === 'src') {
+      const safe = sanitizeHref(rawValue)
+      attrs.push(`${attrName}="${escapeHtml(safe)}"`)
+      continue
+    }
+
+    if (attrName === 'target') {
+      const target = rawValue === '_blank' ? '_blank' : '_self'
+      attrs.push(`target="${target}"`)
+      continue
+    }
+
+    if (attrName === 'rel') {
+      attrs.push(`rel="${escapeHtml(rawValue || 'noopener noreferrer')}"`)
+      continue
+    }
+
+    attrs.push(`${attrName}="${escapeHtml(rawValue)}"`)
+  }
+
+  if (tagName === 'a' && !attrs.some((attr) => attr.startsWith('rel='))) {
+    attrs.push('rel="noopener noreferrer"')
+  }
+  const attrsPart = attrs.length ? ` ${attrs.join(' ')}` : ''
+  return `<${tagName}${attrsPart}${isSelfClosing ? ' /' : ''}>`
+}
+
+function splitInlineCodeSegments(line) {
+  const text = String(line)
+  const segments = []
+  let cursor = 0
+
+  while (cursor < text.length) {
+    const openIndex = text.indexOf('`', cursor)
+    if (openIndex === -1) {
+      segments.push({ type: 'text', value: text.slice(cursor) })
+      break
+    }
+    if (openIndex > cursor) {
+      segments.push({ type: 'text', value: text.slice(cursor, openIndex) })
+    }
+    let backtickCount = 1
+    while (text[openIndex + backtickCount] === '`') backtickCount++
+    const delimiter = '`'.repeat(backtickCount)
+    const closeIndex = text.indexOf(delimiter, openIndex + backtickCount)
+    if (closeIndex === -1) {
+      segments.push({ type: 'text', value: text.slice(openIndex) })
+      break
+    }
+    segments.push({ type: 'code', value: text.slice(openIndex + backtickCount, closeIndex) })
+    cursor = closeIndex + backtickCount
+  }
+
+  return segments
+}
+
+function renderTextInlineMarkdown(segment) {
+  const links = []
+  const withLinks = segment.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, href) => {
+    const token = `@@NPPWLINK${links.length}@@`
+    links.push({
+      token,
+      text: escapeHtml(text),
+      href: escapeHtml(sanitizeHref(href)),
     })
-    let html = escapeHtml(withPlaceholders)
-    for (const link of links) {
-      html = html.replace(link.token, `<a href="${link.href}" target="_blank" rel="noopener noreferrer">${link.text}</a>`)
+    return token
+  })
+
+  const htmlTags = []
+  const withHtmlPlaceholders = withLinks.replace(/<\/?[a-zA-Z][^>]*>/g, (rawTag) => {
+    const safeTag = sanitizeHtmlTag(rawTag)
+    if (!safeTag) return ''
+    const token = `@@NPPWHTML${htmlTags.length}@@`
+    htmlTags.push({ token, safeTag })
+    return token
+  })
+
+  let html = escapeHtml(withHtmlPlaceholders)
+  html = html.replace(/~~(.+?)~~/g, '<del>$1</del>')
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>')
+  html = html.replace(/\^([^^\s][^^]*?)\^/g, '<sup>$1</sup>')
+  html = html.replace(/(^|[^~])~([^~\s][^~]*?)~(?!~)/g, '$1<sub>$2</sub>')
+
+  for (const link of links) {
+    html = html.replace(link.token, `<a href="${link.href}" target="_blank" rel="noopener noreferrer">${link.text}</a>`)
+  }
+  for (const tag of htmlTags) {
+    html = html.replace(tag.token, tag.safeTag)
+  }
+  return html
+}
+
+function renderInlineMarkdown(line) {
+  return splitInlineCodeSegments(line).map((segment) => {
+    if (segment.type === 'code') {
+      return `<code>${escapeHtml(segment.value)}</code>`
     }
-    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>')
-    return html
+    return renderTextInlineMarkdown(segment.value)
   }).join('')
 }
 
@@ -52,6 +171,8 @@ function markdownToHtml(markdown) {
   const blocks = []
   let inCodeBlock = false
   let codeLines = []
+  let codeFenceMarker = null
+  let codeFenceLang = ''
   let paragraph = []
   let listType = null
   let listItems = []
@@ -70,15 +191,27 @@ function markdownToHtml(markdown) {
   }
 
   for (const line of lines) {
-    if (line.trim().startsWith('```')) {
+    const trimmed = line.trim()
+    const fenceMatch = /^(```+|~~~+)\s*([\w-]+)?\s*$/.exec(trimmed)
+    if (fenceMatch) {
       flushParagraph()
       flushList()
       if (inCodeBlock) {
-        blocks.push(`<pre><code>${escapeHtml(codeLines.join('\n'))}</code></pre>`)
-        codeLines = []
-        inCodeBlock = false
+        if (fenceMatch[1][0] === codeFenceMarker) {
+          const classAttr = codeFenceLang ? ` class="language-${escapeHtml(codeFenceLang)}"` : ''
+          blocks.push(`<pre><code${classAttr}>${escapeHtml(codeLines.join('\n'))}</code></pre>`)
+          codeLines = []
+          codeFenceMarker = null
+          codeFenceLang = ''
+          inCodeBlock = false
+        } else {
+          codeLines.push(line)
+        }
       } else {
         inCodeBlock = true
+        codeFenceMarker = fenceMatch[1][0]
+        codeFenceLang = fenceMatch[2] ? fenceMatch[2].toLowerCase() : ''
+        codeLines = []
       }
       continue
     }
@@ -88,7 +221,19 @@ function markdownToHtml(markdown) {
       continue
     }
 
-    if (!line.trim()) {
+    if (/^<\/?[a-zA-Z][^>]*>\s*$/.test(trimmed)) {
+      flushParagraph()
+      flushList()
+      const safeTag = sanitizeHtmlTag(trimmed)
+      if (safeTag) {
+        blocks.push(safeTag)
+      } else {
+        blocks.push(`<p>${escapeHtml(line)}</p>`)
+      }
+      continue
+    }
+
+    if (!trimmed) {
       flushParagraph()
       flushList()
       continue
@@ -103,7 +248,7 @@ function markdownToHtml(markdown) {
       continue
     }
 
-    if (/^---+$/.test(line.trim()) || /^\*{3,}$/.test(line.trim())) {
+    if (/^---+$/.test(trimmed) || /^\*{3,}$/.test(trimmed)) {
       flushParagraph()
       flushList()
       blocks.push('<hr />')
@@ -128,11 +273,12 @@ function markdownToHtml(markdown) {
       continue
     }
 
-    paragraph.push(line.trim())
+    paragraph.push(trimmed)
   }
 
   if (inCodeBlock) {
-    blocks.push(`<pre><code>${escapeHtml(codeLines.join('\n'))}</code></pre>`)
+    const classAttr = codeFenceLang ? ` class="language-${escapeHtml(codeFenceLang)}"` : ''
+    blocks.push(`<pre><code${classAttr}>${escapeHtml(codeLines.join('\n'))}</code></pre>`)
   }
   flushParagraph()
   flushList()

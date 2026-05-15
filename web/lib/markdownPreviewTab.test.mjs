@@ -35,14 +35,37 @@ test('buildMarkdownPreviewDocument converts markdown headings and lists', () => 
   assert.match(html, /<title>README\.md \(markdown preview\)<\/title>/)
 })
 
-test('buildMarkdownPreviewDocument escapes raw html and unsafe links', () => {
+test('buildMarkdownPreviewDocument escapes unsafe script input and link protocols', () => {
   const html = buildMarkdownPreviewDocument('<script>alert(1)</script> [x](javascript:alert(1))')
   assert.doesNotMatch(html, /<script>alert\(1\)<\/script>/)
-  assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/)
   assert.match(html, /href="#"/)
 })
 
 test('buildMarkdownPreviewDocument escapes markdown link text', () => {
   const html = buildMarkdownPreviewDocument('[<b>safe</b>](https://example.com)')
   assert.match(html, /<a href="https:\/\/example\.com" target="_blank" rel="noopener noreferrer">&lt;b&gt;safe&lt;\/b&gt;<\/a>/)
+})
+
+test('buildMarkdownPreviewDocument supports full markdown fixture features', () => {
+  const markdown = [
+    '# Fixture',
+    '',
+    '~~struck~~ ^sup^ ~sub~ and `<em>raw</em>`',
+    '',
+    '<div class="note">embedded html block</div>',
+    '',
+    '```js',
+    'const x = 1 < 2',
+    '```',
+    '',
+    '``inline `code` span``',
+  ].join('\n')
+
+  const html = buildMarkdownPreviewDocument(markdown)
+  assert.match(html, /<del>struck<\/del>/)
+  assert.match(html, /<sup>sup<\/sup>/)
+  assert.match(html, /<sub>sub<\/sub>/)
+  assert.match(html, /<div class="note">embedded html block<\/div>/)
+  assert.match(html, /<pre><code class="language-js">const x = 1 &lt; 2<\/code><\/pre>/)
+  assert.match(html, /<code>inline `code` span<\/code>/)
 })
