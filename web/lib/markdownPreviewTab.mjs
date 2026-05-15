@@ -41,8 +41,8 @@ function renderInlineMarkdown(line) {
     for (const link of links) {
       html = html.replace(link.token, `<a href="${link.href}" target="_blank" rel="noopener noreferrer">${link.text}</a>`)
     }
-    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>')
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>')
     return html
   }).join('')
 }
@@ -103,7 +103,7 @@ function markdownToHtml(markdown) {
       continue
     }
 
-    if (/^---+$/.test(line.trim()) || /^\*\*\*+$/.test(line.trim())) {
+    if (/^---+$/.test(line.trim()) || /^\*{3,}$/.test(line.trim())) {
       flushParagraph()
       flushList()
       blocks.push('<hr />')
