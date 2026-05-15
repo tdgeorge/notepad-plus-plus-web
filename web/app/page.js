@@ -2117,7 +2117,7 @@ export default function Home() {
                     title={`${activeTab?.name ?? 'Untitled'} webpage preview`}
                     className={styles.webpagePreviewFrame}
                     srcDoc={activeTab?.content ?? ''}
-                    sandbox=""
+                    sandbox="allow-scripts"
                   />
                 ) : (
                   <Editor
@@ -2153,7 +2153,7 @@ export default function Home() {
                     title={`${view2ActiveTab?.name ?? 'Untitled'} webpage preview`}
                     className={styles.webpagePreviewFrame}
                     srcDoc={view2ActiveTab?.content ?? ''}
-                    sandbox=""
+                    sandbox="allow-scripts"
                   />
                 ) : (
                   <Editor
@@ -2187,7 +2187,7 @@ export default function Home() {
                 title={`${activeTab?.name ?? 'Untitled'} webpage preview`}
                 className={styles.webpagePreviewFrame}
                 srcDoc={activeTab?.content ?? ''}
-                sandbox=""
+                sandbox="allow-scripts"
               />
             ) : (
               <Editor
