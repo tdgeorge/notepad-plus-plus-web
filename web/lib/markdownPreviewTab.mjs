@@ -23,6 +23,12 @@ const TAG_ALLOWED_ATTRS = {
   div: new Set(['class']),
 }
 
+const INLINE_SAFE_HTML_TAG_PATTERN = Array
+  .from(ALLOWED_HTML_TAGS)
+  .sort((a, b) => b.length - a.length)
+  .join('|')
+const INLINE_SAFE_HTML_TAG_REGEX = new RegExp(`</?(?:${INLINE_SAFE_HTML_TAG_PATTERN})(?:\\s+[^<>]*)?\\s*/?>`, 'gi')
+
 function sanitizeHref(rawHref) {
   const trimmed = String(rawHref).trim()
   if (!trimmed) return '#'
@@ -133,7 +139,7 @@ function renderTextInlineMarkdown(segment) {
   })
 
   const htmlTags = []
-  const withHtmlPlaceholders = withLinks.replace(/<\/?[a-zA-Z][^>]*>/g, (rawTag) => {
+  const withHtmlPlaceholders = withLinks.replace(INLINE_SAFE_HTML_TAG_REGEX, (rawTag) => {
     const safeTag = sanitizeHtmlTag(rawTag)
     if (!safeTag) return ''
     const token = `@@NPPWHTML${htmlTags.length}@@`
