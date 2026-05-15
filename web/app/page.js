@@ -2114,7 +2114,7 @@ export default function Home() {
                 {activeTab?.renderMode === 'webpage' ? (
                   <iframe
                     key={activeTabId}
-                    title={`${activeTab?.name ?? 'untitled'} webpage preview`}
+                    title={`${activeTab?.name ?? 'Untitled'} webpage preview`}
                     className={styles.webpagePreviewFrame}
                     srcDoc={activeTab?.content ?? ''}
                     sandbox=""
@@ -2150,7 +2150,7 @@ export default function Home() {
                 {view2ActiveTab?.renderMode === 'webpage' ? (
                   <iframe
                     key={view2ActiveTabId ?? 'view2-empty'}
-                    title={`${view2ActiveTab?.name ?? 'untitled'} webpage preview`}
+                    title={`${view2ActiveTab?.name ?? 'Untitled'} webpage preview`}
                     className={styles.webpagePreviewFrame}
                     srcDoc={view2ActiveTab?.content ?? ''}
                     sandbox=""
@@ -2184,7 +2184,7 @@ export default function Home() {
             {activeTab?.renderMode === 'webpage' ? (
               <iframe
                 key={activeTabId}
-                title={`${activeTab?.name ?? 'untitled'} webpage preview`}
+                title={`${activeTab?.name ?? 'Untitled'} webpage preview`}
                 className={styles.webpagePreviewFrame}
                 srcDoc={activeTab?.content ?? ''}
                 sandbox=""

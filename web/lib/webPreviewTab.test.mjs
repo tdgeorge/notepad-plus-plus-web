@@ -27,3 +27,8 @@ test('createWebPreviewTab creates a webpage-rendering tab clone', () => {
   assert.equal(next.modified, false)
   assert.equal(next.renderMode, 'webpage')
 })
+
+test('createWebPreviewTab applies a consistent untitled fallback name', () => {
+  const next = createWebPreviewTab({ id: 1, name: '   ', content: '' }, 9)
+  assert.equal(next.name, 'Untitled 9 (webpage)')
+})
