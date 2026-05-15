@@ -45,6 +45,7 @@ const MENUS = [
         ],
       },
       { label: 'Open in Default Viewer', disabled: true },
+      { label: 'Open as Webpage', action: 'openAsWebpage' },
       { label: 'Open Folder as Workspace...', disabled: true },
       { label: 'Reload from Disk', shortcut: 'Ctrl+R', action: 'reload' },
       { label: 'Save', shortcut: 'Ctrl+S', action: 'save' },
