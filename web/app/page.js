@@ -1145,7 +1145,6 @@ export default function Home() {
     const id = nextTabId++
     const webPreviewTab = createWebPreviewTab(sourceTab, id)
     if (!webPreviewTab) return
-    undoHistoryRef.current[id] = { stack: [sourceTab.content], index: 0, savedIndex: 0 }
     if (activeView === 1) {
       setTabs((prev) => [...prev, webPreviewTab])
       setActiveTabId(id)
@@ -2118,7 +2117,7 @@ export default function Home() {
                     title={`${activeTab?.name ?? 'untitled'} webpage preview`}
                     className={styles.webpagePreviewFrame}
                     srcDoc={activeTab?.content ?? ''}
-                    sandbox="allow-scripts allow-forms allow-modals allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-downloads"
+                    sandbox="allow-scripts allow-forms allow-modals allow-pointer-lock allow-popups"
                   />
                 ) : (
                   <Editor
@@ -2154,7 +2153,7 @@ export default function Home() {
                     title={`${view2ActiveTab?.name ?? 'untitled'} webpage preview`}
                     className={styles.webpagePreviewFrame}
                     srcDoc={view2ActiveTab?.content ?? ''}
-                    sandbox="allow-scripts allow-forms allow-modals allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-downloads"
+                    sandbox="allow-scripts allow-forms allow-modals allow-pointer-lock allow-popups"
                   />
                 ) : (
                   <Editor
@@ -2188,7 +2187,7 @@ export default function Home() {
                 title={`${activeTab?.name ?? 'untitled'} webpage preview`}
                 className={styles.webpagePreviewFrame}
                 srcDoc={activeTab?.content ?? ''}
-                sandbox="allow-scripts allow-forms allow-modals allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-downloads"
+                sandbox="allow-scripts allow-forms allow-modals allow-pointer-lock allow-popups"
               />
             ) : (
               <Editor
