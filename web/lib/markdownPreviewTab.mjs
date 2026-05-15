@@ -50,7 +50,10 @@ function sanitizeHref(rawHref) {
 }
 
 function sanitizeImageSrc(rawSrc) {
-  const trimmed = String(rawSrc).trim()
+  let trimmed = String(rawSrc).trim()
+  if (trimmed.startsWith('<') && trimmed.endsWith('>')) {
+    trimmed = trimmed.slice(1, -1).trim()
+  }
   if (!trimmed) return '#'
   if (trimmed.startsWith('/') || trimmed.startsWith('./') || trimmed.startsWith('../')) return trimmed
   try {
@@ -157,13 +160,32 @@ function splitInlineCodeSegments(line) {
 }
 
 function renderTextInlineMarkdown(segment) {
+  const parseImageTarget = (target) => {
+    const trimmed = String(target).trim()
+    let source = trimmed
+    let title = ''
+
+    const titleMatch = /^(.*?)(?:\s+"([^"]*)"|\s+'([^']*)')\s*$/.exec(trimmed)
+    if (titleMatch) {
+      source = titleMatch[1].trim()
+      title = titleMatch[2] ?? titleMatch[3] ?? ''
+    }
+
+    if (source.startsWith('<') && source.endsWith('>')) {
+      source = source.slice(1, -1).trim()
+    }
+
+    return { source, title }
+  }
+
   const images = []
-  const withImages = segment.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+"([^"]*)")?\)/g, (_, alt, src, title) => {
+  const withImages = segment.replace(/!\[([^\]]*)\]\((.*?)\)/g, (_, alt, target) => {
+    const { source, title } = parseImageTarget(target)
     const token = `@@MDIMAGE${images.length}@@`
     images.push({
       token,
       alt: escapeHtml(alt),
-      src: escapeHtml(sanitizeImageSrc(src)),
+      src: escapeHtml(sanitizeImageSrc(source)),
       title: title ? escapeHtml(title) : '',
     })
     return token
@@ -193,6 +215,9 @@ function renderTextInlineMarkdown(segment) {
   html = html.replace(/~~(.+?)~~/g, '<del>$1</del>')
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
   html = html.replace(/\*(.+?)\*/g, '<em>$1</em>')
+  html = html.replace(/==(.+?)==/g, '<mark>$1</mark>')
+  html = html.replace(/\[\^([^\]\s]+)\](?!\()/g, '<sup>[$1]</sup>')
+  html = html.replace(/\[(\d+)\](?!\()/g, '<sup>[$1]</sup>')
   html = html.replace(/\^([^^\s][^^]*?)\^/g, '<sup>$1</sup>')
   html = html.replace(/(^|[^~])~([^~\s][^~]*?)~(?!~)/g, '$1<sub>$2</sub>')
 
@@ -219,7 +244,7 @@ function renderInlineMarkdown(line) {
 }
 
 function isHorizontalRuleLine(trimmedLine) {
-  return /^(?:-{3,}|\*{3,}|(?:-\s*){3,}|(?:\*\s*){3,})$/.test(trimmedLine)
+  return /^(?:(?:\*\s*){3,}|(?:-\s*){3,}|(?:_\s*){3,})$/.test(trimmedLine)
 }
 
 function parseTableRow(line) {
@@ -527,6 +552,7 @@ export function buildMarkdownPreviewDocument(markdown, tabName) {
     table { width: 100%; border-collapse: collapse; margin: 1em 0; }
     th, td { border: 1px solid rgba(127, 127, 127, 0.35); padding: 0.45em 0.6em; }
     img { max-width: 100%; height: auto; }
+    mark { background: rgba(255, 235, 59, 0.45); color: inherit; padding: 0 0.15em; border-radius: 0.2em; }
   </style>
 </head>
 <body>

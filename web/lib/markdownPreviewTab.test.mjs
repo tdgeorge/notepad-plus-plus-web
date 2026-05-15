@@ -106,3 +106,23 @@ test('buildMarkdownPreviewDocument supports blockquotes tables images details ne
   assert.match(html, /<ul><li>parent<ul><li>child<ul><li>grandchild<\/li><\/ul><\/li><\/ul><\/li><\/ul>/)
   assert.equal((html.match(/<hr \/>/g) || []).length, 2)
 })
+
+test('buildMarkdownPreviewDocument supports footnote references highlight and flexible image syntax', () => {
+  const markdown = [
+    'Footnotes [^1][^2] and [1][2] stay superscripted.',
+    '',
+    "![diagram](https://example.com/pic.png 'Diagram')",
+    '![local](<./assets/pic one.png>)',
+    '',
+    '==highlighted text==',
+    '',
+    '___',
+  ].join('\n')
+
+  const html = buildMarkdownPreviewDocument(markdown)
+  assert.match(html, /<sup>\[1\]<\/sup><sup>\[2\]<\/sup>/)
+  assert.match(html, /<img src="https:\/\/example\.com\/pic\.png" alt="diagram" title="Diagram" \/>/)
+  assert.match(html, /<img src="\.\/assets\/pic one\.png" alt="local" \/>/)
+  assert.match(html, /<mark>highlighted text<\/mark>/)
+  assert.match(html, /<hr \/>/)
+})
