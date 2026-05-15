@@ -27,8 +27,20 @@ function renderInlineMarkdown(line) {
     if (segment.startsWith('`') && segment.endsWith('`') && segment.length >= 2) {
       return `<code>${escapeHtml(segment.slice(1, -1))}</code>`
     }
-    let html = escapeHtml(segment)
-    html = html.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, text, href) => `<a href="${escapeHtml(sanitizeHref(href))}" target="_blank" rel="noopener noreferrer">${text}</a>`)
+    const links = []
+    const withPlaceholders = segment.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, text, href) => {
+      const token = `__NPPW_LINK_${links.length}__`
+      links.push({
+        token,
+        text: escapeHtml(text),
+        href: escapeHtml(sanitizeHref(href)),
+      })
+      return token
+    })
+    let html = escapeHtml(withPlaceholders)
+    for (const link of links) {
+      html = html.replace(link.token, `<a href="${link.href}" target="_blank" rel="noopener noreferrer">${link.text}</a>`)
+    }
     html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>')
     return html

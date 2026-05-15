@@ -41,3 +41,8 @@ test('buildMarkdownPreviewDocument escapes raw html and unsafe links', () => {
   assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/)
   assert.match(html, /href="#"/)
 })
+
+test('buildMarkdownPreviewDocument escapes markdown link text', () => {
+  const html = buildMarkdownPreviewDocument('[<b>safe</b>](https://example.com)')
+  assert.match(html, /<a href="https:\/\/example\.com" target="_blank" rel="noopener noreferrer">&lt;b&gt;safe&lt;\/b&gt;<\/a>/)
+})
