@@ -27,6 +27,7 @@ import { handleBrowserExit } from '../lib/exitPage.mjs'
 import { getOrderedTabs, setTabPinned, getBulkClosableTabIds, shouldPersistAutosaveTab, normalizePinnedState } from '../lib/pinnedTabs.mjs'
 import { createWebPreviewTab } from '../lib/webPreviewTab.mjs'
 import { buildMarkdownPreviewDocument, createMarkdownPreviewTab } from '../lib/markdownPreviewTab.mjs'
+import { createVimTab } from '../lib/vimTab.mjs'
 import styles from './page.module.css'
 
 const DEFAULT_FONT_SIZE = 13
@@ -1170,6 +1171,21 @@ export default function Home() {
     }
   }, [activeView, getActiveTabRecord])
 
+  const handleOpenAsVimTab = useCallback(() => {
+    const sourceTab = getActiveTabRecord()
+    if (!sourceTab) return
+    const id = nextTabId++
+    const vimTab = createVimTab(sourceTab, id)
+    if (!vimTab) return
+    if (activeView === 1) {
+      setTabs((prev) => [...prev, vimTab])
+      setActiveTabId(id)
+    } else {
+      setView2Tabs((prev) => [...prev, vimTab])
+      setView2ActiveTabId(id)
+    }
+  }, [activeView, getActiveTabRecord])
+
   const handleFileAction = useCallback(
     (action) => {
       switch (action) {
@@ -1177,6 +1193,7 @@ export default function Home() {
         case 'open': handleOpen(); break
         case 'openAsWebpage': handleOpenAsWebpage(); break
         case 'openAsMarkdownPreview': handleOpenAsMarkdownPreview(); break
+        case 'openAsVimTab': handleOpenAsVimTab(); break
         case 'reload': handleReload(); break
         case 'save': handleSave(); break
         case 'saveAs': handleSaveAs(); break
@@ -1213,7 +1230,7 @@ export default function Home() {
     },
     [
       handleNewTab, handleOpen, handleReload, handleSave,
-      handleOpenAsWebpage, handleOpenAsMarkdownPreview,
+      handleOpenAsWebpage, handleOpenAsMarkdownPreview, handleOpenAsVimTab,
       handleSaveAs, handleSaveCopyAs, handleSaveAll, handleRename,
       handleCloseActive, handleCloseAll, handleCloseAllButActive, handleCloseAllButPinned,
       handleCloseAllToLeft, handleCloseAllToRight, handleCloseAllUnchanged,
@@ -2148,6 +2165,7 @@ export default function Home() {
                     onEditorScroll={handleEditor1Scroll}
                     {...commonEditorProps}
                     language={language}
+                    vimMode={activeTab?.renderMode === 'vim'}
                   />
                 )}
               </div>
@@ -2186,6 +2204,7 @@ export default function Home() {
                     onEditorScroll={handleEditor2Scroll}
                     {...commonEditorProps}
                     language={view2ActiveTab?.language ?? null}
+                    vimMode={view2ActiveTab?.renderMode === 'vim'}
                   />
                 )}
               </div>
@@ -2222,6 +2241,7 @@ export default function Home() {
                 onEditorScroll={handleEditor1Scroll}
                 {...commonEditorProps}
                 language={language}
+                vimMode={activeTab?.renderMode === 'vim'}
               />
             )}
           </div>

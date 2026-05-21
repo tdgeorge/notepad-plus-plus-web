@@ -448,7 +448,7 @@ function renderSymbols(text, { showWhitespace, showEol, showIndent }) {
 }
 
 const Editor = forwardRef(function Editor(
-  { content, onChange, onCursorChange, wordWrap, fontSize, showWhitespace, showEol, showIndent, language, onUndo, onRedo, textDirection, onEditorScroll },
+  { content, onChange, onCursorChange, wordWrap, fontSize, showWhitespace, showEol, showIndent, language, onUndo, onRedo, textDirection, onEditorScroll, vimMode = false },
   ref
 ) {
   const textareaRef = useRef(null)
@@ -487,6 +487,7 @@ const Editor = forwardRef(function Editor(
 
   // Scroll-top of the textarea, tracked so we can virtualise line numbers.
   const [editorScrollTop, setEditorScrollTop] = useState(0)
+  const [vimInsertMode, setVimInsertMode] = useState(!vimMode)
   // Client height of the textarea, tracked so virtual rendering adjusts on resize.
   const [editorClientHeight, setEditorClientHeight] = useState(2000)
   const [textareaMetrics, setTextareaMetrics] = useState({
@@ -520,6 +521,10 @@ const Editor = forwardRef(function Editor(
     ro.observe(ta)
     return () => ro.disconnect()
   }, [updateTextareaMetrics]) // run on mount; the ResizeObserver keeps it fresh
+
+  useEffect(() => {
+    setVimInsertMode(!vimMode)
+  }, [vimMode])
 
   // ── Fold state ────────────────────────────────────────────────────────────
   const [foldedLines, setFoldedLines] = useState(new Set())
@@ -2139,6 +2144,134 @@ const Editor = forwardRef(function Editor(
   const handleKeyDown = useCallback(
     (e) => {
       captureSelectionSnapshot()
+      if (vimMode) {
+        const el = textareaRef.current
+        if (e.key === 'Escape') {
+          e.preventDefault()
+          if (vimInsertMode) {
+            setVimInsertMode(false)
+            if (el && el.selectionStart === el.selectionEnd && el.selectionStart > 0) {
+              const pos = el.selectionStart - 1
+              el.setSelectionRange(pos, pos)
+              updateCursor()
+            }
+          }
+          return
+        }
+        if (!vimInsertMode) {
+          if (!el) return
+          const moveHorizontal = (delta) => {
+            const pos = Math.max(0, Math.min(el.value.length, el.selectionStart + delta))
+            el.setSelectionRange(pos, pos)
+            updateCursor()
+          }
+          const moveVertical = (delta) => {
+            const { value, selectionStart } = el
+            const lines = value.split('\n')
+            const currentLine = getLineIndexAtOffset(value, selectionStart)
+            const targetLine = Math.max(0, Math.min(lines.length - 1, currentLine + delta))
+            if (targetLine === currentLine) return
+            const currentLineStart = getLineStartOffset(value, currentLine)
+            const targetLineStart = getLineStartOffset(value, targetLine)
+            const column = selectionStart - currentLineStart
+            const targetPos = targetLineStart + Math.min(column, lines[targetLine].length)
+            el.setSelectionRange(targetPos, targetPos)
+            updateCursor()
+          }
+          const deleteAtCursor = () => {
+            const start = el.selectionStart
+            const end = el.selectionEnd
+            if (start !== end) {
+              const targetPos = Math.min(start, end)
+              el.setRangeText('', Math.min(start, end), Math.max(start, end), 'end')
+              el.dispatchEvent(new Event('input', { bubbles: true }))
+              commitSelectionDoubleTick(el, targetPos)
+              updateCursor()
+              return
+            }
+            if (start >= el.value.length) return
+            el.setRangeText('', start, start + 1, 'end')
+            el.dispatchEvent(new Event('input', { bubbles: true }))
+            commitSelectionDoubleTick(el, start)
+            updateCursor()
+          }
+          const openLineBelow = () => {
+            const { value, selectionStart } = el
+            const lineEnd = value.indexOf('\n', selectionStart)
+            const insertAt = lineEnd === -1 ? value.length : lineEnd
+            el.setRangeText('\n', insertAt, insertAt, 'end')
+            el.dispatchEvent(new Event('input', { bubbles: true }))
+            commitSelectionDoubleTick(el, insertAt + 1)
+            updateCursor()
+          }
+
+          switch (e.key) {
+            case 'h':
+              e.preventDefault()
+              moveHorizontal(-1)
+              return
+            case 'l':
+              e.preventDefault()
+              moveHorizontal(1)
+              return
+            case 'j':
+              e.preventDefault()
+              moveVertical(1)
+              return
+            case 'k':
+              e.preventDefault()
+              moveVertical(-1)
+              return
+            case 'i':
+              e.preventDefault()
+              setVimInsertMode(true)
+              return
+            case 'a':
+              e.preventDefault()
+              moveHorizontal(1)
+              setVimInsertMode(true)
+              return
+            case 'x':
+              e.preventDefault()
+              deleteAtCursor()
+              return
+            case 'o':
+              e.preventDefault()
+              openLineBelow()
+              setVimInsertMode(true)
+              return
+            case '0': {
+              e.preventDefault()
+              const line = getLineIndexAtOffset(el.value, el.selectionStart)
+              const targetPos = getLineStartOffset(el.value, line)
+              el.setSelectionRange(targetPos, targetPos)
+              updateCursor()
+              return
+            }
+            case '$': {
+              e.preventDefault()
+              const line = getLineIndexAtOffset(el.value, el.selectionStart)
+              const lineStart = getLineStartOffset(el.value, line)
+              const lineEnd = el.value.indexOf('\n', lineStart)
+              const targetPos = lineEnd === -1 ? el.value.length : lineEnd
+              el.setSelectionRange(targetPos, targetPos)
+              updateCursor()
+              return
+            }
+            case 'Tab':
+            case 'Backspace':
+            case 'Delete':
+            case 'Enter':
+              e.preventDefault()
+              return
+            default:
+              if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1) {
+                e.preventDefault()
+              }
+              return
+          }
+        }
+      }
       if (e.key === 'Tab') {
         e.preventDefault()
         if (e.shiftKey) {
@@ -2154,7 +2287,7 @@ const Editor = forwardRef(function Editor(
         onRedoRef.current?.()
       }
     },
-    [captureSelectionSnapshot, indent, dedent]
+    [captureSelectionSnapshot, dedent, indent, updateCursor, vimInsertMode, vimMode]
   )
 
   const getLineMarkerClassName = useCallback((lineIndex) => {
@@ -2222,6 +2355,11 @@ const Editor = forwardRef(function Editor(
           })}
         </div>
         <div className={styles.textareaWrapper}>
+          {vimMode && (
+            <div className={styles.vimModeBadge} aria-live="polite">
+              {vimInsertMode ? '-- INSERT --' : '-- NORMAL --'}
+            </div>
+          )}
           {useMeasuredCurrentLineTop && (
             <div
               className={styles.lineMeasure}

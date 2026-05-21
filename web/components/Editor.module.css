@@ -109,6 +109,20 @@
   background: var(--editor-bg);
 }
 
+.vimModeBadge {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 3;
+  pointer-events: none;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 2px;
+  background: var(--editor-gutter-bg);
+  border: 1px solid var(--editor-gutter-border);
+  color: var(--editor-gutter-fg);
+}
+
 .currentLineHighlight {
   position: absolute;
   left: 0;
