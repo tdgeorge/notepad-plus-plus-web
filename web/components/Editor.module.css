@@ -109,6 +109,57 @@
   background: var(--editor-bg);
 }
 
+.vimTouchControls {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  z-index: 3;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.vimTouchButton {
+  border: 1px solid var(--editor-gutter-border);
+  background: var(--editor-gutter-bg);
+  color: var(--editor-gutter-fg);
+  border-radius: 2px;
+  font-size: 11px;
+  line-height: 1.2;
+  padding: 1px 5px;
+  cursor: pointer;
+}
+
+.vimTouchButton:hover {
+  background: var(--chrome-hover);
+  color: var(--chrome-text);
+}
+
+.vimCommandLine {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 34px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--editor-gutter-border);
+  background: var(--editor-bg);
+  color: var(--editor-fg);
+  border-radius: 3px;
+  padding: 4px 6px;
+}
+
+.vimCommandInput {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
 .currentLineHighlight {
   position: absolute;
   left: 0;
@@ -182,6 +233,10 @@
 .textarea::selection {
   background: var(--accent);
   color: var(--accent-text);
+}
+
+.vimBlockCaret {
+  caret-shape: block;
 }
 
 .symSpace {

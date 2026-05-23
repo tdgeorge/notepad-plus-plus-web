@@ -98,7 +98,7 @@ const LANG_LABELS = {
   verilog: 'Verilog',
 }
 
-export default function StatusBar({ cursorPos, eol, encoding, language, isLargeFile }) {
+export default function StatusBar({ cursorPos, eol, encoding, language, isLargeFile, inputModeLabel = 'INS' }) {
   const { line = 1, col = 1, sel = 0 } = cursorPos ?? {}
   const langLabel = language ? (LANG_LABELS[language] ?? language) : 'Plain Text'
 
@@ -124,7 +124,7 @@ export default function StatusBar({ cursorPos, eol, encoding, language, isLargeF
       </div>
       <div className={styles.divider} />
       <div className={styles.section}>
-        <span>INS</span>
+        <span>{inputModeLabel}</span>
       </div>
       {isLargeFile && (
         <>
