@@ -2562,9 +2562,6 @@ const Editor = forwardRef(function Editor(
         <div className={styles.textareaWrapper}>
           {vimMode && (
             <>
-              <div className={styles.vimModeBadge} aria-live="polite">
-                {`-- ${vimModeState.toUpperCase()} --`}
-              </div>
               <div className={styles.vimTouchControls} aria-label="Vim mode controls">
                 <button type="button" className={styles.vimTouchButton} onClick={() => setVimMode('normal')}>Normal</button>
                 <button type="button" className={styles.vimTouchButton} onClick={() => setVimMode('insert')}>Insert</button>
