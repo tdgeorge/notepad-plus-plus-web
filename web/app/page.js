@@ -94,6 +94,7 @@ export default function Home() {
   const [view2CursorPos, setView2CursorPos] = useState({ line: 1, col: 1, sel: 0 })
   const [activeView, setActiveView] = useState(1) // 1 or 2
   const secondEditorRef = useRef(null)
+  const [vimModeByView, setVimModeByView] = useState({ 1: 'normal', 2: 'normal' })
 
   const view2TabsRef = useRef(view2Tabs)
   useEffect(() => { view2TabsRef.current = view2Tabs }, [view2Tabs])
@@ -1186,6 +1187,21 @@ export default function Home() {
     }
   }, [activeView, getActiveTabRecord])
 
+  const handleVimCommand = useCallback((command) => {
+    if (command === 'w') {
+      handleSave()
+      return
+    }
+    if (command === 'q') {
+      handleCloseActive()
+      return
+    }
+    if (command === 'wq') {
+      handleSave()
+      handleCloseActive()
+    }
+  }, [handleCloseActive, handleSave])
+
   const handleFileAction = useCallback(
     (action) => {
       switch (action) {
@@ -2049,6 +2065,11 @@ export default function Home() {
   const displayLanguage = activeView === 1 ? language : (view2ActiveTab?.language ?? null)
   const displayContent = activeView === 1 ? (activeTab?.content ?? '') : (view2ActiveTab?.content ?? '')
   const displayIsLargeFile = displayContent.length > LARGE_FILE_THRESHOLD
+  const displayActiveTab = activeView === 1 ? activeTab : view2ActiveTab
+  const activeVimMode = vimModeByView[activeView] ?? 'normal'
+  const displayInputModeLabel = displayActiveTab?.renderMode === 'vim'
+    ? `-- ${activeVimMode === 'visual-line' ? 'VISUAL LINE' : activeVimMode.toUpperCase()} --`
+    : 'INS'
 
   // Compute symbols for the Function List panel (memoised by content + language)
   const funcListSymbols = useMemo(
@@ -2166,6 +2187,8 @@ export default function Home() {
                     {...commonEditorProps}
                     language={language}
                     vimMode={activeTab?.renderMode === 'vim'}
+                    onVimModeChange={(mode) => setVimModeByView((prev) => ({ ...prev, 1: mode }))}
+                    onVimCommand={handleVimCommand}
                   />
                 )}
               </div>
@@ -2205,6 +2228,8 @@ export default function Home() {
                     {...commonEditorProps}
                     language={view2ActiveTab?.language ?? null}
                     vimMode={view2ActiveTab?.renderMode === 'vim'}
+                    onVimModeChange={(mode) => setVimModeByView((prev) => ({ ...prev, 2: mode }))}
+                    onVimCommand={handleVimCommand}
                   />
                 )}
               </div>
@@ -2242,6 +2267,8 @@ export default function Home() {
                 {...commonEditorProps}
                 language={language}
                 vimMode={activeTab?.renderMode === 'vim'}
+                onVimModeChange={(mode) => setVimModeByView((prev) => ({ ...prev, 1: mode }))}
+                onVimCommand={handleVimCommand}
               />
             )}
           </div>
@@ -2266,7 +2293,7 @@ export default function Home() {
         )}
       </div>
       {!distractionFree && (
-        <StatusBar cursorPos={displayCursorPos} eol="Windows (CR LF)" encoding="UTF-8" language={displayLanguage} isLargeFile={displayIsLargeFile} />
+        <StatusBar cursorPos={displayCursorPos} eol="Windows (CR LF)" encoding="UTF-8" language={displayLanguage} isLargeFile={displayIsLargeFile} inputModeLabel={displayInputModeLabel} />
       )}
       <FindDialog
         isOpen={findDialogOpen}

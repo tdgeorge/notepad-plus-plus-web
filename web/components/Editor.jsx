@@ -448,7 +448,7 @@ function renderSymbols(text, { showWhitespace, showEol, showIndent }) {
 }
 
 const Editor = forwardRef(function Editor(
-  { content, onChange, onCursorChange, wordWrap, fontSize, showWhitespace, showEol, showIndent, language, onUndo, onRedo, textDirection, onEditorScroll, vimMode = false },
+  { content, onChange, onCursorChange, wordWrap, fontSize, showWhitespace, showEol, showIndent, language, onUndo, onRedo, textDirection, onEditorScroll, vimMode = false, onVimModeChange, onVimCommand },
   ref
 ) {
   const textareaRef = useRef(null)
@@ -487,7 +487,9 @@ const Editor = forwardRef(function Editor(
 
   // Scroll-top of the textarea, tracked so we can virtualise line numbers.
   const [editorScrollTop, setEditorScrollTop] = useState(0)
-  const [vimInsertMode, setVimInsertMode] = useState(!vimMode)
+  const [vimModeState, setVimModeState] = useState(vimMode ? 'normal' : 'insert')
+  const [vimCommandOpen, setVimCommandOpen] = useState(false)
+  const [vimCommandText, setVimCommandText] = useState('')
   // Client height of the textarea, tracked so virtual rendering adjusts on resize.
   const [editorClientHeight, setEditorClientHeight] = useState(2000)
   const [textareaMetrics, setTextareaMetrics] = useState({
@@ -495,6 +497,11 @@ const Editor = forwardRef(function Editor(
     paddingTopPx: 4,
   })
   const pendingSelectionRef = useRef(null)
+  const vimClipboardRef = useRef({ text: '', type: null })
+  const vimVisualAnchorRef = useRef(null)
+  const vimPendingKeyRef = useRef(null)
+  const vimPendingTimerRef = useRef(null)
+  const vimPreferredColumnRef = useRef(null)
 
   const updateTextareaMetrics = useCallback(() => {
     const ta = textareaRef.current
@@ -523,8 +530,25 @@ const Editor = forwardRef(function Editor(
   }, [updateTextareaMetrics]) // run on mount; the ResizeObserver keeps it fresh
 
   useEffect(() => {
-    setVimInsertMode(!vimMode)
+    setVimModeState(vimMode ? 'normal' : 'insert')
+    setVimCommandOpen(false)
+    setVimCommandText('')
+    vimVisualAnchorRef.current = null
+    vimPendingKeyRef.current = null
+    if (vimPendingTimerRef.current) {
+      clearTimeout(vimPendingTimerRef.current)
+      vimPendingTimerRef.current = null
+    }
   }, [vimMode])
+
+  useEffect(() => {
+    if (!vimMode || typeof onVimModeChange !== 'function') return
+    onVimModeChange(vimModeState)
+  }, [onVimModeChange, vimMode, vimModeState])
+
+  useEffect(() => () => {
+    if (vimPendingTimerRef.current) clearTimeout(vimPendingTimerRef.current)
+  }, [])
 
   // ── Fold state ────────────────────────────────────────────────────────────
   const [foldedLines, setFoldedLines] = useState(new Set())
@@ -2141,138 +2165,304 @@ const Editor = forwardRef(function Editor(
 
   }), [indent, dedent, lineCount, lineHeightPx, updateCursor, updateLineCount, scrollToChar, goToLineIndex, getMarkedTargetLines, createEmptyMarkStyleSet, normalizeMarkStyle, normalizeMarkedLinesByStyle])
 
+  const clearVimPending = useCallback(() => {
+    vimPendingKeyRef.current = null
+    if (vimPendingTimerRef.current) {
+      clearTimeout(vimPendingTimerRef.current)
+      vimPendingTimerRef.current = null
+    }
+  }, [])
+
+  const setVimPending = useCallback((key) => {
+    vimPendingKeyRef.current = key
+    if (vimPendingTimerRef.current) clearTimeout(vimPendingTimerRef.current)
+    vimPendingTimerRef.current = setTimeout(() => { vimPendingKeyRef.current = null }, 1000)
+  }, [])
+
+  const getCurrentLineRange = useCallback((value, pos) => {
+    const line = getLineIndexAtOffset(value, pos)
+    const start = getLineStartOffset(value, line)
+    const lineEnd = value.indexOf('\n', start)
+    const end = lineEnd === -1 ? value.length : lineEnd
+    const endWithBreak = lineEnd === -1 ? value.length : lineEnd + 1
+    return { line, start, end, endWithBreak }
+  }, [])
+
+  const applySelectionForVimMode = useCallback((el, targetPos, modeOverride = null) => {
+    const mode = modeOverride ?? vimModeState
+    if (!el) return
+    const clampedPos = Math.max(0, Math.min(el.value.length, targetPos))
+    if (mode === 'visual' || mode === 'visual-line') {
+      const anchor = vimVisualAnchorRef.current ?? el.selectionStart
+      if (mode === 'visual-line') {
+        const anchorLine = getLineIndexAtOffset(el.value, anchor)
+        const targetLine = getLineIndexAtOffset(el.value, clampedPos)
+        const startLine = Math.min(anchorLine, targetLine)
+        const endLine = Math.max(anchorLine, targetLine)
+        const selectionStart = getLineStartOffset(el.value, startLine)
+        const lineEnd = el.value.indexOf('\n', getLineStartOffset(el.value, endLine))
+        const selectionEnd = lineEnd === -1 ? el.value.length : lineEnd + 1
+        el.setSelectionRange(selectionStart, selectionEnd)
+      } else {
+        el.setSelectionRange(Math.min(anchor, clampedPos), Math.max(anchor, clampedPos))
+      }
+    } else {
+      el.setSelectionRange(clampedPos, clampedPos)
+      vimPreferredColumnRef.current = null
+    }
+    updateCursor()
+  }, [updateCursor, vimModeState])
+
+  const setVimMode = useCallback((mode) => {
+    const el = textareaRef.current
+    if (!vimMode) return
+    clearVimPending()
+    if (!el) {
+      setVimModeState(mode)
+      return
+    }
+    if (mode === 'visual' || mode === 'visual-line') {
+      if (el.selectionStart !== el.selectionEnd) {
+        vimVisualAnchorRef.current = el.selectionStart
+      } else {
+        vimVisualAnchorRef.current = el.selectionStart
+      }
+      setVimModeState(mode)
+      applySelectionForVimMode(el, el.selectionStart, mode)
+      return
+    }
+    vimVisualAnchorRef.current = null
+    const pos = Math.min(el.selectionStart, el.selectionEnd)
+    setVimModeState(mode)
+    el.setSelectionRange(pos, pos)
+    updateCursor()
+  }, [applySelectionForVimMode, clearVimPending, updateCursor, vimMode])
+
+  const moveVimHorizontal = useCallback((el, delta) => {
+    const nextPos = Math.max(0, Math.min(el.value.length, el.selectionEnd + delta))
+    applySelectionForVimMode(el, nextPos)
+  }, [applySelectionForVimMode])
+
+  const moveVimVertical = useCallback((el, delta) => {
+    const value = el.value
+    const lines = value.split('\n')
+    const caretPos = el.selectionEnd
+    const currentLine = getLineIndexAtOffset(value, caretPos)
+    const targetLine = Math.max(0, Math.min(lines.length - 1, currentLine + delta))
+    if (targetLine === currentLine) return
+    const currentStart = getLineStartOffset(value, currentLine)
+    const targetStart = getLineStartOffset(value, targetLine)
+    const preferredCol = vimPreferredColumnRef.current ?? (caretPos - currentStart)
+    vimPreferredColumnRef.current = preferredCol
+    const targetPos = targetStart + Math.min(preferredCol, lines[targetLine].length)
+    applySelectionForVimMode(el, targetPos)
+  }, [applySelectionForVimMode])
+
+  const findWordForwardStart = useCallback((value, pos) => {
+    let i = Math.max(0, Math.min(value.length, pos))
+    const isWord = (ch) => /\w/.test(ch)
+    if (i < value.length && isWord(value[i])) {
+      while (i < value.length && isWord(value[i])) i++
+    }
+    while (i < value.length && !isWord(value[i])) i++
+    return i
+  }, [])
+
+  const findWordBackwardStart = useCallback((value, pos) => {
+    let i = Math.max(0, Math.min(value.length - 1, pos - 1))
+    const isWord = (ch) => /\w/.test(ch)
+    while (i >= 0 && !isWord(value[i])) i--
+    while (i > 0 && isWord(value[i - 1])) i--
+    return Math.max(0, i)
+  }, [])
+
+  const replaceRange = useCallback((el, start, end, text = '') => {
+    const safeStart = Math.max(0, Math.min(el.value.length, Math.min(start, end)))
+    const safeEnd = Math.max(safeStart, Math.min(el.value.length, Math.max(start, end)))
+    el.setRangeText(text, safeStart, safeEnd, 'end')
+    el.dispatchEvent(new Event('input', { bubbles: true }))
+    commitSelectionDoubleTick(el, safeStart + text.length)
+    updateCursor()
+    return safeStart + text.length
+  }, [updateCursor])
+
+  const handleVimPaste = useCallback((el, before = false) => {
+    const clip = vimClipboardRef.current
+    if (!clip?.text) return
+    const { value, selectionEnd } = el
+    if (clip.type === 'line') {
+      const { start, endWithBreak } = getCurrentLineRange(value, selectionEnd)
+      const insertAt = before ? start : endWithBreak
+      const nextPos = replaceRange(el, insertAt, insertAt, clip.text)
+      applySelectionForVimMode(el, Math.max(0, nextPos - 1), 'normal')
+      return
+    }
+    const insertAt = before ? selectionEnd : Math.min(value.length, selectionEnd + 1)
+    const nextPos = replaceRange(el, insertAt, insertAt, clip.text)
+    applySelectionForVimMode(el, Math.max(0, nextPos - 1), 'normal')
+  }, [applySelectionForVimMode, getCurrentLineRange, replaceRange])
+
+  const runVimCommand = useCallback((commandText) => {
+    const trimmed = commandText.trim()
+    if (!trimmed) return
+    if (trimmed === 'w' || trimmed === 'q' || trimmed === 'wq') {
+      onVimCommand?.(trimmed)
+    }
+  }, [onVimCommand])
+
   const handleKeyDown = useCallback(
     (e) => {
       captureSelectionSnapshot()
+      const isVimInsert = vimModeState === 'insert'
+      const isVimVisual = vimModeState === 'visual' || vimModeState === 'visual-line'
       if (vimMode) {
         const el = textareaRef.current
-        if (e.key === 'Escape') {
+        if (!el) return
+
+        if ((e.key === 'Escape' || ((e.ctrlKey || e.metaKey) && e.key === '[')) && isVimInsert) {
           e.preventDefault()
-          if (vimInsertMode) {
-            setVimInsertMode(false)
-            if (el && el.selectionStart === el.selectionEnd && el.selectionStart > 0) {
-              const pos = el.selectionStart - 1
-              el.setSelectionRange(pos, pos)
-              updateCursor()
-            }
-          }
-          return
-        }
-        if (!vimInsertMode) {
-          if (!el) return
-          const moveHorizontal = (delta) => {
-            const pos = Math.max(0, Math.min(el.value.length, el.selectionStart + delta))
+          setVimMode('normal')
+          if (el.selectionStart > 0) {
+            const pos = el.selectionStart - 1
             el.setSelectionRange(pos, pos)
             updateCursor()
           }
-          const moveVertical = (delta) => {
-            const { value, selectionStart } = el
-            const lines = value.split('\n')
-            const currentLine = getLineIndexAtOffset(value, selectionStart)
-            const targetLine = Math.max(0, Math.min(lines.length - 1, currentLine + delta))
-            if (targetLine === currentLine) return
-            const currentLineStart = getLineStartOffset(value, currentLine)
-            const targetLineStart = getLineStartOffset(value, targetLine)
-            const column = selectionStart - currentLineStart
-            const targetPos = targetLineStart + Math.min(column, lines[targetLine].length)
-            el.setSelectionRange(targetPos, targetPos)
-            updateCursor()
-          }
-          const deleteAtCursor = () => {
-            const start = el.selectionStart
-            const end = el.selectionEnd
-            if (start !== end) {
-              const targetPos = Math.min(start, end)
-              el.setRangeText('', Math.min(start, end), Math.max(start, end), 'end')
-              el.dispatchEvent(new Event('input', { bubbles: true }))
-              commitSelectionDoubleTick(el, targetPos)
-              updateCursor()
-              return
-            }
-            if (start >= el.value.length) return
-            el.setRangeText('', start, start + 1, 'end')
-            el.dispatchEvent(new Event('input', { bubbles: true }))
-            commitSelectionDoubleTick(el, start)
-            updateCursor()
-          }
-          const openLineBelow = () => {
-            const { value, selectionStart } = el
-            const lineEnd = value.indexOf('\n', selectionStart)
-            const insertAt = lineEnd === -1 ? value.length : lineEnd
-            el.setRangeText('\n', insertAt, insertAt, 'end')
-            el.dispatchEvent(new Event('input', { bubbles: true }))
-            commitSelectionDoubleTick(el, insertAt + 1)
-            updateCursor()
-          }
+          return
+        }
 
-          switch (e.key) {
-            case 'h':
-              e.preventDefault()
-              moveHorizontal(-1)
-              return
-            case 'l':
-              e.preventDefault()
-              moveHorizontal(1)
-              return
-            case 'j':
-              e.preventDefault()
-              moveVertical(1)
-              return
-            case 'k':
-              e.preventDefault()
-              moveVertical(-1)
-              return
-            case 'i':
-              e.preventDefault()
-              setVimInsertMode(true)
-              return
-            case 'a':
-              e.preventDefault()
-              moveHorizontal(1)
-              setVimInsertMode(true)
-              return
-            case 'x':
-              e.preventDefault()
-              deleteAtCursor()
-              return
-            case 'o':
-              e.preventDefault()
-              openLineBelow()
-              setVimInsertMode(true)
-              return
-            case '0': {
-              e.preventDefault()
-              const line = getLineIndexAtOffset(el.value, el.selectionStart)
-              const targetPos = getLineStartOffset(el.value, line)
-              el.setSelectionRange(targetPos, targetPos)
-              updateCursor()
-              return
-            }
-            case '$': {
-              e.preventDefault()
-              const line = getLineIndexAtOffset(el.value, el.selectionStart)
-              const lineStart = getLineStartOffset(el.value, line)
-              const lineEnd = el.value.indexOf('\n', lineStart)
-              const targetPos = lineEnd === -1 ? el.value.length : lineEnd
-              el.setSelectionRange(targetPos, targetPos)
-              updateCursor()
-              return
-            }
-            case 'Tab':
-            case 'Backspace':
-            case 'Delete':
-            case 'Enter':
-              e.preventDefault()
-              return
-            default:
-              if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key.length === 1) {
-                e.preventDefault()
-              }
-              return
+        if (isVimInsert) {
+          if (e.key === 'Tab') {
+            e.preventDefault()
+            if (e.shiftKey) dedent()
+            else indent()
+            return
+          }
+          if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
+            e.preventDefault()
+            onUndoRef.current?.()
+            return
+          }
+          if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || e.key.toLowerCase() === 'r' || (e.shiftKey && e.key.toLowerCase() === 'z'))) {
+            e.preventDefault()
+            onRedoRef.current?.()
+            return
+          }
+          clearVimPending()
+          return
+        }
+
+        e.preventDefault()
+
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r') {
+          onRedoRef.current?.()
+          clearVimPending()
+          return
+        }
+
+        if (e.key === 'Escape') {
+          setVimMode('normal')
+          return
+        }
+
+        if (isVimVisual) {
+          if (e.key === 'h') moveVimHorizontal(el, -1)
+          else if (e.key === 'l') moveVimHorizontal(el, 1)
+          else if (e.key === 'j') moveVimVertical(el, 1)
+          else if (e.key === 'k') moveVimVertical(el, -1)
+          else if (e.key === 'y') {
+            const start = Math.min(el.selectionStart, el.selectionEnd)
+            const end = Math.max(el.selectionStart, el.selectionEnd)
+            vimClipboardRef.current = { text: el.value.slice(start, end), type: vimModeState === 'visual-line' ? 'line' : 'char' }
+            setVimMode('normal')
+          } else if (e.key === 'd' || e.key === 'x') {
+            const start = Math.min(el.selectionStart, el.selectionEnd)
+            const end = Math.max(el.selectionStart, el.selectionEnd)
+            vimClipboardRef.current = { text: el.value.slice(start, end), type: vimModeState === 'visual-line' ? 'line' : 'char' }
+            replaceRange(el, start, end, '')
+            setVimMode('normal')
+          }
+          return
+        }
+
+        const pending = vimPendingKeyRef.current
+        if (pending) {
+          clearVimPending()
+          if (pending === 'g' && e.key === 'g') {
+            applySelectionForVimMode(el, 0, 'normal')
+            return
+          }
+          if (pending === 'd' && e.key === 'd') {
+            const { start, endWithBreak } = getCurrentLineRange(el.value, el.selectionStart)
+            vimClipboardRef.current = { text: el.value.slice(start, endWithBreak), type: 'line' }
+            replaceRange(el, start, endWithBreak, '')
+            applySelectionForVimMode(el, start, 'normal')
+            return
+          }
+          if (pending === 'd' && e.key === 'w') {
+            const start = el.selectionStart
+            const end = findWordForwardStart(el.value, start)
+            const safeEnd = end > start ? end : Math.min(el.value.length, start + 1)
+            vimClipboardRef.current = { text: el.value.slice(start, safeEnd), type: 'char' }
+            replaceRange(el, start, safeEnd, '')
+            applySelectionForVimMode(el, start, 'normal')
+            return
+          }
+          if (pending === 'y' && e.key === 'y') {
+            const { start, endWithBreak } = getCurrentLineRange(el.value, el.selectionStart)
+            vimClipboardRef.current = { text: el.value.slice(start, endWithBreak), type: 'line' }
+            return
           }
         }
-      }
-      if (e.key === 'Tab') {
+
+        if (e.key === 'g' || e.key === 'd' || e.key === 'y') {
+          setVimPending(e.key)
+          return
+        }
+
+        if (e.key === ':') {
+          setVimCommandOpen(true)
+          setVimCommandText('')
+          return
+        }
+        if (e.key === 'h') moveVimHorizontal(el, -1)
+        else if (e.key === 'l') moveVimHorizontal(el, 1)
+        else if (e.key === 'j') moveVimVertical(el, 1)
+        else if (e.key === 'k') moveVimVertical(el, -1)
+        else if (e.key === 'w') applySelectionForVimMode(el, findWordForwardStart(el.value, el.selectionEnd))
+        else if (e.key === 'b') applySelectionForVimMode(el, findWordBackwardStart(el.value, el.selectionEnd))
+        else if (e.key === '0') applySelectionForVimMode(el, getCurrentLineRange(el.value, el.selectionEnd).start)
+        else if (e.key === '$') applySelectionForVimMode(el, getCurrentLineRange(el.value, el.selectionEnd).end)
+        else if (e.key === 'G') applySelectionForVimMode(el, el.value.length)
+        else if (e.key === 'i') setVimMode('insert')
+        else if (e.key === 'a') {
+          moveVimHorizontal(el, 1)
+          setVimMode('insert')
+        } else if (e.key === 'A') {
+          applySelectionForVimMode(el, getCurrentLineRange(el.value, el.selectionEnd).end, 'normal')
+          setVimMode('insert')
+        } else if (e.key === 'o') {
+          const insertAt = getCurrentLineRange(el.value, el.selectionEnd).endWithBreak
+          replaceRange(el, insertAt, insertAt, '\n')
+          applySelectionForVimMode(el, insertAt + 1, 'normal')
+          setVimMode('insert')
+        } else if (e.key === 'O') {
+          const insertAt = getCurrentLineRange(el.value, el.selectionEnd).start
+          replaceRange(el, insertAt, insertAt, '\n')
+          applySelectionForVimMode(el, insertAt, 'normal')
+          setVimMode('insert')
+        } else if (e.key === 'v') setVimMode('visual')
+        else if (e.key === 'V') setVimMode('visual-line')
+        else if (e.key === 'x') {
+          const start = el.selectionStart
+          if (start < el.value.length) {
+            vimClipboardRef.current = { text: el.value.slice(start, start + 1), type: 'char' }
+            replaceRange(el, start, start + 1, '')
+            applySelectionForVimMode(el, start, 'normal')
+          }
+        } else if (e.key === 'p') handleVimPaste(el, false)
+        else if (e.key === 'P') handleVimPaste(el, true)
+        else if (e.key === 'u') onUndoRef.current?.()
+      } else if (e.key === 'Tab') {
         e.preventDefault()
         if (e.shiftKey) {
           dedent()
@@ -2287,7 +2477,7 @@ const Editor = forwardRef(function Editor(
         onRedoRef.current?.()
       }
     },
-    [captureSelectionSnapshot, dedent, indent, updateCursor, vimInsertMode, vimMode]
+    [applySelectionForVimMode, captureSelectionSnapshot, clearVimPending, dedent, findWordBackwardStart, findWordForwardStart, getCurrentLineRange, handleVimPaste, indent, moveVimHorizontal, moveVimVertical, replaceRange, setVimMode, setVimPending, updateCursor, vimMode, vimModeState]
   )
 
   const getLineMarkerClassName = useCallback((lineIndex) => {
@@ -2301,6 +2491,21 @@ const Editor = forwardRef(function Editor(
     else if (markedLinesByStyle[5].has(lineIndex)) markerClassName += ` ${styles.lineMarkStyle5}`
     return markerClassName
   }, [bookmarkedLines, markedLinesByStyle])
+
+  const handleVimCommandSubmit = useCallback(() => {
+    runVimCommand(vimCommandText)
+    setVimCommandOpen(false)
+    setVimCommandText('')
+    setVimMode('normal')
+    textareaRef.current?.focus()
+  }, [runVimCommand, setVimMode, vimCommandText])
+
+  const handleVimCommandCancel = useCallback(() => {
+    setVimCommandOpen(false)
+    setVimCommandText('')
+    setVimMode('normal')
+    textareaRef.current?.focus()
+  }, [setVimMode])
 
   return (
     <div className={styles.editorWrapper}>
@@ -2356,9 +2561,42 @@ const Editor = forwardRef(function Editor(
         </div>
         <div className={styles.textareaWrapper}>
           {vimMode && (
-            <div className={styles.vimModeBadge} aria-live="polite">
-              {vimInsertMode ? '-- INSERT --' : '-- NORMAL --'}
-            </div>
+            <>
+              <div className={styles.vimModeBadge} aria-live="polite">
+                {`-- ${vimModeState.toUpperCase()} --`}
+              </div>
+              <div className={styles.vimTouchControls} aria-label="Vim mode controls">
+                <button type="button" className={styles.vimTouchButton} onClick={() => setVimMode('normal')}>Normal</button>
+                <button type="button" className={styles.vimTouchButton} onClick={() => setVimMode('insert')}>Insert</button>
+                <button type="button" className={styles.vimTouchButton} onClick={() => setVimMode('visual')}>Visual</button>
+                <button type="button" className={styles.vimTouchButton} onClick={() => setVimMode('visual-line')}>V-Line</button>
+                <button type="button" className={styles.vimTouchButton} onClick={() => { setVimCommandOpen(true); setVimCommandText('') }}>:</button>
+                <button type="button" className={styles.vimTouchButton} onClick={() => setVimMode('normal')}>Esc</button>
+              </div>
+              {vimCommandOpen && (
+                <div className={styles.vimCommandLine}>
+                  <span>:</span>
+                  <input
+                    type="text"
+                    className={styles.vimCommandInput}
+                    value={vimCommandText}
+                    onChange={(event) => setVimCommandText(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault()
+                        handleVimCommandSubmit()
+                      } else if (event.key === 'Escape') {
+                        event.preventDefault()
+                        handleVimCommandCancel()
+                      }
+                    }}
+                    autoFocus
+                    spellCheck={false}
+                    aria-label="Vim command line"
+                  />
+                </div>
+              )}
+            </>
           )}
           {useMeasuredCurrentLineTop && (
             <div
@@ -2394,7 +2632,7 @@ const Editor = forwardRef(function Editor(
           )}
           <textarea
             ref={textareaRef}
-            className={styles.textarea}
+            className={`${styles.textarea} ${vimMode && vimModeState !== 'insert' ? styles.vimBlockCaret : ''}`}
             defaultValue={content}
             onChange={handleChange}
             onBeforeInput={handleBeforeInput}
