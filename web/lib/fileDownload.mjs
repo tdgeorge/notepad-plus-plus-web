@@ -47,8 +47,16 @@ export async function downloadFileWithFallback(name, content, type = 'text/plain
 
   if (type === 'application/pdf' && isIosBrowser(win)) {
     const popup = win.open?.(url, '_blank', 'noopener,noreferrer')
+    win.setTimeout?.(() => win.URL?.revokeObjectURL?.(url), 60_000)
     if (popup) {
-      win.setTimeout?.(() => win.URL?.revokeObjectURL?.(url), 60_000)
+      return true
+    }
+    if (typeof win.location?.assign === 'function') {
+      win.location.assign(url)
+      return true
+    }
+    if (typeof win.location === 'object' && win.location) {
+      win.location.href = url
       return true
     }
   }

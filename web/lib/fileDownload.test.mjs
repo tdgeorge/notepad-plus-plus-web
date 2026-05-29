@@ -39,6 +39,13 @@ function createWindow(overrides = {}) {
       ...overrides.document,
     },
     open: () => null,
+    location: {
+      href: '',
+      assign(url) {
+        this.href = url
+      },
+      ...overrides.location,
+    },
     setTimeout: (callback) => callback(),
     matchMedia: () => ({ matches: false }),
     ...overrides,
@@ -106,6 +113,21 @@ test('downloadFileWithFallback opens PDFs in a new tab on iOS when share is unav
 
   assert.equal(didSave, true)
   assert.deepEqual(openCalls[0], ['blob:download', '_blank', 'noopener,noreferrer'])
+  assert.equal(win.__anchor.clickCalled, false)
+})
+
+test('downloadFileWithFallback navigates current tab to PDFs on iOS when popup opening fails', async () => {
+  const win = createWindow({
+    navigator: {
+      userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)',
+    },
+    matchMedia: () => ({ matches: true }),
+  })
+
+  const didSave = await downloadFileWithFallback('demo.pdf', new Uint8Array([1, 2, 3]), 'application/pdf', win)
+
+  assert.equal(didSave, true)
+  assert.equal(win.location.href, 'blob:download')
   assert.equal(win.__anchor.clickCalled, false)
 })
 
