@@ -5,6 +5,7 @@ import MenuBar from '../components/MenuBar'
 import Toolbar from '../components/Toolbar'
 import TabBar from '../components/TabBar'
 import Editor from '../components/Editor'
+import PdfViewer from '../components/PdfViewer'
 import SplitPane from '../components/SplitPane'
 import StatusBar from '../components/StatusBar'
 import FindDialog from '../components/FindDialog'
@@ -27,6 +28,8 @@ import { handleBrowserExit } from '../lib/exitPage.mjs'
 import { getOrderedTabs, setTabPinned, getBulkClosableTabIds, shouldPersistAutosaveTab, normalizePinnedState } from '../lib/pinnedTabs.mjs'
 import { createWebPreviewTab } from '../lib/webPreviewTab.mjs'
 import { buildMarkdownPreviewDocument, createMarkdownPreviewTab } from '../lib/markdownPreviewTab.mjs'
+import { applyPdfEditsToBytes, getPdfSavePickerOptions } from '../lib/pdfEdits.mjs'
+import { createOpenTabFromFile } from '../lib/pdfTab.mjs'
 import { createVimTab } from '../lib/vimTab.mjs'
 import styles from './page.module.css'
 
@@ -387,6 +390,11 @@ export default function Home() {
     []
   )
 
+  const updateOpenTab = useCallback((tabId, updater) => {
+    setTabs((prev) => prev.map((tab) => (tab.id === tabId ? updater(tab) : tab)))
+    setView2Tabs((prev) => prev.map((tab) => (tab.id === tabId ? updater(tab) : tab)))
+  }, [])
+
   const appendMacroDebugLine = useCallback((label, details = null) => {
     if (!macroDebugEnabledRef.current) return
     const text = details == null
@@ -601,8 +609,8 @@ export default function Home() {
     )
   }, [recordMacroStep, appendMacroDebugLine])
 
-  const downloadFile = useCallback((name, content) => {
-    const blob = new Blob([content], { type: 'text/plain' })
+  const downloadFile = useCallback((name, content, type = 'text/plain') => {
+    const blob = new Blob([content], { type })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -617,16 +625,47 @@ export default function Home() {
     await writable.close()
   }, [])
 
+  const getTabSaveData = useCallback(async (tab) => {
+    if (tab?.renderMode === 'pdf') {
+      const pdfBytes = await applyPdfEditsToBytes(tab.pdfBytes, tab.pdfAnnotations ?? [])
+      return {
+        content: pdfBytes,
+        mimeType: 'application/pdf',
+        pickerOptions: getPdfSavePickerOptions(tab.name),
+        applySavedState: (savedName) => ({
+          name: savedName,
+          pdfBytes,
+          pdfAnnotations: [],
+          modified: false,
+        }),
+      }
+    }
+    return {
+      content: tab?.content ?? '',
+      mimeType: 'text/plain',
+      pickerOptions: {
+        suggestedName: tab?.name,
+        types: [{ description: 'Text files', accept: { 'text/plain': ['.txt', '.md', '.js', '.ts', '.css', '.html', '.json', '.xml', '.csv'] } }],
+      },
+      applySavedState: (savedName) => ({
+        name: savedName,
+        modified: false,
+      }),
+    }
+  }, [])
+
   const handleOpen = useCallback(async () => {
     if (typeof window.showOpenFilePicker === 'function') {
       try {
         const handles = await window.showOpenFilePicker({ multiple: true })
         for (const handle of handles) {
           const file = await handle.getFile()
-          const content = await file.text()
           const id = nextTabId++
-          undoHistoryRef.current[id] = { stack: [content], index: 0, savedIndex: 0 }
-          setTabs((prev) => [...prev, { id, name: file.name, content, modified: false, language: detectLanguage(file.name), pinned: false, pinOrder: null }])
+          const tab = await createOpenTabFromFile(file, id, detectLanguage)
+          if (tab.renderMode !== 'pdf') {
+            undoHistoryRef.current[id] = { stack: [tab.content], index: 0, savedIndex: 0 }
+          }
+          setTabs((prev) => [...prev, tab])
           setFileHandles((prev) => ({ ...prev, [id]: handle }))
           setActiveTabId(id)
         }
@@ -639,10 +678,12 @@ export default function Home() {
       input.multiple = true
       input.onchange = async (e) => {
         for (const file of Array.from(e.target.files)) {
-          const content = await file.text()
           const id = nextTabId++
-          undoHistoryRef.current[id] = { stack: [content], index: 0, savedIndex: 0 }
-          setTabs((prev) => [...prev, { id, name: file.name, content, modified: false, language: detectLanguage(file.name), pinned: false, pinOrder: null }])
+          const tab = await createOpenTabFromFile(file, id, detectLanguage)
+          if (tab.renderMode !== 'pdf') {
+            undoHistoryRef.current[id] = { stack: [tab.content], index: 0, savedIndex: 0 }
+          }
+          setTabs((prev) => [...prev, tab])
           setActiveTabId(id)
         }
       }
@@ -651,117 +692,115 @@ export default function Home() {
   }, [])
 
   const handleSaveAs = useCallback(async () => {
-    const tab = tabsRef.current.find((t) => t.id === activeTabIdRef.current)
+    const tab = getActiveTabRecord()
     if (!tab) return
+    const saveData = await getTabSaveData(tab)
     if (typeof window.showSaveFilePicker === 'function') {
       try {
-        const handle = await window.showSaveFilePicker({
-          suggestedName: tab.name,
-          types: [{ description: 'Text files', accept: { 'text/plain': ['.txt', '.md', '.js', '.ts', '.css', '.html', '.json', '.xml', '.csv'] } }],
-        })
-        await writeToHandle(handle, tab.content)
+        const handle = await window.showSaveFilePicker(saveData.pickerOptions)
+        await writeToHandle(handle, saveData.content)
         const savedFile = await handle.getFile()
         setFileHandles((prev) => ({ ...prev, [tab.id]: handle }))
         const history = undoHistoryRef.current[tab.id]
         if (history) history.savedIndex = history.index
-        setTabs((prev) =>
-          prev.map((t) => (t.id === tab.id ? { ...t, name: savedFile.name, modified: false } : t))
-        )
+        updateOpenTab(tab.id, (currentTab) => ({ ...currentTab, ...saveData.applySavedState(savedFile.name) }))
       } catch (e) {
         if (e.name !== 'AbortError') console.error(e)
       }
     } else {
-      downloadFile(tab.name, tab.content)
+      downloadFile(saveData.pickerOptions.suggestedName, saveData.content, saveData.mimeType)
       const history = undoHistoryRef.current[tab.id]
       if (history) history.savedIndex = history.index
-      setTabs((prev) =>
-        prev.map((t) => (t.id === tab.id ? { ...t, modified: false } : t))
-      )
+      updateOpenTab(tab.id, (currentTab) => ({ ...currentTab, ...saveData.applySavedState(saveData.pickerOptions.suggestedName) }))
     }
-  }, [downloadFile, writeToHandle])
+  }, [downloadFile, getActiveTabRecord, getTabSaveData, updateOpenTab, writeToHandle])
 
   const handleSave = useCallback(async () => {
-    const tab = tabsRef.current.find((t) => t.id === activeTabIdRef.current)
+    const tab = getActiveTabRecord()
     if (!tab) return
     const handle = fileHandlesRef.current[tab.id]
+    const saveData = await getTabSaveData(tab)
     if (handle) {
       try {
-        await writeToHandle(handle, tab.content)
+        await writeToHandle(handle, saveData.content)
+        const savedFile = await handle.getFile()
         const history = undoHistoryRef.current[tab.id]
         if (history) history.savedIndex = history.index
-        setTabs((prev) =>
-          prev.map((t) => (t.id === tab.id ? { ...t, modified: false } : t))
-        )
+        updateOpenTab(tab.id, (currentTab) => ({ ...currentTab, ...saveData.applySavedState(savedFile.name) }))
       } catch (e) {
         console.error(e)
       }
     } else {
       await handleSaveAs()
     }
-  }, [handleSaveAs, writeToHandle])
+  }, [getActiveTabRecord, getTabSaveData, handleSaveAs, updateOpenTab, writeToHandle])
 
   const handleSaveCopyAs = useCallback(async () => {
-    const tab = tabsRef.current.find((t) => t.id === activeTabIdRef.current)
+    const tab = getActiveTabRecord()
     if (!tab) return
+    const saveData = await getTabSaveData(tab)
     if (typeof window.showSaveFilePicker === 'function') {
       try {
-        const handle = await window.showSaveFilePicker({
-          suggestedName: tab.name,
-          types: [{ description: 'Text files', accept: { 'text/plain': ['.txt', '.md', '.js', '.ts', '.css', '.html', '.json', '.xml', '.csv'] } }],
-        })
-        await writeToHandle(handle, tab.content)
+        const handle = await window.showSaveFilePicker(saveData.pickerOptions)
+        await writeToHandle(handle, saveData.content)
       } catch (e) {
         if (e.name !== 'AbortError') console.error(e)
       }
     } else {
-      downloadFile(tab.name, tab.content)
+      downloadFile(saveData.pickerOptions.suggestedName, saveData.content, saveData.mimeType)
     }
-  }, [downloadFile, writeToHandle])
+  }, [downloadFile, getActiveTabRecord, getTabSaveData, writeToHandle])
 
   const handleSaveAll = useCallback(async () => {
-    const currentTabs = tabsRef.current
+    const currentTabs = getAllOpenTabs()
     const currentHandles = fileHandlesRef.current
     for (const tab of currentTabs) {
       if (!tab.modified) continue
       const handle = currentHandles[tab.id]
+      const saveData = await getTabSaveData(tab)
       if (handle) {
         try {
-          await writeToHandle(handle, tab.content)
+          await writeToHandle(handle, saveData.content)
+          const savedFile = await handle.getFile()
           const history = undoHistoryRef.current[tab.id]
           if (history) history.savedIndex = history.index
-          setTabs((prev) =>
-            prev.map((t) => (t.id === tab.id ? { ...t, modified: false } : t))
-          )
+          updateOpenTab(tab.id, (currentTab) => ({ ...currentTab, ...saveData.applySavedState(savedFile.name) }))
         } catch (e) {
           console.error(e)
         }
       } else {
-        downloadFile(tab.name, tab.content)
+        downloadFile(saveData.pickerOptions.suggestedName, saveData.content, saveData.mimeType)
         const history = undoHistoryRef.current[tab.id]
         if (history) history.savedIndex = history.index
-        setTabs((prev) =>
-          prev.map((t) => (t.id === tab.id ? { ...t, modified: false } : t))
-        )
+        updateOpenTab(tab.id, (currentTab) => ({ ...currentTab, ...saveData.applySavedState(saveData.pickerOptions.suggestedName) }))
       }
     }
-  }, [downloadFile, writeToHandle])
+  }, [downloadFile, getAllOpenTabs, getTabSaveData, updateOpenTab, writeToHandle])
 
   const handleReload = useCallback(async () => {
-    const tab = tabsRef.current.find((t) => t.id === activeTabIdRef.current)
+    const tab = getActiveTabRecord()
     if (!tab) return
     const handle = fileHandlesRef.current[tab.id]
     if (!handle) return
     try {
       const file = await handle.getFile()
-      const content = await file.text()
-      undoHistoryRef.current[tab.id] = { stack: [content], index: 0, savedIndex: 0 }
-      setTabs((prev) =>
-        prev.map((t) => (t.id === tab.id ? { ...t, content, modified: false } : t))
-      )
+      const nextTab = await createOpenTabFromFile(file, tab.id, detectLanguage)
+      if (nextTab.renderMode === 'pdf') {
+        delete undoHistoryRef.current[tab.id]
+      } else {
+        undoHistoryRef.current[tab.id] = { stack: [nextTab.content], index: 0, savedIndex: 0 }
+      }
+      updateOpenTab(tab.id, (currentTab) => ({
+        ...currentTab,
+        ...nextTab,
+        id: currentTab.id,
+        pinned: currentTab.pinned,
+        pinOrder: currentTab.pinOrder,
+      }))
     } catch (e) {
       console.error(e)
     }
-  }, [])
+  }, [getActiveTabRecord, updateOpenTab])
 
   const handleRename = useCallback(() => {
     const tab = tabsRef.current.find((t) => t.id === activeTabIdRef.current)
@@ -1109,9 +1148,11 @@ export default function Home() {
     for (let i = 0; i < fileArray.length; i++) {
       const file = fileArray[i]
       const id = ids[i]
-      const content = await file.text()
-      undoHistoryRef.current[id] = { stack: [content], index: 0, savedIndex: 0 }
-      setTabs((prev) => [...prev, { id, name: file.name, content, modified: false, language: detectLanguage(file.name), pinned: false, pinOrder: null }])
+      const tab = await createOpenTabFromFile(file, id, detectLanguage)
+      if (tab.renderMode !== 'pdf') {
+        undoHistoryRef.current[id] = { stack: [tab.content], index: 0, savedIndex: 0 }
+      }
+      setTabs((prev) => [...prev, tab])
       lastId = id
     }
     if (lastId !== null) {
@@ -2057,6 +2098,14 @@ export default function Home() {
     return getActiveEditor()?.findPrev(term, options) ?? false
   }, [getActiveEditor])
 
+  const handlePdfAnnotationsChange = useCallback((tabId, pdfAnnotations) => {
+    updateOpenTab(tabId, (currentTab) => ({
+      ...currentTab,
+      pdfAnnotations,
+      modified: pdfAnnotations.length > 0,
+    }))
+  }, [updateOpenTab])
+
   // ── Common editor props builder ───────────────────────────────────────────
   const commonEditorProps = { wordWrap, fontSize, showWhitespace, showEol, showIndent, onUndo: handleUndo, onRedo: handleRedo, textDirection }
 
@@ -2176,6 +2225,12 @@ export default function Home() {
                       : (activeTab?.content ?? '')}
                     sandbox={activeTab?.renderMode === 'markdown' ? '' : 'allow-scripts'}
                   />
+                ) : activeTab?.renderMode === 'pdf' ? (
+                  <PdfViewer
+                    tab={activeTab}
+                    onAnnotationsChange={(pdfAnnotations) => handlePdfAnnotationsChange(activeTab.id, pdfAnnotations)}
+                    onSave={handleSave}
+                  />
                 ) : (
                   <Editor
                     key={activeTabId}
@@ -2217,6 +2272,12 @@ export default function Home() {
                       : (view2ActiveTab?.content ?? '')}
                     sandbox={view2ActiveTab?.renderMode === 'markdown' ? '' : 'allow-scripts'}
                   />
+                ) : view2ActiveTab?.renderMode === 'pdf' ? (
+                  <PdfViewer
+                    tab={view2ActiveTab}
+                    onAnnotationsChange={(pdfAnnotations) => handlePdfAnnotationsChange(view2ActiveTab.id, pdfAnnotations)}
+                    onSave={handleSave}
+                  />
                 ) : (
                   <Editor
                     key={view2ActiveTabId ?? 'view2-empty'}
@@ -2255,6 +2316,12 @@ export default function Home() {
                   ? buildMarkdownPreviewDocument(activeTab?.content ?? '', activeTab?.name)
                   : (activeTab?.content ?? '')}
                 sandbox={activeTab?.renderMode === 'markdown' ? '' : 'allow-scripts'}
+              />
+            ) : activeTab?.renderMode === 'pdf' ? (
+              <PdfViewer
+                tab={activeTab}
+                onAnnotationsChange={(pdfAnnotations) => handlePdfAnnotationsChange(activeTab.id, pdfAnnotations)}
+                onSave={handleSave}
               />
             ) : (
               <Editor

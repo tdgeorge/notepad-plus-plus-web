@@ -36,6 +36,7 @@ test('getBulkClosableTabIds excludes pinned tabs by default', () => {
 test('persistence helpers keep pinned tabs and sanitize pin metadata', () => {
   assert.equal(shouldPersistAutosaveTab({ modified: false, pinned: true }), true)
   assert.equal(shouldPersistAutosaveTab({ modified: false, pinned: false }), false)
+  assert.equal(shouldPersistAutosaveTab({ modified: true, pinned: false, renderMode: 'pdf' }), false)
   assert.deepEqual(normalizePinnedState({ pinned: 1, pinOrder: 'bad' }), { pinned: true, pinOrder: null })
   assert.deepEqual(normalizePinnedState({ pinned: true }), { pinned: true, pinOrder: null })
   assert.deepEqual(normalizePinnedState({ pinned: false, pinOrder: 3 }), { pinned: false, pinOrder: null })

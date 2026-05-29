@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "next": "15.5.15",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^5.7.284",
     "react": "^18.3.0",
     "react-dom": "^18.3.0"
   },

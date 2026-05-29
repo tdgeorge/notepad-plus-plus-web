@@ -40,7 +40,9 @@ export function getBulkClosableTabIds(tabs, predicate = null) {
 }
 
 export function shouldPersistAutosaveTab(tab) {
-  return Boolean(tab?.modified || tab?.pinned)
+  return tab?.renderMode === 'pdf'
+    ? false
+    : Boolean(tab?.modified || tab?.pinned)
 }
 
 export function normalizePinnedState(tab) {

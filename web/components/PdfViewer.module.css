@@ -1,0 +1,114 @@
+.viewer {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  background: #5a5a5a;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--menu-bg);
+}
+
+.toolbarGroup {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.toolbarButton,
+.toolbarInput,
+.toolbarSelect {
+  border: 1px solid var(--border);
+  background: var(--input-bg, white);
+  color: var(--fg);
+  font: inherit;
+  min-height: 28px;
+}
+
+.toolbarButton {
+  padding: 0 10px;
+}
+
+.toolbarButtonActive {
+  background: var(--accent);
+  color: white;
+}
+
+.toolbarButton:disabled {
+  opacity: 0.55;
+}
+
+.toolbarInput {
+  padding: 0 8px;
+  min-width: 180px;
+}
+
+.toolbarColorInput {
+  padding: 2px;
+  min-width: 36px;
+  width: 36px;
+}
+
+.toolbarSelect {
+  padding: 0 6px;
+}
+
+.toolbarLabel {
+  font-size: 12px;
+}
+
+.pages {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px 12px 32px;
+}
+
+.page {
+  position: relative;
+  width: fit-content;
+  margin: 0 auto 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.28);
+  background: white;
+}
+
+.canvas {
+  display: block;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  cursor: crosshair;
+}
+
+.overlayPan {
+  cursor: default;
+}
+
+.annotationHighlight,
+.annotationDraft {
+  position: absolute;
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.annotationText {
+  position: absolute;
+  font: 14px/1.2 Arial, sans-serif;
+  white-space: pre-wrap;
+  pointer-events: none;
+}
+
+.status {
+  padding: 24px;
+  text-align: center;
+  color: white;
+}
