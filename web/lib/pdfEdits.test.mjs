@@ -30,3 +30,16 @@ test('applyPdfEditsToBytes applies text and highlight annotations', async () => 
   const reloaded = await PDFDocument.load(next)
   assert.equal(reloaded.getPageCount(), 1)
 })
+
+test('applyPdfEditsToBytes keeps multiline text annotations saveable', async () => {
+  const pdf = await PDFDocument.create()
+  pdf.addPage([300, 200])
+  const original = await pdf.save()
+  const next = await applyPdfEditsToBytes(original, [
+    { type: 'text', pageNumber: 1, x: 40, y: 30, scale: 1, color: '#ff0000', text: 'Line 1\n\nLine 3', fontSize: 14 },
+  ])
+
+  assert.ok(next.length > original.length)
+  const reloaded = await PDFDocument.load(next)
+  assert.equal(reloaded.getPageCount(), 1)
+})

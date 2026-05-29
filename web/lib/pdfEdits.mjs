@@ -18,6 +18,10 @@ function hexToRgb(value, fallback) {
   )
 }
 
+function normalizeAnnotationText(value) {
+  return typeof value === 'string' ? value.replace(/\r\n?/g, '\n') : ''
+}
+
 export function getPdfSavePickerOptions(name) {
   return {
     suggestedName: ensurePdfFileName(name),
@@ -61,20 +65,20 @@ export async function applyPdfEditsToBytes(sourceBytes, annotations = []) {
       continue
     }
 
-    if (annotation?.type === 'text' && typeof annotation.text === 'string' && annotation.text.trim()) {
+    const annotationText = normalizeAnnotationText(annotation?.text)
+    if (annotation?.type === 'text' && annotationText.trim()) {
       const fontSize = Math.max(Number(annotation.fontSize) || 14, 8)
+      const lineHeight = fontSize * 1.2
       const x = clampNumber((Number(annotation.x) || 0) / scale, 0, pageWidth)
-      const y = clampNumber(
-        pageHeight - ((Number(annotation.y) || 0) / scale) - fontSize,
-        0,
-        pageHeight
-      )
-      page.drawText(annotation.text, {
-        x,
-        y,
-        size: fontSize,
-        font,
-        color: hexToRgb(annotation.color, rgb(0.8275, 0.1843, 0.1843)),
+      const baseY = pageHeight - ((Number(annotation.y) || 0) / scale) - fontSize
+      annotationText.split('\n').forEach((line, index) => {
+        page.drawText(line || ' ', {
+          x,
+          y: clampNumber(baseY - (index * lineHeight), 0, pageHeight),
+          size: fontSize,
+          font,
+          color: hexToRgb(annotation.color, rgb(0.8275, 0.1843, 0.1843)),
+        })
       })
     }
   }

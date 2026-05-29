@@ -25,6 +25,7 @@ import { applyTheme, THEMES, DEFAULT_THEME_ID } from '../lib/themes'
 import { detectLanguage } from '../lib/languages/index'
 import { buildMacroTextStep } from '../lib/macroTextSteps.mjs'
 import { handleBrowserExit } from '../lib/exitPage.mjs'
+import { downloadFileWithFallback } from '../lib/fileDownload.mjs'
 import { getOrderedTabs, setTabPinned, getBulkClosableTabIds, shouldPersistAutosaveTab, normalizePinnedState } from '../lib/pinnedTabs.mjs'
 import { createWebPreviewTab } from '../lib/webPreviewTab.mjs'
 import { buildMarkdownPreviewDocument, createMarkdownPreviewTab } from '../lib/markdownPreviewTab.mjs'
@@ -609,15 +610,9 @@ export default function Home() {
     )
   }, [recordMacroStep, appendMacroDebugLine])
 
-  const downloadFile = useCallback((name, content, type = 'text/plain') => {
-    const blob = new Blob([content], { type })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = name
-    a.click()
-    URL.revokeObjectURL(url)
-  }, [])
+  const downloadFile = useCallback((name, content, type = 'text/plain') => (
+    downloadFileWithFallback(name, content, type)
+  ), [])
 
   const writeToHandle = useCallback(async (handle, content) => {
     const writable = await handle.createWritable()
@@ -708,7 +703,8 @@ export default function Home() {
         if (e.name !== 'AbortError') console.error(e)
       }
     } else {
-      downloadFile(saveData.pickerOptions.suggestedName, saveData.content, saveData.mimeType)
+      const didSave = await downloadFile(saveData.pickerOptions.suggestedName, saveData.content, saveData.mimeType)
+      if (!didSave) return
       const history = undoHistoryRef.current[tab.id]
       if (history) history.savedIndex = history.index
       updateOpenTab(tab.id, (currentTab) => ({ ...currentTab, ...saveData.applySavedState(saveData.pickerOptions.suggestedName) }))
@@ -747,7 +743,7 @@ export default function Home() {
         if (e.name !== 'AbortError') console.error(e)
       }
     } else {
-      downloadFile(saveData.pickerOptions.suggestedName, saveData.content, saveData.mimeType)
+      await downloadFile(saveData.pickerOptions.suggestedName, saveData.content, saveData.mimeType)
     }
   }, [downloadFile, getActiveTabRecord, getTabSaveData, writeToHandle])
 
@@ -769,7 +765,8 @@ export default function Home() {
           console.error(e)
         }
       } else {
-        downloadFile(saveData.pickerOptions.suggestedName, saveData.content, saveData.mimeType)
+        const didSave = await downloadFile(saveData.pickerOptions.suggestedName, saveData.content, saveData.mimeType)
+        if (!didSave) continue
         const history = undoHistoryRef.current[tab.id]
         if (history) history.savedIndex = history.index
         updateOpenTab(tab.id, (currentTab) => ({ ...currentTab, ...saveData.applySavedState(saveData.pickerOptions.suggestedName) }))

@@ -3,65 +3,134 @@
   flex: 1;
   min-height: 0;
   flex-direction: column;
-  background: #5a5a5a;
+  background: linear-gradient(180deg, #4c5361 0%, #5f6777 100%);
 }
 
 .toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(21, 25, 32, 0.92);
+  backdrop-filter: blur(10px);
+}
+
+.toolbarRow {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--border);
-  background: var(--menu-bg);
+  justify-content: space-between;
 }
 
 .toolbarGroup {
   display: inline-flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
+  min-width: 0;
 }
 
-.toolbarButton,
-.toolbarInput,
-.toolbarSelect {
-  border: 1px solid var(--border);
-  background: var(--input-bg, white);
-  color: var(--fg);
-  font: inherit;
-  min-height: 28px;
+.segmentedGroup,
+.toolbarContext,
+.toolbarActions {
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.toolbarContext {
+  flex: 1;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  border-radius: 18px;
+  padding: 8px 10px;
+}
+
+.toolbarActions {
+  justify-content: flex-end;
 }
 
 .toolbarButton {
-  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #f4f7fb;
+  font: inherit;
+  min-height: 36px;
+  padding: 0 14px;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+  touch-action: manipulation;
+}
+
+.toolbarButton:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .toolbarButtonActive {
-  background: var(--accent);
+  background: linear-gradient(135deg, #4f8cff 0%, #2f6fe4 100%);
   color: white;
+  box-shadow: 0 8px 20px rgba(47, 111, 228, 0.25);
+}
+
+.toolbarButtonPrimary {
+  background: linear-gradient(135deg, #20a965 0%, #14834d 100%);
+  box-shadow: 0 8px 20px rgba(20, 131, 77, 0.22);
+}
+
+.toolbarButtonPrimary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #24bb70 0%, #169157 100%);
 }
 
 .toolbarButton:disabled {
-  opacity: 0.55;
-}
-
-.toolbarInput {
-  padding: 0 8px;
-  min-width: 180px;
+  opacity: 0.45;
 }
 
 .toolbarColorInput {
-  padding: 2px;
-  min-width: 36px;
-  width: 36px;
+  padding: 0;
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: transparent;
 }
 
-.toolbarSelect {
-  padding: 0 6px;
+.toolbarLabel,
+.toolbarHint,
+.toolbarBadge {
+  color: #e7ecf5;
 }
 
 .toolbarLabel {
   font-size: 12px;
+  font-weight: 600;
+}
+
+.toolbarHint {
+  min-width: 0;
+  flex: 1;
+  font-size: 12px;
+  line-height: 1.35;
+  color: rgba(231, 236, 245, 0.82);
+}
+
+.toolbarBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .pages {
@@ -74,8 +143,8 @@
 .page {
   position: relative;
   width: fit-content;
-  margin: 0 auto 16px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.28);
+  margin: 0 auto 18px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
   background: white;
 }
 
@@ -86,29 +155,103 @@
 .overlay {
   position: absolute;
   inset: 0;
-  cursor: crosshair;
 }
 
 .overlayPan {
   cursor: default;
 }
 
+.overlayDraw {
+  cursor: crosshair;
+  touch-action: none;
+}
+
 .annotationHighlight,
 .annotationDraft {
   position: absolute;
-  border-radius: 2px;
+  border-radius: 4px;
   pointer-events: none;
 }
 
-.annotationText {
+.annotationText,
+.annotationEditor {
   position: absolute;
-  font: 14px/1.2 Arial, sans-serif;
+  min-width: 56px;
+  max-width: min(240px, calc(100% - 12px));
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.16);
+  font: 14px/1.35 Arial, sans-serif;
   white-space: pre-wrap;
-  pointer-events: none;
+}
+
+.annotationText {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  cursor: grab;
+  user-select: none;
+}
+
+.annotationTextSelected {
+  border-color: rgba(47, 111, 228, 0.7);
+  box-shadow: 0 0 0 2px rgba(47, 111, 228, 0.15), 0 8px 18px rgba(15, 23, 42, 0.18);
+}
+
+.annotationEditor {
+  resize: both;
+  min-height: 72px;
+  border: 1px solid rgba(47, 111, 228, 0.7);
+  outline: none;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.annotationEditor::placeholder {
+  color: rgba(15, 23, 42, 0.45);
 }
 
 .status {
   padding: 24px;
   text-align: center;
   color: white;
+}
+
+@media (max-width: 640px) {
+  .toolbar {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .toolbarRow {
+    gap: 8px;
+  }
+
+  .toolbarContext,
+  .toolbarActions,
+  .segmentedGroup {
+    width: 100%;
+  }
+
+  .toolbarActions {
+    justify-content: space-between;
+  }
+
+  .toolbarButton {
+    flex: 1 1 0;
+    min-height: 34px;
+    padding: 0 10px;
+    font-size: 12px;
+  }
+
+  .toolbarHint {
+    flex-basis: 100%;
+  }
+
+  .toolbarBadge {
+    width: 100%;
+  }
+
+  .pages {
+    padding: 12px 8px 24px;
+  }
 }
