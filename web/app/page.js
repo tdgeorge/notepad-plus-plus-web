@@ -25,7 +25,7 @@ import { applyTheme, THEMES, DEFAULT_THEME_ID } from '../lib/themes'
 import { detectLanguage } from '../lib/languages/index'
 import { buildMacroTextStep } from '../lib/macroTextSteps.mjs'
 import { handleBrowserExit } from '../lib/exitPage.mjs'
-import { downloadFileWithFallback } from '../lib/fileDownload.mjs'
+import { downloadFileWithFallback, isIosBrowser } from '../lib/fileDownload.mjs'
 import { getOrderedTabs, setTabPinned, getBulkClosableTabIds, shouldPersistAutosaveTab, normalizePinnedState } from '../lib/pinnedTabs.mjs'
 import { createWebPreviewTab } from '../lib/webPreviewTab.mjs'
 import { buildMarkdownPreviewDocument, createMarkdownPreviewTab } from '../lib/markdownPreviewTab.mjs'
@@ -610,9 +610,16 @@ export default function Home() {
     )
   }, [recordMacroStep, appendMacroDebugLine])
 
-  const downloadFile = useCallback((name, content, type = 'text/plain') => (
-    downloadFileWithFallback(name, content, type)
+  const downloadFile = useCallback((name, content, type = 'text/plain', options) => (
+    downloadFileWithFallback(name, content, type, window, options)
   ), [])
+
+  const prepareIosAnnotatedPdfWindow = useCallback((tab) => {
+    if (typeof window === 'undefined' || typeof window.showSaveFilePicker === 'function') return null
+    if (tab?.renderMode !== 'pdf' || (tab?.pdfAnnotations?.length ?? 0) === 0) return null
+    if (!isIosBrowser(window)) return null
+    return window.open?.('about:blank', '_blank') ?? null
+  }, [])
 
   const writeToHandle = useCallback(async (handle, content) => {
     const writable = await handle.createWritable()
@@ -689,6 +696,7 @@ export default function Home() {
   const handleSaveAs = useCallback(async () => {
     const tab = getActiveTabRecord()
     if (!tab) return
+    const preOpenedWindow = prepareIosAnnotatedPdfWindow(tab)
     const saveData = await getTabSaveData(tab)
     if (typeof window.showSaveFilePicker === 'function') {
       try {
@@ -703,13 +711,19 @@ export default function Home() {
         if (e.name !== 'AbortError') console.error(e)
       }
     } else {
-      const didSave = await downloadFile(saveData.pickerOptions.suggestedName, saveData.content, saveData.mimeType)
+      const didSave = await downloadFile(
+        saveData.pickerOptions.suggestedName,
+        saveData.content,
+        saveData.mimeType,
+        { preOpenedWindow }
+      )
+      if (!didSave) preOpenedWindow?.close?.()
       if (!didSave) return
       const history = undoHistoryRef.current[tab.id]
       if (history) history.savedIndex = history.index
       updateOpenTab(tab.id, (currentTab) => ({ ...currentTab, ...saveData.applySavedState(saveData.pickerOptions.suggestedName) }))
     }
-  }, [downloadFile, getActiveTabRecord, getTabSaveData, updateOpenTab, writeToHandle])
+  }, [downloadFile, getActiveTabRecord, getTabSaveData, prepareIosAnnotatedPdfWindow, updateOpenTab, writeToHandle])
 
   const handleSave = useCallback(async () => {
     const tab = getActiveTabRecord()
@@ -734,6 +748,7 @@ export default function Home() {
   const handleSaveCopyAs = useCallback(async () => {
     const tab = getActiveTabRecord()
     if (!tab) return
+    const preOpenedWindow = prepareIosAnnotatedPdfWindow(tab)
     const saveData = await getTabSaveData(tab)
     if (typeof window.showSaveFilePicker === 'function') {
       try {
@@ -743,9 +758,15 @@ export default function Home() {
         if (e.name !== 'AbortError') console.error(e)
       }
     } else {
-      await downloadFile(saveData.pickerOptions.suggestedName, saveData.content, saveData.mimeType)
+      const didSave = await downloadFile(
+        saveData.pickerOptions.suggestedName,
+        saveData.content,
+        saveData.mimeType,
+        { preOpenedWindow }
+      )
+      if (!didSave) preOpenedWindow?.close?.()
     }
-  }, [downloadFile, getActiveTabRecord, getTabSaveData, writeToHandle])
+  }, [downloadFile, getActiveTabRecord, getTabSaveData, prepareIosAnnotatedPdfWindow, writeToHandle])
 
   const handleSaveAll = useCallback(async () => {
     const currentTabs = getAllOpenTabs()

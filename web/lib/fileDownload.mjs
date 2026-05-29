@@ -27,13 +27,31 @@ export function isIosBrowser(win) {
   return IOS_UA_RE.test(win?.navigator?.userAgent ?? '')
 }
 
-export async function downloadFileWithFallback(name, content, type = 'text/plain', win = window) {
+function navigatePopupToUrl(popup, url) {
+  if (!popup || popup.closed) return false
+  if (typeof popup.location?.replace === 'function') {
+    popup.location.replace(url)
+    return true
+  }
+  if (typeof popup.location?.assign === 'function') {
+    popup.location.assign(url)
+    return true
+  }
+  if (typeof popup.location === 'object' && popup.location) {
+    popup.location.href = url
+    return true
+  }
+  return false
+}
+
+export async function downloadFileWithFallback(name, content, type = 'text/plain', win = window, options = {}) {
   if (!win) return false
 
   const blob = new Blob([content], { type })
   const exportFile = createExportFile(win, name, content, type)
+  const preOpenedWindow = options?.preOpenedWindow ?? null
 
-  if (shouldUseFileShare(win, exportFile)) {
+  if (!preOpenedWindow && shouldUseFileShare(win, exportFile)) {
     try {
       await win.navigator.share({ title: name, files: [exportFile] })
       return true
@@ -46,6 +64,10 @@ export async function downloadFileWithFallback(name, content, type = 'text/plain
   if (!url) return false
 
   if (type === 'application/pdf' && isIosBrowser(win)) {
+    if (navigatePopupToUrl(preOpenedWindow, url)) {
+      win.setTimeout?.(() => win.URL?.revokeObjectURL?.(url), 60_000)
+      return true
+    }
     const popup = win.open?.(url, '_blank', 'noopener,noreferrer')
     win.setTimeout?.(() => win.URL?.revokeObjectURL?.(url), 60_000)
     if (popup) {

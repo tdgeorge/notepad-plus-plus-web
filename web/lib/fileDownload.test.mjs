@@ -131,6 +131,48 @@ test('downloadFileWithFallback navigates current tab to PDFs on iOS when popup o
   assert.equal(win.__anchor.clickCalled, false)
 })
 
+test('downloadFileWithFallback uses a pre-opened window for iOS PDFs after async work', async () => {
+  let shareCalls = 0
+  let openCalls = 0
+  const preOpenedWindow = {
+    closed: false,
+    location: {
+      href: '',
+      replace(url) {
+        this.href = url
+      },
+    },
+  }
+  const win = createWindow({
+    navigator: {
+      userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)',
+      share: async () => {
+        shareCalls += 1
+      },
+      canShare: () => true,
+    },
+    open: () => {
+      openCalls += 1
+      return {}
+    },
+    matchMedia: () => ({ matches: true }),
+  })
+
+  const didSave = await downloadFileWithFallback(
+    'demo.pdf',
+    new Uint8Array([1, 2, 3]),
+    'application/pdf',
+    win,
+    { preOpenedWindow }
+  )
+
+  assert.equal(didSave, true)
+  assert.equal(preOpenedWindow.location.href, 'blob:download')
+  assert.equal(shareCalls, 0)
+  assert.equal(openCalls, 0)
+  assert.equal(win.__anchor.clickCalled, false)
+})
+
 test('downloadFileWithFallback falls back to a hidden anchor download', async () => {
   const win = createWindow()
 
