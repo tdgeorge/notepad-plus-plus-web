@@ -28,6 +28,7 @@ import { getOrderedTabs, setTabPinned, getBulkClosableTabIds, shouldPersistAutos
 import { createWebPreviewTab } from '../lib/webPreviewTab.mjs'
 import { buildMarkdownPreviewDocument, createMarkdownPreviewTab } from '../lib/markdownPreviewTab.mjs'
 import { createVimTab } from '../lib/vimTab.mjs'
+import { createPdfcraftTab, PDFCRAFT_URL, PDFCRAFT_IFRAME_SANDBOX } from '../lib/pdfcraftTab.mjs'
 import styles from './page.module.css'
 
 const DEFAULT_FONT_SIZE = 13
@@ -1187,6 +1188,19 @@ export default function Home() {
     }
   }, [activeView, getActiveTabRecord])
 
+  const handleOpenPdfcraftTab = useCallback(() => {
+    const id = nextTabId++
+    const pdfcraftTab = createPdfcraftTab(id)
+    if (!pdfcraftTab) return
+    if (activeView === 1) {
+      setTabs((prev) => [...prev, pdfcraftTab])
+      setActiveTabId(id)
+    } else {
+      setView2Tabs((prev) => [...prev, pdfcraftTab])
+      setView2ActiveTabId(id)
+    }
+  }, [activeView])
+
   const handleVimCommand = useCallback((command) => {
     if (command === 'w') {
       handleSave()
@@ -1210,6 +1224,7 @@ export default function Home() {
         case 'openAsWebpage': handleOpenAsWebpage(); break
         case 'openAsMarkdownPreview': handleOpenAsMarkdownPreview(); break
         case 'openAsVimTab': handleOpenAsVimTab(); break
+        case 'openPdfcraft': handleOpenPdfcraftTab(); break
         case 'reload': handleReload(); break
         case 'save': handleSave(); break
         case 'saveAs': handleSaveAs(); break
@@ -1246,7 +1261,7 @@ export default function Home() {
     },
     [
       handleNewTab, handleOpen, handleReload, handleSave,
-      handleOpenAsWebpage, handleOpenAsMarkdownPreview, handleOpenAsVimTab,
+      handleOpenAsWebpage, handleOpenAsMarkdownPreview, handleOpenAsVimTab, handleOpenPdfcraftTab,
       handleSaveAs, handleSaveCopyAs, handleSaveAll, handleRename,
       handleCloseActive, handleCloseAll, handleCloseAllButActive, handleCloseAllButPinned,
       handleCloseAllToLeft, handleCloseAllToRight, handleCloseAllUnchanged,
@@ -2166,15 +2181,16 @@ export default function Home() {
                     onTogglePin={handleToggleTabPin}
                   />
                 )}
-                {activeTab?.renderMode === 'webpage' || activeTab?.renderMode === 'markdown' ? (
+                {activeTab?.renderMode === 'webpage' || activeTab?.renderMode === 'markdown' || activeTab?.renderMode === 'pdfcraft' ? (
                   <iframe
                     key={activeTabId}
-                    title={`${activeTab?.name ?? 'Untitled'} ${activeTab?.renderMode === 'markdown' ? 'markdown preview' : 'webpage preview'}`}
+                    title={`${activeTab?.name ?? 'Untitled'} ${activeTab?.renderMode === 'markdown' ? 'markdown preview' : activeTab?.renderMode === 'pdfcraft' ? 'PDF workbench' : 'webpage preview'}`}
                     className={styles.webpagePreviewFrame}
-                    srcDoc={activeTab?.renderMode === 'markdown'
+                    src={activeTab?.renderMode === 'pdfcraft' ? PDFCRAFT_URL : undefined}
+                    srcDoc={activeTab?.renderMode === 'pdfcraft' ? undefined : activeTab?.renderMode === 'markdown'
                       ? buildMarkdownPreviewDocument(activeTab?.content ?? '', activeTab?.name)
                       : (activeTab?.content ?? '')}
-                    sandbox={activeTab?.renderMode === 'markdown' ? '' : 'allow-scripts'}
+                    sandbox={activeTab?.renderMode === 'pdfcraft' ? PDFCRAFT_IFRAME_SANDBOX : activeTab?.renderMode === 'markdown' ? '' : 'allow-scripts'}
                   />
                 ) : (
                   <Editor
@@ -2207,15 +2223,16 @@ export default function Home() {
                     onTogglePin={handleToggleView2TabPin}
                   />
                 )}
-                {view2ActiveTab?.renderMode === 'webpage' || view2ActiveTab?.renderMode === 'markdown' ? (
+                {view2ActiveTab?.renderMode === 'webpage' || view2ActiveTab?.renderMode === 'markdown' || view2ActiveTab?.renderMode === 'pdfcraft' ? (
                   <iframe
                     key={view2ActiveTabId ?? 'view2-empty'}
-                    title={`${view2ActiveTab?.name ?? 'Untitled'} ${view2ActiveTab?.renderMode === 'markdown' ? 'markdown preview' : 'webpage preview'}`}
+                    title={`${view2ActiveTab?.name ?? 'Untitled'} ${view2ActiveTab?.renderMode === 'markdown' ? 'markdown preview' : view2ActiveTab?.renderMode === 'pdfcraft' ? 'PDF workbench' : 'webpage preview'}`}
                     className={styles.webpagePreviewFrame}
-                    srcDoc={view2ActiveTab?.renderMode === 'markdown'
+                    src={view2ActiveTab?.renderMode === 'pdfcraft' ? PDFCRAFT_URL : undefined}
+                    srcDoc={view2ActiveTab?.renderMode === 'pdfcraft' ? undefined : view2ActiveTab?.renderMode === 'markdown'
                       ? buildMarkdownPreviewDocument(view2ActiveTab?.content ?? '', view2ActiveTab?.name)
                       : (view2ActiveTab?.content ?? '')}
-                    sandbox={view2ActiveTab?.renderMode === 'markdown' ? '' : 'allow-scripts'}
+                    sandbox={view2ActiveTab?.renderMode === 'pdfcraft' ? PDFCRAFT_IFRAME_SANDBOX : view2ActiveTab?.renderMode === 'markdown' ? '' : 'allow-scripts'}
                   />
                 ) : (
                   <Editor
@@ -2246,15 +2263,16 @@ export default function Home() {
                 onTogglePin={handleToggleTabPin}
               />
             )}
-            {activeTab?.renderMode === 'webpage' || activeTab?.renderMode === 'markdown' ? (
+            {activeTab?.renderMode === 'webpage' || activeTab?.renderMode === 'markdown' || activeTab?.renderMode === 'pdfcraft' ? (
               <iframe
                 key={activeTabId}
-                title={`${activeTab?.name ?? 'Untitled'} ${activeTab?.renderMode === 'markdown' ? 'markdown preview' : 'webpage preview'}`}
+                title={`${activeTab?.name ?? 'Untitled'} ${activeTab?.renderMode === 'markdown' ? 'markdown preview' : activeTab?.renderMode === 'pdfcraft' ? 'PDF workbench' : 'webpage preview'}`}
                 className={styles.webpagePreviewFrame}
-                srcDoc={activeTab?.renderMode === 'markdown'
+                src={activeTab?.renderMode === 'pdfcraft' ? PDFCRAFT_URL : undefined}
+                    srcDoc={activeTab?.renderMode === 'pdfcraft' ? undefined : activeTab?.renderMode === 'markdown'
                   ? buildMarkdownPreviewDocument(activeTab?.content ?? '', activeTab?.name)
                   : (activeTab?.content ?? '')}
-                sandbox={activeTab?.renderMode === 'markdown' ? '' : 'allow-scripts'}
+                sandbox={activeTab?.renderMode === 'pdfcraft' ? PDFCRAFT_IFRAME_SANDBOX : activeTab?.renderMode === 'markdown' ? '' : 'allow-scripts'}
               />
             ) : (
               <Editor

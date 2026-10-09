@@ -10,7 +10,7 @@ const nextConfig = {
     // connect-src, frame-ancestors) still provide meaningful protection.
     const csp = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
+      "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self'",
@@ -20,6 +20,10 @@ const nextConfig = {
       "form-action 'self'",
       "frame-ancestors 'none'",
     ].join('; ')
+
+    // The embedded PdfCraft build (public/pdfcraft) is framed by the editor
+    // itself, so it must be same-origin frameable.
+    const pdfcraftCsp = csp.replace("frame-ancestors 'none'", "frame-ancestors 'self'")
 
     return [
       {
@@ -34,6 +38,13 @@ const nextConfig = {
             value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
           },
           { key: 'Content-Security-Policy', value: csp },
+        ],
+      },
+      {
+        source: '/pdfcraft/(.*)',
+        headers: [
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'Content-Security-Policy', value: pdfcraftCsp },
         ],
       },
     ]
