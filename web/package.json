@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "generate": "node scripts/generate-lang-data.mjs",
-    "prebuild": "node scripts/generate-lang-data.mjs"
+    "prebuild": "node scripts/generate-lang-data.mjs && node scripts/fetch-pdfcraft.mjs",
+    "fetch:pdfcraft": "node scripts/fetch-pdfcraft.mjs"
   },
   "dependencies": {
     "next": "15.5.15",

@@ -10,3 +10,6 @@ npm-debug.log*
 .env.development.local
 .env.test.local
 .env.production.local
+
+# PdfCraft WASM build, fetched from upstream at build time (scripts/fetch-pdfcraft.mjs)
+public/pdfcraft/

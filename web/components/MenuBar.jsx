@@ -48,6 +48,7 @@ const MENUS = [
       { label: 'Open as Webpage', action: 'openAsWebpage' },
       { label: 'Open as Markdown Preview', action: 'openAsMarkdownPreview' },
       { label: 'Open as Vim Tab', action: 'openAsVimTab' },
+      { label: 'Open PdfCraft Tab', action: 'openPdfcraft' },
       { label: 'Open Folder as Workspace...', disabled: true },
       { label: 'Reload from Disk', shortcut: 'Ctrl+R', action: 'reload' },
       { label: 'Save', shortcut: 'Ctrl+S', action: 'save' },
