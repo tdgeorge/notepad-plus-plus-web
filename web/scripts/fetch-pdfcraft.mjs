@@ -33,10 +33,14 @@ const has = (cmd) => { try { execSync(`command -v ${cmd}`, { stdio: 'ignore', en
 
 const work = mkdtempSync(join(tmpdir(), 'pdfcraft-'))
 try {
-  if (!has('cargo')) {
+  if (!has('rustup')) {
     run('curl -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal')
   }
-  run('rustup target add wasm32-unknown-unknown')
+  // The build image may ship an older preinstalled rustc than PdfCraft's
+  // dependencies need, so always install/update stable and force it.
+  run('rustup toolchain install stable --profile minimal --target wasm32-unknown-unknown')
+  env.RUSTUP_TOOLCHAIN = 'stable'
+  run('rustc --version')
   if (!has('trunk')) {
     const bin = join(work, 'bin')
     mkdirSync(bin)
