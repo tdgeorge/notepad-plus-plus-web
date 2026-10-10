@@ -13,6 +13,8 @@ import { fileURLToPath } from 'node:url'
 const REPO = 'https://github.com/storytold/pdfcraft'
 const REF = process.env.PDFCRAFT_REF || 'v0.4.0'
 const TRUNK_VERSION = 'v0.21.14'
+// musl build: Vercel's build image has an older glibc than the gnu release needs
+
 const out = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'pdfcraft')
 
 if (process.env.SKIP_PDFCRAFT === '1') {
@@ -38,7 +40,7 @@ try {
   if (!has('trunk')) {
     const bin = join(work, 'bin')
     mkdirSync(bin)
-    run(`curl -sSfL https://github.com/trunk-rs/trunk/releases/download/${TRUNK_VERSION}/trunk-x86_64-unknown-linux-gnu.tar.gz | tar -xz -C ${bin}`)
+    run(`curl -sSfL https://github.com/trunk-rs/trunk/releases/download/${TRUNK_VERSION}/trunk-x86_64-unknown-linux-musl.tar.gz | tar -xz -C ${bin}`)
     env.PATH = `${bin}:${env.PATH}`
   }
 
