@@ -5,7 +5,7 @@
 //   PDFCRAFT_REF   git tag/branch/commit to build (default: v0.4.0)
 //   SKIP_PDFCRAFT  set to 1 to skip (the "Open PdfCraft Tab" menu item will 404)
 import { execSync } from 'node:child_process'
-import { existsSync, mkdtempSync, mkdirSync, cpSync, rmSync, readdirSync } from 'node:fs'
+import { existsSync, mkdtempSync, mkdirSync, cpSync, rmSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir, homedir } from 'node:os'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -61,6 +61,13 @@ try {
   if (!readdirSync(dist).includes('index.html')) throw new Error('trunk produced no index.html')
   mkdirSync(out, { recursive: true })
   cpSync(dist, out, { recursive: true })
+  // PdfCraft saves via an anchor[download] click on a detached element and revokes
+  // the blob URL immediately, which makes Firefox/Safari drop the download. Shim both.
+  const indexPath = join(out, 'index.html')
+  const shim = `<script>(function(){var r=URL.revokeObjectURL.bind(URL);URL.revokeObjectURL=function(u){setTimeout(function(){r(u)},60000)};var c=HTMLAnchorElement.prototype.click;HTMLAnchorElement.prototype.click=function(){var a=this,d=a.hasAttribute('download')&&!a.isConnected;if(d){a.style.display='none';document.body.appendChild(a)}c.call(a);if(d)setTimeout(function(){a.remove()},0)}})();</script>`
+  const html = readFileSync(indexPath, 'utf8')
+  if (!html.includes('<head>')) throw new Error('unexpected index.html (no <head>)')
+  writeFileSync(indexPath, html.replace('<head>', `<head>${shim}`))
   for (const f of ['LICENSE-MIT', 'LICENSE-APACHE']) cpSync(join(src, f), join(out, f))
   console.log(`[pdfcraft] built ${REF} into public/pdfcraft`)
 } finally {

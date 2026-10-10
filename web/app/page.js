@@ -28,7 +28,7 @@ import { getOrderedTabs, setTabPinned, getBulkClosableTabIds, shouldPersistAutos
 import { createWebPreviewTab } from '../lib/webPreviewTab.mjs'
 import { buildMarkdownPreviewDocument, createMarkdownPreviewTab } from '../lib/markdownPreviewTab.mjs'
 import { createVimTab } from '../lib/vimTab.mjs'
-import { createPdfcraftTab, PDFCRAFT_URL, PDFCRAFT_IFRAME_SANDBOX } from '../lib/pdfcraftTab.mjs'
+import { createPdfcraftTab, PDFCRAFT_URL } from '../lib/pdfcraftTab.mjs'
 import styles from './page.module.css'
 
 const DEFAULT_FONT_SIZE = 13
@@ -2190,7 +2190,7 @@ export default function Home() {
                     srcDoc={activeTab?.renderMode === 'pdfcraft' ? undefined : activeTab?.renderMode === 'markdown'
                       ? buildMarkdownPreviewDocument(activeTab?.content ?? '', activeTab?.name)
                       : (activeTab?.content ?? '')}
-                    sandbox={activeTab?.renderMode === 'pdfcraft' ? PDFCRAFT_IFRAME_SANDBOX : activeTab?.renderMode === 'markdown' ? '' : 'allow-scripts'}
+                    sandbox={activeTab?.renderMode === 'pdfcraft' ? undefined : activeTab?.renderMode === 'markdown' ? '' : 'allow-scripts'}
                   />
                 ) : (
                   <Editor
@@ -2232,7 +2232,7 @@ export default function Home() {
                     srcDoc={view2ActiveTab?.renderMode === 'pdfcraft' ? undefined : view2ActiveTab?.renderMode === 'markdown'
                       ? buildMarkdownPreviewDocument(view2ActiveTab?.content ?? '', view2ActiveTab?.name)
                       : (view2ActiveTab?.content ?? '')}
-                    sandbox={view2ActiveTab?.renderMode === 'pdfcraft' ? PDFCRAFT_IFRAME_SANDBOX : view2ActiveTab?.renderMode === 'markdown' ? '' : 'allow-scripts'}
+                    sandbox={view2ActiveTab?.renderMode === 'pdfcraft' ? undefined : view2ActiveTab?.renderMode === 'markdown' ? '' : 'allow-scripts'}
                   />
                 ) : (
                   <Editor
@@ -2272,7 +2272,7 @@ export default function Home() {
                     srcDoc={activeTab?.renderMode === 'pdfcraft' ? undefined : activeTab?.renderMode === 'markdown'
                   ? buildMarkdownPreviewDocument(activeTab?.content ?? '', activeTab?.name)
                   : (activeTab?.content ?? '')}
-                sandbox={activeTab?.renderMode === 'pdfcraft' ? PDFCRAFT_IFRAME_SANDBOX : activeTab?.renderMode === 'markdown' ? '' : 'allow-scripts'}
+                sandbox={activeTab?.renderMode === 'pdfcraft' ? undefined : activeTab?.renderMode === 'markdown' ? '' : 'allow-scripts'}
               />
             ) : (
               <Editor
