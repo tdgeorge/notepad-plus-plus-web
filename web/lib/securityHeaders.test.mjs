@@ -17,3 +17,11 @@ test('embedded pdfcraft path can be framed by same origin and compile wasm', asy
   assert.match(csp, /wasm-unsafe-eval/)
   assert.equal(entry.find((h) => h.key === 'X-Frame-Options')?.value, 'SAMEORIGIN')
 })
+
+test('csp allows blob: frames so Safari can complete pdfcraft downloads', async () => {
+  const headers = await nextConfig.headers()
+  for (const source of ['/(.*)', '/pdfcraft/(.*)']) {
+    const csp = headers.find((e) => e.source === source)?.headers.find((h) => h.key === 'Content-Security-Policy')?.value ?? ''
+    assert.match(csp, /frame-src[^;]*blob:/)
+  }
+})
